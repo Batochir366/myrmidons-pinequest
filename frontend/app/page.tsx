@@ -1,9 +1,9 @@
-import Image from "next/image";
+import QrGenerator from "@/components/QrGenerator";
 
 export default function Home() {
   return (
     <div>
-      <h1>Hello World pinequest frontend deployment</h1>
+      <QrGenerator />
     </div>
   );
 }
