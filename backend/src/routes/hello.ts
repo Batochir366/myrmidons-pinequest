@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { helloController } from "../controllers/hello.js";
+import { helloController } from "../controllers/hello.ts";
 
 const HelloRouter = Router();
 
