@@ -16,7 +16,7 @@ port = 8080
 CORS(app, origins=[
     "http://localhost:3000", 
     "http://127.0.0.1:3000",
-    "https://your-frontend-domain.com"  # Replace with your actual frontend URL
+    "https://your-railway-url.railway.app"  # Replace with your actual frontend URL
 ])
 
 # Use environment variable for MongoDB connection
