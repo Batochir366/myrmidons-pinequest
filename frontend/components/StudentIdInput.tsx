@@ -16,14 +16,14 @@ export default function StudentIdInput() {
         className="w-80 max-w-sm p-6 bg-white rounded-xl shadow-sm border border-gray-200"
       >
         <h2 className="text-xl font-semibold text-center mb-2 text-black">
-          Enter Student ID
+          Оюутны ID оруулна уу!
         </h2>
         <p className="text-sm text-center mb-6 text-black">
-          Please provide your student identification number
+          Та ирцээ баталгаажуулахын тулд оюутны ID-г оруулах ёстой.
         </p>
 
         <label className="block text-sm font-medium mb-2 text-black">
-          Student ID
+          Оюутны ID
         </label>
         <input
           type="text"
@@ -38,7 +38,7 @@ export default function StudentIdInput() {
           type="submit"
           className="mt-6 w-full py-2 px-4 bg-black text-white rounded-lg shadow hover:bg-white hover:text-black border border-black transition"
         >
-          Continue to Face Recognition →
+          Дараах →
         </button>
       </form>
     </div>

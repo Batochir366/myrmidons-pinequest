@@ -5,9 +5,9 @@ import StudentIdInput from "@/components/StudentIdInput";
 export default function Home() {
   return (
     <div>
-      {/* <StudentIdInput /> */}
+      <StudentIdInput />
       {/* <FaceVerify /> */}
-      <AttendanceSuccess studentId="24LP0001" status="Present" />
+      {/* <AttendanceSuccess studentId="24LP0001" /> */}
     </div>
   );
 }
