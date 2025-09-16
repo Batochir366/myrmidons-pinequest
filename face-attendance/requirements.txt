@@ -1,26 +1,14 @@
-# Core Flask dependencies
+# Essential dependencies only - for testing deployment first
 Flask==2.3.3
 flask-cors==4.0.0
 gunicorn==21.2.0
-
-# Computer Vision and ML
-opencv-python-headless==4.8.1.78
-face-recognition==1.3.0
+pymongo==4.5.0
 numpy==1.24.3
 Pillow==10.0.1
-dlib==19.24.2
 
-# PyTorch (CPU-only for better compatibility)
-torch==2.1.0
-torchvision==0.16.0
-
-# Anti-spoofing dependencies
-easydict==1.9
-tqdm==4.66.1
-tensorboardX==2.6.2.2
-
-# Database
-pymongo==4.5.0
-
-# Build dependencies
-cmake==3.27.6
+# Comment these out initially to test basic deployment
+# opencv-python-headless==4.8.1.78
+# face-recognition==1.3.0
+# dlib==19.24.2
+# torch==2.1.0
+# torchvision==0.16.0
