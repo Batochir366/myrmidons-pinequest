@@ -32,8 +32,6 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p db
 
-# Expose the port that Railway will use
-EXPOSE 5000
 
 # Use gunicorn to serve the app
 CMD gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --timeout 60 --preload app:app
