@@ -171,16 +171,158 @@ def login():
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-# Similar modifications for logout and register routes...
 @app.route('/logout', methods=['POST'])
 def logout():
-    # Similar implementation with FACE_RECOGNITION_AVAILABLE checks
-    pass
+    try:
+        if not FACE_RECOGNITION_AVAILABLE:
+            return jsonify({
+                "success": False, 
+                "message": "Face recognition is not available. Please contact administrator."
+            }), 503
+
+        data = request.get_json()
+        studentId = data.get('studentId')
+        image_base64 = data.get('image_base64')
+
+        if not studentId or not image_base64:
+            return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+        # Decode base64 image
+        header, encoded = image_base64.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+
+        # Anti-spoofing check (with fallback)
+        try:
+            label = test(
+                image=frame,
+                model_dir="Silent_Face_Anti_Spoofing/resources/anti_spoof_models",
+                device_id=0
+            )
+        except Exception as e:
+            print(f"Anti-spoofing check failed: {e}")
+            label = 1  # Skip anti-spoofing for now
+
+        if label == 1:
+            name, matched_user = recognize_face(frame)
+            if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
+                return jsonify({
+                    "success": False, 
+                    "verified": False,
+                    "message": "Unknown user or face recognition disabled. Please register or contact administrator."
+                }), 401
+            else:
+                # Check if the matched user's studentId matches the submitted one
+                if matched_user['studentId'] != studentId:
+                    return jsonify({
+                        "success": False,
+                        "verified": False,
+                        "message": "Student ID does not match the recognized face"
+                    }), 403
+
+                # Log the logout
+                log_entry = {
+                    "studentId": matched_user['studentId'],
+                    "name": matched_user['name'],
+                    "timestamp": datetime.datetime.now(),
+                    "action": "out"
+                }
+                logs_collection.insert_one(log_entry)
+
+                return jsonify({
+                    "success": True,
+                    "verified": True,
+                    "studentId": matched_user['studentId'],
+                    "name": matched_user['name'],
+                    "message": f"Goodbye, {matched_user['name']}!"
+                })
+        else:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Spoofing Detected. Access Denied."
+            }), 400
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
 @app.route('/register', methods=['POST'])
 def register():
-    # Similar implementation with FACE_RECOGNITION_AVAILABLE checks
-    pass
+    try:
+        if not FACE_RECOGNITION_AVAILABLE:
+            return jsonify({
+                "success": False, 
+                "message": "Face recognition is not available. Please contact administrator."
+            }), 503
+
+        data = request.get_json()
+        studentId = data.get('studentId')
+        name = data.get('name')
+        image_base64 = data.get('image_base64')
+
+        if not studentId or not name or not image_base64:
+            return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+        # Check if user already exists
+        existing_user = users_collection.find_one({"studentId": studentId})
+        if existing_user:
+            return jsonify({"success": False, "message": "User already exists"}), 409
+
+        # Decode base64 image
+        header, encoded = image_base64.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+
+        # Anti-spoofing check (with fallback)
+        try:
+            label = test(
+                image=frame,
+                model_dir="Silent_Face_Anti_Spoofing/resources/anti_spoof_models",
+                device_id=0
+            )
+        except Exception as e:
+            print(f"Anti-spoofing check failed: {e}")
+            label = 1  # Skip anti-spoofing for now
+
+        if label == 1:
+            # Get face encoding
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            face_encodings = face_recognition.face_encodings(rgb_frame)
+
+            if not face_encodings:
+                return jsonify({"success": False, "message": "No face detected in image"}), 400
+
+            # Save user data
+            user_data = {
+                "studentId": studentId,
+                "name": name,
+                "embedding": face_encodings[0].tolist(),
+                "created_at": datetime.datetime.now()
+            }
+            users_collection.insert_one(user_data)
+
+            return jsonify({
+                "success": True,
+                "message": f"User {name} registered successfully!"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Spoofing Detected. Registration Denied."
+            }), 400
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)

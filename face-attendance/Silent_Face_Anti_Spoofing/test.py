@@ -13,7 +13,7 @@ import warnings
 import time
 
 from src.anti_spoof_predict import AntiSpoofPredict
-from Silent_Face_Anti_Spoofing.src.generate_patches import CropImage
+from src.generate_patches import CropImage
 from src.utility import parse_model_name
 warnings.filterwarnings('ignore')
 
@@ -31,60 +31,84 @@ def check_image(image):
         return True
 
 
-def test(image_name, model_dir, device_id):
-    model_test = AntiSpoofPredict(device_id)
-    image_cropper = CropImage()
-    image = cv2.imread(SAMPLE_IMAGE_PATH + image_name)
-    result = check_image(image)
-    if result is False:
-        return
-    image_bbox = model_test.get_bbox(image)
-    prediction = np.zeros((1, 3))
-    test_speed = 0
-    # sum the prediction from single model's result
-    for model_name in os.listdir(model_dir):
-        h_input, w_input, model_type, scale = parse_model_name(model_name)
-        param = {
-            "org_img": image,
-            "bbox": image_bbox,
-            "scale": scale,
-            "out_w": w_input,
-            "out_h": h_input,
-            "crop": True,
-        }
-        if scale is None:
-            param["crop"] = False
-        img = image_cropper.crop(**param)
-        start = time.time()
-        prediction += model_test.predict(img, os.path.join(model_dir, model_name))
-        test_speed += time.time()-start
+def test(image, model_dir, device_id):
+    """
+    Test function for anti-spoofing detection
+    Args:
+        image: OpenCV image (numpy array)
+        model_dir: Path to model directory
+        device_id: Device ID for PyTorch
+    Returns:
+        int: 1 for real face, 0 for fake face
+    """
+    try:
+        model_test = AntiSpoofPredict(device_id)
+        image_cropper = CropImage()
+        
+        # Check if image is valid
+        if image is None:
+            print("Invalid image provided")
+            return 0
+            
+        result = check_image(image)
+        if result is False:
+            print("Image aspect ratio is not 3:4")
+            return 0
+            
+        image_bbox = model_test.get_bbox(image)
+        prediction = np.zeros((1, 3))
+        test_speed = 0
+        
+        # Check if model directory exists
+        if not os.path.exists(model_dir):
+            print(f"Model directory {model_dir} not found")
+            return 0
+            
+        # sum the prediction from single model's result
+        model_files = os.listdir(model_dir)
+        if not model_files:
+            print("No model files found in directory")
+            return 0
+            
+        for model_name in model_files:
+            if not model_name.endswith('.pth'):
+                continue
+                
+            try:
+                h_input, w_input, model_type, scale = parse_model_name(model_name)
+                param = {
+                    "org_img": image,
+                    "bbox": image_bbox,
+                    "scale": scale,
+                    "out_w": w_input,
+                    "out_h": h_input,
+                    "crop": True,
+                }
+                if scale is None:
+                    param["crop"] = False
+                img = image_cropper.crop(**param)
+                start = time.time()
+                prediction += model_test.predict(img, os.path.join(model_dir, model_name))
+                test_speed += time.time()-start
+            except Exception as e:
+                print(f"Error processing model {model_name}: {e}")
+                continue
 
-    # draw result of prediction
-    label = np.argmax(prediction)
-    value = prediction[0][label]/2
-    if label == 1:
-        print("Image '{}' is Real Face. Score: {:.2f}.".format(image_name, value))
-        result_text = "RealFace Score: {:.2f}".format(value)
-        color = (255, 0, 0)
-    else:
-        print("Image '{}' is Fake Face. Score: {:.2f}.".format(image_name, value))
-        result_text = "FakeFace Score: {:.2f}".format(value)
-        color = (0, 0, 255)
-    print("Prediction cost {:.2f} s".format(test_speed))
-    cv2.rectangle(
-        image,
-        (image_bbox[0], image_bbox[1]),
-        (image_bbox[0] + image_bbox[2], image_bbox[1] + image_bbox[3]),
-        color, 2)
-    cv2.putText(
-        image,
-        result_text,
-        (image_bbox[0], image_bbox[1] - 5),
-        cv2.FONT_HERSHEY_COMPLEX, 0.5*image.shape[0]/1024, color)
-
-    format_ = os.path.splitext(image_name)[-1]
-    result_image_name = image_name.replace(format_, "_result" + format_)
-    cv2.imwrite(SAMPLE_IMAGE_PATH + result_image_name, image)
+        # draw result of prediction
+        label = np.argmax(prediction)
+        value = prediction[0][label]/2
+        
+        if label == 1:
+            print(f"Real Face detected. Score: {value:.2f}")
+        else:
+            print(f"Fake Face detected. Score: {value:.2f}")
+            
+        print(f"Prediction cost {test_speed:.2f} s")
+        return label
+        
+    except Exception as e:
+        print(f"Error in anti-spoofing test: {e}")
+        return 0
 
 
 if __name__ == "__main__":

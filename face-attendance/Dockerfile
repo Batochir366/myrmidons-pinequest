@@ -22,8 +22,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install PyTorch
-RUN pip install --no-cache-dir torch==2.3.0 torchvision==0.18.0 --index-url https://download.pytorch.org/whl/cpu
+# Install PyTorch CPU version first
+RUN pip install --no-cache-dir torch==2.0.1+cpu torchvision==0.15.2+cpu --index-url https://download.pytorch.org/whl/cpu
 
 # Install remaining dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -37,5 +37,8 @@ RUN mkdir -p db
 # Expose the port that Render will use
 EXPOSE 5000
 
+# Make startup script executable
+RUN chmod +x start.sh
+
 # Use gunicorn to serve the app
-CMD gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 30 app:app
+CMD gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --timeout 60 --preload app:app
