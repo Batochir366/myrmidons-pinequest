@@ -20,7 +20,7 @@ CORS(app, origins=[
 ])
 
 # Use environment variable for MongoDB connection with SSL configuration
-mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net")
+mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/face_verification_db")
 
 # Configure MongoDB client with SSL settings for Railway
 try:
@@ -54,21 +54,37 @@ if not os.path.exists(db_dir):
  
 log_path = './log.txt'
 
-# Import face recognition libraries
-import cv2
-import face_recognition
-from Silent_Face_Anti_Spoofing.test import test
-FACE_RECOGNITION_AVAILABLE = True
-print("✅ Face recognition libraries loaded successfully")
+# Import face recognition libraries (with fallback for local testing)
+try:
+    import cv2
+    import face_recognition
+    from Silent_Face_Anti_Spoofing.test import test
+    FACE_RECOGNITION_AVAILABLE = True
+    print("✅ Face recognition libraries loaded successfully")
+except ImportError as e:
+    print(f"⚠️ Face recognition not available: {e}")
+    print("🔄 Running in fallback mode - face recognition disabled")
+    FACE_RECOGNITION_AVAILABLE = False
+    cv2 = None
+    face_recognition = None
+    test = None
 
 def recognize_face(frame):
-        
+    print("🔍 Starting face recognition...")
+    
+    if not FACE_RECOGNITION_AVAILABLE:
+        print("❌ Face recognition not available")
+        return 'face_recognition_disabled', None
+    
     name = 'unknown_person'
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     face_encodings = face_recognition.face_encodings(rgb_frame)
 
     if not face_encodings:
+        print("❌ No face detected in image")
         return 'no_persons_found', None
+    
+    print(f"✅ Face detected, processing encoding...")
 
     encoding = face_encodings[0]
     best_match_user = None
@@ -78,11 +94,12 @@ def recognize_face(frame):
     if users_collection:
         try:
             users = list(users_collection.find())
+            print(f"📊 Found {len(users)} users in database")
         except Exception as e:
-            print(f"Database error during user fetch: {e}")
+            print(f"❌ Database error during user fetch: {e}")
             return 'face_recognition_disabled', None
     else:
-        print("No database connection, returning face_recognition_disabled")
+        print("❌ No database connection, returning face_recognition_disabled")
         return 'face_recognition_disabled', None
     
     for user in users:
@@ -97,8 +114,10 @@ def recognize_face(frame):
             best_match_user = user
 
     if best_match_user:
+        print(f"✅ Face matched: {best_match_user['name']} (distance: {best_match_distance:.3f})")
         return best_match_user['name'], best_match_user
     else:
+        print(f"❌ No matching face found (best distance: {best_match_distance:.3f})")
         return name, None
 
 @app.route('/')
@@ -120,13 +139,20 @@ def health():
 @app.route('/login', methods=['POST'])
 def login():
     try:
-
         data = request.get_json()
         studentId = data.get('studentId')
         image_base64 = data.get('image_base64')
 
         if not studentId or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+        # Check if face recognition is available
+        if not FACE_RECOGNITION_AVAILABLE:
+            return jsonify({
+                "success": False, 
+                "verified": False,
+                "message": "Face recognition not available. Please contact administrator."
+            }), 503
 
         # Decode base64 image
         header, encoded = image_base64.split(",", 1)
