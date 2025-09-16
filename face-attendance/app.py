@@ -58,41 +58,24 @@ FACE_RECOGNITION_AVAILABLE = True
 print("✅ Face recognition libraries loaded successfully")
 
 def recognize_face(frame):
-
+    name = "unknown_person"
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     face_encodings = face_recognition.face_encodings(rgb_frame)
-
     if not face_encodings:
-        return 'no_persons_found', None
+        return "no_persons_found", None
 
     encoding = face_encodings[0]
     best_match_user = None
     best_match_distance = 0.45
 
-    # Get users from database (with fallback)
-     if users_collection is not None:
+    if users_collection is not None:  # ← This should be at the same level as the lines above
         try:
             users = list(users_collection.find())
         except Exception as e:
             print(f"Database error during user fetch: {e}")
-            return 'face_recognition_disabled', None
+            users = []
     else:
-        print("No database connection, returning face_recognition_disabled")
-        return 'face_recognition_disabled', None
-    
-    for user in users:
-        if 'embedding' not in user:
-            continue
-        user_embedding = np.array(user['embedding'])
-        distance = face_recognition.face_distance([user_embedding], encoding)[0]
-        if distance < best_match_distance:
-            best_match_distance = distance
-            best_match_user = user
-
-    if best_match_user:
-        return best_match_user['name'], best_match_user
-    else:
-        return 'unknown_person', None
+        users = []
 
 @app.route('/')
 def index():
