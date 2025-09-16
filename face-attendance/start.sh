@@ -8,8 +8,7 @@ mkdir -p db
 mkdir -p Silent_Face_Anti_Spoofing/resources/anti_spoof_models
 mkdir -p Silent_Face_Anti_Spoofing/resources/detection_model
 
-# Set environment variables if not set
-export PORT=5000
+# Do NOT hardcode PORT — use the one provided by the platform
 export SECRET_KEY=${SECRET_KEY:-"default_secret_key_change_in_production"}
 
 # Check if MongoDB URI is set
@@ -17,6 +16,6 @@ if [ -z "$MONGODB_URI" ]; then
     echo "Warning: MONGODB_URI not set. Using default connection."
 fi
 
-# Start the application
-echo "Starting Flask application on port 5000"
+# Start the application using dynamic PORT
+echo "Starting Flask application on port ${PORT:-5000}"
 python app.py
