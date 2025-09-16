@@ -66,13 +66,13 @@ def recognize_face(frame):
     best_match_distance = 0.45
 
     if users_collection is not None:  
-    try:
-        users = list(users_collection.find())
-    except Exception as e:
-        print(f"Database error during user fetch: {e}")
+        try:  
+            users = list(users_collection.find())
+        except Exception as e:
+            print(f"Database error during user fetch: {e}")
+            users = []
+    else:
         users = []
-else:
-    users = []
 
     for user in users:
         if "embedding" not in user:
