@@ -13,6 +13,5 @@ export const scanQR = (req, res) => {
     return res.status(400).json({ ok: false, message: "QR код хүчинтэй биш" });
   }
 
-  // Хэрэглэгч токен зөв байгааг backend-д бүртгэж болно (DB, cache гэх мэт)
   return res.json({ ok: true, token, message: "QR код хүчинтэй" });
 };

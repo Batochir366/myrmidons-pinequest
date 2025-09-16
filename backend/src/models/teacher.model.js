@@ -6,11 +6,6 @@ const TeacherSchema = new Schema(
       type: String,
       required: true,
     },
-    embedding: {
-      type: String,
-      required: true,
-      unique: true,
-    },
     attendanceHistory: [
       {
         type: Schema.Types.ObjectId,
