@@ -36,9 +36,9 @@ try:
     # Test the connection
     mongo_client.admin.command('ping')
     print("✅ MongoDB connected successfully")
-db = mongo_client.get_default_database()
-users_collection = db["users"]
-logs_collection = db["logs"]
+    db = mongo_client.get_default_database()
+    users_collection = db["users"]
+    logs_collection = db["logs"]
 
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
