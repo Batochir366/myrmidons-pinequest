@@ -2,9 +2,12 @@ FROM python:3.11.9-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including dlib requirements
 RUN apt-get update && apt-get install -y \
     build-essential \
+    cmake \
+    libgtk-3-dev \
+    libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
