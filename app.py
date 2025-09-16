@@ -10,11 +10,8 @@ import traceback
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
 
-# Get port from environment variable (Railway provides this)
-try:
-    port = int(os.environ.get('PORT', 5000))
-except (ValueError, TypeError):
-    port = 5000
+# Use fixed port 5000 (Railway will handle port mapping)
+port = 5000
 
 CORS(app, origins=[
     "http://localhost:3000", 
