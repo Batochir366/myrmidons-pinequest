@@ -68,7 +68,7 @@ def recognize_face(frame):
     best_match_user = None
     best_match_distance = 0.45
 
-    if users_collection is not None:  # ← This should be at the same level as the lines above
+    if users_collection is not None:
         try:
             users = list(users_collection.find())
         except Exception as e:
@@ -76,6 +76,22 @@ def recognize_face(frame):
             users = []
     else:
         users = []
+
+    # Compare with all users in database
+    for user in users:
+        try:
+            stored_encoding = np.array(user['embedding'])
+            distance = face_recognition.face_distance([stored_encoding], encoding)[0]
+            
+            if distance < best_match_distance:
+                best_match_distance = distance
+                best_match_user = user
+                name = user['name']
+        except Exception as e:
+            print(f"Error processing user {user.get('name', 'unknown')}: {e}")
+            continue
+
+    return name, best_match_user
 
 @app.route('/')
 def index():
@@ -96,7 +112,6 @@ def health():
 @app.route('/login', methods=['POST'])
 def login():
     try:
-
         data = request.get_json()
         studentId = data.get('studentId')
         image_base64 = data.get('image_base64')
@@ -127,13 +142,18 @@ def login():
                 "message": "Student ID does not match the recognized face"
             }), 403
 
-        log_entry = {
-            "studentId": matched_user['studentId'],
-            "name": matched_user['name'],
-            "timestamp": datetime.datetime.now(),
-            "action": "in"
-        }
-        logs_collection.insert_one(log_entry)
+        # Only log if database is available
+        if logs_collection is not None:
+            try:
+                log_entry = {
+                    "studentId": matched_user['studentId'],
+                    "name": matched_user['name'],
+                    "timestamp": datetime.datetime.now(),
+                    "action": "in"
+                }
+                logs_collection.insert_one(log_entry)
+            except Exception as e:
+                print(f"Failed to log entry: {e}")
 
         return jsonify({
             "success": True,
@@ -150,7 +170,6 @@ def login():
 @app.route('/logout', methods=['POST'])
 def logout():
     try:
-
         data = request.get_json()
         studentId = data.get('studentId')
         image_base64 = data.get('image_base64')
@@ -181,13 +200,18 @@ def logout():
                 "message": "Student ID does not match the recognized face"
             }), 403
 
-        log_entry = {
-            "studentId": matched_user['studentId'],
-            "name": matched_user['name'],
-            "timestamp": datetime.datetime.now(),
-            "action": "out"
-        }
-        logs_collection.insert_one(log_entry)
+        # Only log if database is available
+        if logs_collection is not None:
+            try:
+                log_entry = {
+                    "studentId": matched_user['studentId'],
+                    "name": matched_user['name'],
+                    "timestamp": datetime.datetime.now(),
+                    "action": "out"
+                }
+                logs_collection.insert_one(log_entry)
+            except Exception as e:
+                print(f"Failed to log entry: {e}")
 
         return jsonify({
             "success": True,
@@ -223,7 +247,7 @@ def register():
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
         # Check if user already exists (with MongoDB fallback)
-         if users_collection is not None:
+        if users_collection is not None:
             try:
                 existing_user = users_collection.find_one({"studentId": studentId})
                 if existing_user:
