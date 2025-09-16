@@ -70,7 +70,7 @@ def recognize_face(frame):
     best_match_distance = 0.45
 
     # Get users from database (with fallback)
-    if users_collection:
+     if users_collection is not None:
         try:
             users = list(users_collection.find())
         except Exception as e:
@@ -240,7 +240,7 @@ def register():
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
         # Check if user already exists (with MongoDB fallback)
-        if users_collection:
+         if users_collection is not None:
             try:
                 existing_user = users_collection.find_one({"studentId": studentId})
                 if existing_user:
@@ -281,7 +281,7 @@ def register():
         }
         
         # Save user data (with MongoDB fallback)
-        if users_collection:
+        if users_collection is not None:
             try:
                 users_collection.insert_one(user_data)
                 print(f"✅ User {name} saved to database")
