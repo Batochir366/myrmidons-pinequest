@@ -13,7 +13,7 @@ export default function StudentIdInput() {
     <div className="flex justify-center items-center min-h-screen bg-white">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm p-6 bg-white rounded-xl shadow-sm border border-gray-200"
+        className="w-80 max-w-sm p-6 bg-white rounded-xl shadow-sm border border-gray-200"
       >
         <h2 className="text-xl font-semibold text-center mb-2 text-black">
           Enter Student ID
