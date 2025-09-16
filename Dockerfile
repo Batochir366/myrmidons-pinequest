@@ -14,9 +14,6 @@ RUN apt-get update && apt-get install -y \
     libavcodec-dev \
     libavformat-dev \
     libswscale-dev \
-    libgtk2.0-dev \
-    libcanberra-gtk-module \
-    libcanberra-gtk3-module \
     pkg-config \
     wget \
     && rm -rf /var/lib/apt/lists/*
@@ -30,11 +27,17 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Install PyTorch CPU version first
 RUN pip install --no-cache-dir torch==2.0.1+cpu torchvision==0.15.2+cpu --index-url https://download.pytorch.org/whl/cpu
 
-# Install dlib with proper build flags
-RUN pip install --no-cache-dir dlib==19.24.2
+# Install dlib and face-recognition with build optimizations
+ENV CMAKE_BUILD_TYPE=Release
+ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
 
-# Install face-recognition
-RUN pip install --no-cache-dir face-recognition==1.3.0
+RUN pip install --no-cache-dir dlib==19.24.2 || \
+    (echo "dlib compilation failed, trying pre-built wheel..." && \
+     pip install --no-cache-dir dlib)
+
+RUN pip install --no-cache-dir face-recognition==1.3.0 || \
+    (echo "face-recognition installation failed, trying without version..." && \
+     pip install --no-cache-dir face-recognition)
 
 # Install remaining dependencies
 RUN pip install --no-cache-dir -r requirements.txt
