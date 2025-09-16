@@ -5,7 +5,7 @@ WORKDIR /app
 # Install system dependencies including dlib requirements
 RUN apt-get update && apt-get install -y \
     build-essential \
-    cmake \
+    cmake=3.25.1-1 \
     libgtk-3-dev \
     libboost-all-dev \
     libblas-dev \
@@ -22,8 +22,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install dlib separately with specific build flags
-RUN pip install --no-cache-dir dlib==19.24.2 --verbose
+# Install a compatible version of dlib
+RUN pip install --no-cache-dir dlib==19.22.1 --verbose
 
 # Install remaining dependencies
 RUN pip install --no-cache-dir -r requirements.txt
