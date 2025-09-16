@@ -65,14 +65,14 @@ def recognize_face(frame):
     best_match_user = None
     best_match_distance = 0.45
 
-    if users_collection:
-        try:
-            users = list(users_collection.find())
-        except Exception as e:
-            print(f"Database error during user fetch: {e}")
-            users = []
-    else:
+    if users_collection is not None:  
+    try:
+        users = list(users_collection.find())
+    except Exception as e:
+        print(f"Database error during user fetch: {e}")
         users = []
+else:
+    users = []
 
     for user in users:
         if "embedding" not in user:
@@ -150,7 +150,7 @@ def login():
             return jsonify({"success": False, "verified": False, "message": "Face not recognized or ID mismatch"}), 401
 
         # Log attendance
-        if logs_collection:
+        if logs_collection is not None:
             logs_collection.insert_one({
                 "studentId": studentId,
                 "name": matched_user["name"],
@@ -184,7 +184,7 @@ def logout():
             return jsonify({"success": False, "verified": False, "message": "Face not recognized or ID mismatch"}), 401
 
         # Log logout
-        if logs_collection:
+        if logs_collection is not None:
             logs_collection.insert_one({
                 "studentId": studentId,
                 "name": matched_user["name"],
@@ -213,12 +213,12 @@ def register():
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
         # Ensure users_collection is valid and check if the user already exists
-        if users_collection is None:
-            return jsonify({"success": False, "message": "Database collection not initialized"}), 500
-        
-        user_exists = users_collection.find_one({"studentId": studentId})
-        if user_exists:
-            return jsonify({"success": False, "message": "User already exists"}), 409
+        if users_collection is not None:
+            user_exists = users_collection.find_one({"studentId": studentId})
+            if user_exists:
+                return jsonify({"success": False, "message": "User already exists"}), 409
+        else:
+            return jsonify({"success": False, "message": "Database not connected"}), 500
 
         # Process the image
         frame = process_image(image_base64)
