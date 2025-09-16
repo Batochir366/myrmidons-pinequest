@@ -20,7 +20,7 @@ CORS(app, origins=[
 ])
 
 # Use environment variable for MongoDB connection with SSL configuration
-mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/")
+mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/face_verification_db")
 
 # Configure MongoDB client with SSL settings for Railway
 try:
@@ -36,9 +36,15 @@ try:
     # Test the connection
     mongo_client.admin.command('ping')
     print("✅ MongoDB connected successfully")
-    db = mongo_client.get_default_database()
+    
+    # Select the specific database and collections
+    db = mongo_client["face_verification_db"]
     users_collection = db["users"]
     logs_collection = db["logs"]
+    
+    print(f"📊 Connected to database: {db.name}")
+    print(f"📊 Users collection: {users_collection.name}")
+    print(f"📊 Logs collection: {logs_collection.name}")
 
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
