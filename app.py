@@ -20,7 +20,7 @@ CORS(app, origins=[
 ])
 
 # Use environment variable for MongoDB connection with SSL configuration
-mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/face_verification_db")
+mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/")
 
 # Configure MongoDB client with SSL settings for Railway
 try:
@@ -84,10 +84,11 @@ def recognize_face(frame):
             print(f"📊 Found {len(users)} users in database")
         except Exception as e:
             print(f"❌ Database error during user fetch: {e}")
-            return 'face_recognition_disabled', None
+            print("🔄 Continuing without database - face recognition will work but no user matching")
+            users = []
     else:
-        print("❌ No database connection, returning face_recognition_disabled")
-        return 'face_recognition_disabled', None
+        print("⚠️ No database connection - face recognition will work but no user matching")
+        users = []
     
     for user in users:
         if 'embedding' not in user:
