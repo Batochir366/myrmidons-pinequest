@@ -4,12 +4,10 @@ import { useState, useEffect } from "react";
 
 type AttendanceSuccessProps = {
   studentId: string;
-  status?: "Present";
 };
 
 export default function AttendanceSuccess({
   studentId,
-  status = "Present",
 }: AttendanceSuccessProps) {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
@@ -30,27 +28,21 @@ export default function AttendanceSuccess({
         </div>
 
         <h2 className="text-xl font-semibold mb-4 text-gray-800">
-          Attendance Recorded!
+          Ирц амжилттай бүртгэгдлээ!
         </h2>
 
         <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-left text-gray-800">
           <div className="flex justify-between text-sm">
-            <span className="font-medium">Student ID:</span>
+            <span className="font-medium">Оюутны ID:</span>
             <span className="font-mono">{studentId}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="font-medium">Time:</span>
+            <span className="font-medium">Цаг:</span>
             <span>{time}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="font-medium">Date:</span>
+            <span className="font-medium">Огноо:</span>
             <span>{date}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Status:</span>
-            <span className="px-2 py-1 rounded-full bg-green-100 text-xs font-medium">
-              {status}
-            </span>
           </div>
         </div>
       </div>
