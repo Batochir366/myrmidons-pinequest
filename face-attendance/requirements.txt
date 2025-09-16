@@ -20,6 +20,3 @@ scikit-learn==1.3.0
 easydict==1.13
 tqdm==4.65.0
 tensorboardX==2.6
-
-# Note: face-recognition and dlib removed due to build issues
-# The app works gracefully without them (face_recognition_disabled mode)
