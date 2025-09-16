@@ -93,6 +93,7 @@ import face_recognition
 from Silent_Face_Anti_Spoofing.test import test
 FACE_RECOGNITION_AVAILABLE = True
 print("✅ Face recognition libraries loaded successfully")
+print("🔧 Using enhanced SSL configuration for Railway")
 
 def recognize_face(frame):
     print("🔍 Starting face recognition...")
