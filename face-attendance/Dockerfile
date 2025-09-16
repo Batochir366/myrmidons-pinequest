@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libpng-dev \
     libtiff-dev \
-    libatlas-base-dev \
+    libopenblas-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
