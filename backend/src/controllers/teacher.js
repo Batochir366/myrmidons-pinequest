@@ -19,7 +19,7 @@ export const createClassroom = async (req, res) => {
 
 export const getClassroomsByTeacher = async (req, res) => {
   try {
-    const { teacherId } = req.body;
+    const { teacherId } = req.params;
 
     const classrooms = await AttendanceModel.find({
       teacher: teacherId,
