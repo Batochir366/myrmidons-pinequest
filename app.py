@@ -204,20 +204,21 @@ def register():
         studentId = data.get("studentId")
         name = data.get("name")
         image_base64 = data.get("image_base64")
-        
-        # Debugging line to check received data
-        print(f"Data received: {data}")  
 
+        # Debugging line to check received data
+        print(f"Data received: {data}")
+
+        # Check if all required fields are present
         if not studentId or not name or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
         # Ensure users_collection is valid and check if the user already exists
-        if users_collection is not None:
-            user_exists = users_collection.find_one({"studentId": studentId})
-            if user_exists:
-                return jsonify({"success": False, "message": "User already exists"}), 409
-        else:
+        if users_collection is None:
             return jsonify({"success": False, "message": "Database collection not initialized"}), 500
+        
+        user_exists = users_collection.find_one({"studentId": studentId})
+        if user_exists:
+            return jsonify({"success": False, "message": "User already exists"}), 409
 
         # Process the image
         frame = process_image(image_base64)
@@ -243,55 +244,12 @@ def register():
         }
 
         # Insert the user into the MongoDB collection
-        if users_collection is not None:
-            users_collection.insert_one(user_data)
+        users_collection.insert_one(user_data)
 
         return jsonify({"success": True, "message": f"User {name} registered successfully!"})
 
     except Exception as e:
         print(f"Error during registration: {e}")  # Log the specific error
-        traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal server error"}), 500
-
-    try:
-        data = request.get_json()
-        studentId = data.get("studentId")
-        name = data.get("name")
-        image_base64 = data.get("image_base64")
-        
-        # Check received data
-        print(f"Data received: {data}")  # Debugging line
-        
-        if not studentId or not name or not image_base64:
-            return jsonify({"success": False, "message": "Missing required fields"}), 400
-
-        if users_collection is not None and users_collection.find_one({"studentId": studentId}):
-            return jsonify({"success": False, "message": "User already exists"}), 409
-
-        frame = process_image(image_base64)
-        if frame is None:
-            return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
-        if not anti_spoof_check(frame):
-            return jsonify({"success": False, "message": "Spoofing detected"}), 400
-
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_encodings = face_recognition.face_encodings(rgb_frame)
-        if not face_encodings:
-            return jsonify({"success": False, "message": "No face detected"}), 400
-
-        user_data = {
-            "studentId": studentId,
-            "name": name,
-            "embedding": face_encodings[0].tolist(),
-            "created_at": datetime.datetime.now()
-        }
-
-        if users_collection is not None:
-            users_collection.insert_one(user_data)
-
-        return jsonify({"success": True, "message": f"User {name} registered successfully!"})
-    except Exception:
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal server error"}), 500
 
