@@ -20,7 +20,7 @@ CORS(app, origins=[
 ])
 
 # Use environment variable for MongoDB connection with SSL configuration
-mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/face_verification_db")
+mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/face_verification_db?retryWrites=true&w=majority&ssl=true&authSource=admin")
 
 # Configure MongoDB client with SSL settings for Railway
 try:
@@ -29,9 +29,12 @@ try:
         tls=True,
         tlsAllowInvalidCertificates=True,
         tlsAllowInvalidHostnames=True,
-        serverSelectionTimeoutMS=5000,
-        connectTimeoutMS=5000,
-        socketTimeoutMS=5000
+        tlsInsecure=True,
+        serverSelectionTimeoutMS=10000,
+        connectTimeoutMS=10000,
+        socketTimeoutMS=10000,
+        retryWrites=True,
+        retryReads=True
     )
     # Test the connection
     mongo_client.admin.command('ping')
@@ -48,11 +51,35 @@ try:
 
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
-    print("Using fallback: No database connection")
-    mongo_client = None
-    db = None
-    users_collection = None
-    logs_collection = None
+    print("🔄 Trying alternative connection method...")
+    
+    # Try alternative connection without some SSL options
+    try:
+        alt_uri = "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/face_verification_db"
+        mongo_client = MongoClient(
+            alt_uri,
+            serverSelectionTimeoutMS=15000,
+            connectTimeoutMS=15000,
+            socketTimeoutMS=15000
+        )
+        mongo_client.admin.command('ping')
+        print("✅ MongoDB connected with alternative method")
+        
+        db = mongo_client["face_verification_db"]
+        users_collection = db["users"]
+        logs_collection = db["logs"]
+        
+        print(f"📊 Connected to database: {db.name}")
+        print(f"📊 Users collection: {users_collection.name}")
+        print(f"📊 Logs collection: {logs_collection.name}")
+        
+    except Exception as e2:
+        print(f"❌ Alternative connection also failed: {e2}")
+        print("Using fallback: No database connection")
+        mongo_client = None
+        db = None
+        users_collection = None
+        logs_collection = None
  
 db_dir = './db'
 if not os.path.exists(db_dir):
