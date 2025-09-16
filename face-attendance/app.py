@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response, request, redirect, url_for, flash, jsonify
+from flask import Flask, request, jsonify
 import os
 import datetime
 from pymongo import MongoClient
@@ -10,7 +10,6 @@ import traceback
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
 
-# Use fixed port 8080 (Railway will handle port mapping)
 port = 8080
 
 CORS(app, supports_credentials=True, resources={
@@ -18,41 +17,31 @@ CORS(app, supports_credentials=True, resources={
         "origins": [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
-            "https://your-frontend-domain.com",  # Actual frontend domain
-            "https://myrmidons-pinequest-production.up.railway.app"  
+            "https://your-frontend-domain.com",  
+            "https://myrmidons-pinequest-production.up.railway.app"
         ]
     }
 })
 
-# Use environment variable for MongoDB connection
 mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest")
 mongo_client = MongoClient(mongodb_uri)
-
-# Select DB and collections
 db = mongo_client["face_verification_db"]
 users_collection = db["users"]
 logs_collection = db["logs"]
 
-# Try to import face recognition libraries, but don't fail if they're not available
 try:
     import cv2
     import face_recognition
-    from Silent_Face_Anti_Spoofing.test import test
     FACE_RECOGNITION_AVAILABLE = True
     print("Face recognition libraries loaded successfully")
 except ImportError as e:
     print(f"Face recognition libraries not available: {e}")
     FACE_RECOGNITION_AVAILABLE = False
 
-db_dir = './db'
-if not os.path.exists(db_dir):
-    os.mkdir(db_dir)
-
 def recognize_face(frame):
     if not FACE_RECOGNITION_AVAILABLE:
         return 'face_recognition_disabled', None
-        
-    name = 'unknown_person'
+
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     face_encodings = face_recognition.face_encodings(rgb_frame)
 
@@ -67,10 +56,8 @@ def recognize_face(frame):
     for user in users:
         if 'embedding' not in user:
             continue
-        
         user_embedding = np.array(user['embedding'])
         distance = face_recognition.face_distance([user_embedding], encoding)[0]
-        
         if distance < best_match_distance:
             best_match_distance = distance
             best_match_user = user
@@ -78,7 +65,7 @@ def recognize_face(frame):
     if best_match_user:
         return best_match_user['name'], best_match_user
     else:
-        return name, None
+        return 'unknown_person', None
 
 @app.route('/')
 def index():
@@ -112,7 +99,6 @@ def login():
         if not studentId or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Decode base64 image
         header, encoded = image_base64.split(",", 1)
         image_bytes = base64.b64decode(encoded)
         np_arr = np.frombuffer(image_bytes, np.uint8)
@@ -121,56 +107,36 @@ def login():
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Anti-spoofing check (with fallback)
-        try:
-            label = test(
-                image=frame,
-                model_dir="Silent_Face_Anti_Spoofing/resources/anti_spoof_models",
-                device_id=0
-            )
-        except Exception as e:
-            print(f"Anti-spoofing check failed: {e}")
-            label = 1  # Skip anti-spoofing for now
+        name, matched_user = recognize_face(frame)
+        if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
+            return jsonify({
+                "success": False, 
+                "verified": False,
+                "message": "Unknown user or face recognition disabled. Please register or contact administrator."
+            }), 401
 
-        if label == 1:
-            name, matched_user = recognize_face(frame)
-            if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
-                return jsonify({
-                    "success": False, 
-                    "verified": False,
-                    "message": "Unknown user or face recognition disabled. Please register or contact administrator."
-                }), 401
-            else:
-                # Check if the matched user's studentId matches the submitted one
-                if matched_user['studentId'] != studentId:
-                    return jsonify({
-                        "success": False,
-                        "verified": False,
-                        "message": "Student ID does not match the recognized face"
-                    }), 403
-
-                # Log the login
-                log_entry = {
-                    "studentId": matched_user['studentId'],
-                    "name": matched_user['name'],
-                    "timestamp": datetime.datetime.now(),
-                    "action": "in"
-                }
-                logs_collection.insert_one(log_entry)
-
-                return jsonify({
-                    "success": True,
-                    "verified": True,
-                    "studentId": matched_user['studentId'],
-                    "name": matched_user['name'],
-                    "message": f"Welcome back, {matched_user['name']}!"
-                })
-        else:
+        if matched_user['studentId'] != studentId:
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Spoofing Detected. Access Denied."
-            }), 400
+                "message": "Student ID does not match the recognized face"
+            }), 403
+
+        log_entry = {
+            "studentId": matched_user['studentId'],
+            "name": matched_user['name'],
+            "timestamp": datetime.datetime.now(),
+            "action": "in"
+        }
+        logs_collection.insert_one(log_entry)
+
+        return jsonify({
+            "success": True,
+            "verified": True,
+            "studentId": matched_user['studentId'],
+            "name": matched_user['name'],
+            "message": f"Welcome back, {matched_user['name']}!"
+        })
 
     except Exception as e:
         traceback.print_exc()
@@ -192,7 +158,6 @@ def logout():
         if not studentId or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Decode base64 image
         header, encoded = image_base64.split(",", 1)
         image_bytes = base64.b64decode(encoded)
         np_arr = np.frombuffer(image_bytes, np.uint8)
@@ -201,56 +166,36 @@ def logout():
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Anti-spoofing check (with fallback)
-        try:
-            label = test(
-                image=frame,
-                model_dir="Silent_Face_Anti_Spoofing/resources/anti_spoof_models",
-                device_id=0
-            )
-        except Exception as e:
-            print(f"Anti-spoofing check failed: {e}")
-            label = 1  # Skip anti-spoofing for now
+        name, matched_user = recognize_face(frame)
+        if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
+            return jsonify({
+                "success": False, 
+                "verified": False,
+                "message": "Unknown user or face recognition disabled. Please register or contact administrator."
+            }), 401
 
-        if label == 1:
-            name, matched_user = recognize_face(frame)
-            if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
-                return jsonify({
-                    "success": False, 
-                    "verified": False,
-                    "message": "Unknown user or face recognition disabled. Please register or contact administrator."
-                }), 401
-            else:
-                # Check if the matched user's studentId matches the submitted one
-                if matched_user['studentId'] != studentId:
-                    return jsonify({
-                        "success": False,
-                        "verified": False,
-                        "message": "Student ID does not match the recognized face"
-                    }), 403
-
-                # Log the logout
-                log_entry = {
-                    "studentId": matched_user['studentId'],
-                    "name": matched_user['name'],
-                    "timestamp": datetime.datetime.now(),
-                    "action": "out"
-                }
-                logs_collection.insert_one(log_entry)
-
-                return jsonify({
-                    "success": True,
-                    "verified": True,
-                    "studentId": matched_user['studentId'],
-                    "name": matched_user['name'],
-                    "message": f"Goodbye, {matched_user['name']}!"
-                })
-        else:
+        if matched_user['studentId'] != studentId:
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Spoofing Detected. Access Denied."
-            }), 400
+                "message": "Student ID does not match the recognized face"
+            }), 403
+
+        log_entry = {
+            "studentId": matched_user['studentId'],
+            "name": matched_user['name'],
+            "timestamp": datetime.datetime.now(),
+            "action": "out"
+        }
+        logs_collection.insert_one(log_entry)
+
+        return jsonify({
+            "success": True,
+            "verified": True,
+            "studentId": matched_user['studentId'],
+            "name": matched_user['name'],
+            "message": f"Goodbye, {matched_user['name']}!"
+        })
 
     except Exception as e:
         traceback.print_exc()
@@ -273,12 +218,10 @@ def register():
         if not studentId or not name or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Check if user already exists
         existing_user = users_collection.find_one({"studentId": studentId})
         if existing_user:
             return jsonify({"success": False, "message": "User already exists"}), 409
 
-        # Decode base64 image
         header, encoded = image_base64.split(",", 1)
         image_bytes = base64.b64decode(encoded)
         np_arr = np.frombuffer(image_bytes, np.uint8)
@@ -287,43 +230,24 @@ def register():
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Anti-spoofing check (with fallback)
-        try:
-            label = test(
-                image=frame,
-                model_dir="Silent_Face_Anti_Spoofing/resources/anti_spoof_models",
-                device_id=0
-            )
-        except Exception as e:
-            print(f"Anti-spoofing check failed: {e}")
-            label = 1  # Skip anti-spoofing for now
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        face_encodings = face_recognition.face_encodings(rgb_frame)
 
-        if label == 1:
-            # Get face encoding
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            face_encodings = face_recognition.face_encodings(rgb_frame)
+        if not face_encodings:
+            return jsonify({"success": False, "message": "No face detected in image"}), 400
 
-            if not face_encodings:
-                return jsonify({"success": False, "message": "No face detected in image"}), 400
+        user_data = {
+            "studentId": studentId,
+            "name": name,
+            "embedding": face_encodings[0].tolist(),
+            "created_at": datetime.datetime.now()
+        }
+        users_collection.insert_one(user_data)
 
-            # Save user data
-            user_data = {
-                "studentId": studentId,
-                "name": name,
-                "embedding": face_encodings[0].tolist(),
-                "created_at": datetime.datetime.now()
-            }
-            users_collection.insert_one(user_data)
-
-            return jsonify({
-                "success": True,
-                "message": f"User {name} registered successfully!"
-            })
-        else:
-            return jsonify({
-                "success": False,
-                "message": "Spoofing Detected. Registration Denied."
-            }), 400
+        return jsonify({
+            "success": True,
+            "message": f"User {name} registered successfully!"
+        })
 
     except Exception as e:
         traceback.print_exc()
