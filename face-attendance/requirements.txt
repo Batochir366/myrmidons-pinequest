@@ -1,14 +1,19 @@
-# Essential dependencies only - for testing deployment first
+# Essential dependencies - Python 3.11 compatible
 Flask==2.3.3
 flask-cors==4.0.0
 gunicorn==21.2.0
-pymongo==4.5.0
-numpy==1.24.3
-Pillow==10.0.1
+pymongo==4.6.1
+numpy==1.24.4
+Pillow==10.1.0
+Werkzeug==2.3.7
 
-# Comment these out initially to test basic deployment
-# opencv-python-headless==4.8.1.78
+# Build tools (add these for safety)
+setuptools>=68.0.0
+wheel>=0.41.0
+
+# Uncomment these when basic deployment works:
+# opencv-python-headless==4.8.1.78  
 # face-recognition==1.3.0
 # dlib==19.24.2
-# torch==2.1.0
-# torchvision==0.16.0
+# torch==2.1.0+cpu --index-url https://download.pytorch.org/whl/cpu
+# torchvision==0.16.0+cpu --index-url https://download.pytorch.org/whl/cpu
