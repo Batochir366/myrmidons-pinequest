@@ -2,10 +2,10 @@ FROM python:3.11.9-slim
 
 WORKDIR /app
 
-# Install system dependencies including dlib requirements
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
-    cmake=3.25.1-1 \
+    cmake \
     libgtk-3-dev \
     libboost-all-dev \
     libblas-dev \
@@ -22,8 +22,17 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install a compatible version of dlib
-RUN pip install --no-cache-dir dlib==19.22.1 --verbose
+# Install pre-compiled versions to avoid compilation issues
+RUN pip install --no-cache-dir \
+    --extra-index-url https://pypi.nvidia.com \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    numpy==1.24.4 \
+    torch==2.1.0 torchvision==0.16.0
+
+# Install dlib from a pre-compiled wheel for Python 3.11
+RUN pip install --no-cache-dir \
+    https://github.com/ageitgey/face_recognition_models/releases/download/0.3.0/face_recognition_models-0.3.0.tar.gz \
+    https://github.com/ageitgey/face_recognition/releases/download/1.3.0/face_recognition-1.3.0-py2.py3-none-any.whl
 
 # Install remaining dependencies
 RUN pip install --no-cache-dir -r requirements.txt
