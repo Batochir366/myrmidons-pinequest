@@ -19,18 +19,46 @@ CORS(app, origins=[
     "https://your-frontend-domain.com"  # Replace with your actual frontend URL
 ])
 
-mongo_client = MongoClient("mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/")
- 
-# Select DB and collections
-db = mongo_client["face_verification_db"]
-users_collection = db["users"]
-logs_collection = db["logs"]
+# Use environment variable for MongoDB connection with SSL configuration
+mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest")
+
+# Configure MongoDB client with SSL settings for Railway
+try:
+    mongo_client = MongoClient(
+        mongodb_uri,
+        tls=True,
+        tlsAllowInvalidCertificates=True,
+        tlsAllowInvalidHostnames=True,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000
+    )
+    # Test the connection
+    mongo_client.admin.command('ping')
+    print("✅ MongoDB connected successfully")
+    db = mongo_client["face_verification_db"]
+    users_collection = db["users"]
+    logs_collection = db["logs"]
+except Exception as e:
+    print(f"❌ MongoDB connection failed: {e}")
+    print("Using fallback: No database connection")
+    mongo_client = None
+    db = None
+    users_collection = None
+    logs_collection = None
  
 db_dir = './db'
 if not os.path.exists(db_dir):
     os.mkdir(db_dir)
  
 log_path = './log.txt'
+
+# Import face recognition libraries
+import cv2
+import face_recognition
+from Silent_Face_Anti_Spoofing.test import test
+FACE_RECOGNITION_AVAILABLE = True
+print("✅ Face recognition libraries loaded successfully")
 
 def recognize_face(frame):
         
@@ -136,14 +164,21 @@ def login():
                         "message": "Student ID does not match the recognized face"
                     }), 403
 
-                # Log the login
+                # Log the login (with MongoDB fallback)
                 log_entry = {
                     "studentId": matched_user['studentId'],
                     "name": matched_user['name'],
                     "timestamp": datetime.datetime.now(),
                     "action": "in"
                 }
-                logs_collection.insert_one(log_entry)
+                if logs_collection:
+                    try:
+                        logs_collection.insert_one(log_entry)
+                        print(f"✅ Login logged for {matched_user['name']}")
+                    except Exception as e:
+                        print(f"❌ Database error during login log: {e}")
+                else:
+                    print(f"⚠️ No database connection, login not logged")
 
                 return jsonify({
                     "success": True,
@@ -211,14 +246,21 @@ def logout():
                         "message": "Student ID does not match the recognized face"
                     }), 403
 
-                # Log the logout
+                # Log the logout (with MongoDB fallback)
                 log_entry = {
                     "studentId": matched_user['studentId'],
                     "name": matched_user['name'],
                     "timestamp": datetime.datetime.now(),
                     "action": "out"
                 }
-                logs_collection.insert_one(log_entry)
+                if logs_collection:
+                    try:
+                        logs_collection.insert_one(log_entry)
+                        print(f"✅ Logout logged for {matched_user['name']}")
+                    except Exception as e:
+                        print(f"❌ Database error during logout log: {e}")
+                else:
+                    print(f"⚠️ No database connection, logout not logged")
 
                 return jsonify({
                     "success": True,
