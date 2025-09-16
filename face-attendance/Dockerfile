@@ -1,4 +1,4 @@
-FROM python:3.11.9-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
@@ -22,17 +22,8 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install pre-compiled versions to avoid compilation issues
-RUN pip install --no-cache-dir \
-    --extra-index-url https://pypi.nvidia.com \
-    --extra-index-url https://download.pytorch.org/whl/cpu \
-    numpy==1.24.4 \
-    torch==2.1.0 torchvision==0.16.0
-
-# Install dlib from a pre-compiled wheel for Python 3.11
-RUN pip install --no-cache-dir \
-    https://github.com/ageitgey/face_recognition_models/releases/download/0.3.0/face_recognition_models-0.3.0.tar.gz \
-    https://github.com/ageitgey/face_recognition/releases/download/1.3.0/face_recognition-1.3.0-py2.py3-none-any.whl
+# Install PyTorch
+RUN pip install --no-cache-dir torch==2.3.0 torchvision==0.18.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Install remaining dependencies
 RUN pip install --no-cache-dir -r requirements.txt

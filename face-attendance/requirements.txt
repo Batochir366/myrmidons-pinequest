@@ -1,15 +1,18 @@
-# Essential web dependencies - Python 3.11 compatible
+# Essential web dependencies
 Flask==2.3.3
 flask-cors==4.0.0
 gunicorn==21.2.0
 pymongo==4.6.1
 
-# Build tools
-setuptools>=68.0.0
-wheel>=0.41.0
-Pillow==10.1.0
-Werkzeug==2.3.7
+# Your working requirements
+easydict==1.13
+numpy==2.0.2
+tqdm==4.67.1
+torch==2.3.0
+torchvision==0.18.0
+opencv-python==4.12.0.88
+Pillow==11.3.0
+tensorboardX==2.6
 
-opencv-python-headless==4.8.1.78
-# Note: dlib and face-recognition are installed separately above
-# Note: torch and torchvision are installed separately above
+# Face recognition (will install dlib as dependency)
+face-recognition==1.3.0
