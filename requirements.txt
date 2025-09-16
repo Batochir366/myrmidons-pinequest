@@ -13,8 +13,8 @@ Pillow==10.0.1
 torch==2.0.1+cpu
 torchvision==0.15.2+cpu
 
-# Face recognition (Railway handles this better)
-face-recognition==1.3.0
+# Face recognition (may fail to install, app handles gracefully)
+# face-recognition==1.3.0
 
 # ML utilities
 scikit-learn==1.3.0
