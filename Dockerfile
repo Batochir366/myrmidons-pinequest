@@ -16,7 +16,11 @@ RUN apt-get update && apt-get install -y \
     libswscale-dev \
     pkg-config \
     wget \
+    git \
     && rm -rf /var/lib/apt/lists/*
+
+# Verify cmake installation
+RUN cmake --version
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -31,13 +35,11 @@ RUN pip install --no-cache-dir torch==2.0.1+cpu torchvision==0.15.2+cpu --index-
 ENV CMAKE_BUILD_TYPE=Release
 ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
 
-RUN pip install --no-cache-dir dlib==19.24.2 || \
-    (echo "dlib compilation failed, trying pre-built wheel..." && \
-     pip install --no-cache-dir dlib)
+# Install dlib with proper cmake configuration
+RUN pip install --no-cache-dir dlib==19.24.2
 
-RUN pip install --no-cache-dir face-recognition==1.3.0 || \
-    (echo "face-recognition installation failed, trying without version..." && \
-     pip install --no-cache-dir face-recognition)
+# Install face-recognition
+RUN pip install --no-cache-dir face-recognition==1.3.0
 
 # Install remaining dependencies
 RUN pip install --no-cache-dir -r requirements.txt

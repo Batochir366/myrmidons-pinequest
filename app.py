@@ -54,28 +54,15 @@ if not os.path.exists(db_dir):
  
 log_path = './log.txt'
 
-# Import face recognition libraries (with fallback for local testing)
-try:
-    import cv2
-    import face_recognition
-    from Silent_Face_Anti_Spoofing.test import test
-    FACE_RECOGNITION_AVAILABLE = True
-    print("✅ Face recognition libraries loaded successfully")
-except ImportError as e:
-    print(f"⚠️ Face recognition not available: {e}")
-    print("🔄 Running in fallback mode - face recognition disabled")
-    FACE_RECOGNITION_AVAILABLE = False
-    cv2 = None
-    face_recognition = None
-    test = None
+# Import face recognition libraries
+import cv2
+import face_recognition
+from Silent_Face_Anti_Spoofing.test import test
+FACE_RECOGNITION_AVAILABLE = True
+print("✅ Face recognition libraries loaded successfully")
 
 def recognize_face(frame):
     print("🔍 Starting face recognition...")
-    
-    if not FACE_RECOGNITION_AVAILABLE:
-        print("❌ Face recognition not available")
-        return 'face_recognition_disabled', None
-    
     name = 'unknown_person'
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     face_encodings = face_recognition.face_encodings(rgb_frame)
@@ -146,13 +133,6 @@ def login():
         if not studentId or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Check if face recognition is available
-        if not FACE_RECOGNITION_AVAILABLE:
-            return jsonify({
-                "success": False, 
-                "verified": False,
-                "message": "Face recognition not available. Please contact administrator."
-            }), 503
 
         # Decode base64 image
         header, encoded = image_base64.split(",", 1)
