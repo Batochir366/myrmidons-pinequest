@@ -19,48 +19,18 @@ CORS(app, origins=[
     "https://your-frontend-domain.com"  # Replace with your actual frontend URL
 ])
 
-# Use environment variable for MongoDB connection with SSL configuration
-mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest")
-
-# Configure MongoDB client with SSL settings for Railway
-try:
-    mongo_client = MongoClient(
-        mongodb_uri,
-        tls=True,
-        tlsAllowInvalidCertificates=True,
-        tlsAllowInvalidHostnames=True,
-        serverSelectionTimeoutMS=5000,
-        connectTimeoutMS=5000,
-        socketTimeoutMS=5000
-    )
-    # Test the connection
-    mongo_client.admin.command('ping')
-    print("✅ MongoDB connected successfully")
-except Exception as e:
-    print(f"❌ MongoDB connection failed: {e}")
-    print("Using fallback: No database connection")
-    mongo_client = None
-
-# Select DB and collections (with fallback if MongoDB is not available)
-if mongo_client:
-    db = mongo_client["face_verification_db"]
-    users_collection = db["users"]
-    logs_collection = db["logs"]
-else:
-    db = None
-    users_collection = None
-    logs_collection = None
-
-# Import face recognition libraries
-import cv2
-import face_recognition
-from Silent_Face_Anti_Spoofing.test import test
-FACE_RECOGNITION_AVAILABLE = True
-print("✅ Face recognition libraries loaded successfully")
-
+mongo_client = MongoClient("mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/")
+ 
+# Select DB and collections
+db = mongo_client["face_verification_db"]
+users_collection = db["users"]
+logs_collection = db["logs"]
+ 
 db_dir = './db'
 if not os.path.exists(db_dir):
     os.mkdir(db_dir)
+ 
+log_path = './log.txt'
 
 def recognize_face(frame):
         
