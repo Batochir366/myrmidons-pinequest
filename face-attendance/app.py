@@ -69,7 +69,17 @@ def recognize_face(frame):
     best_match_user = None
     best_match_distance = 0.45
 
-    users = list(users_collection.find())
+    # Get users from database (with fallback)
+    if users_collection:
+        try:
+            users = list(users_collection.find())
+        except Exception as e:
+            print(f"Database error during user fetch: {e}")
+            return 'face_recognition_disabled', None
+    else:
+        print("No database connection, returning face_recognition_disabled")
+        return 'face_recognition_disabled', None
+    
     for user in users:
         if 'embedding' not in user:
             continue
@@ -229,10 +239,18 @@ def register():
             print("Missing fields in request")
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        existing_user = users_collection.find_one({"studentId": studentId})
-        if existing_user:
-            print("User already exists:", studentId)
-            return jsonify({"success": False, "message": "User already exists"}), 409
+        # Check if user already exists (with MongoDB fallback)
+        if users_collection:
+            try:
+                existing_user = users_collection.find_one({"studentId": studentId})
+                if existing_user:
+                    print("User already exists:", studentId)
+                    return jsonify({"success": False, "message": "User already exists"}), 409
+            except Exception as e:
+                print(f"Database error during user check: {e}")
+                return jsonify({"success": False, "message": "Database connection error"}), 500
+        else:
+            print("Warning: No database connection, skipping user existence check")
 
         if ',' not in image_base64:
             print("Invalid image format, missing comma")
@@ -261,7 +279,18 @@ def register():
             "embedding": face_encodings[0].tolist(),
             "created_at": datetime.datetime.now()
         }
-        users_collection.insert_one(user_data)
+        
+        # Save user data (with MongoDB fallback)
+        if users_collection:
+            try:
+                users_collection.insert_one(user_data)
+                print(f"✅ User {name} saved to database")
+            except Exception as e:
+                print(f"❌ Database error during user save: {e}")
+                return jsonify({"success": False, "message": "Failed to save user to database"}), 500
+        else:
+            print(f"⚠️ No database connection, user {name} not saved")
+        
         print(f"User {name} registered successfully")
 
         return jsonify({
