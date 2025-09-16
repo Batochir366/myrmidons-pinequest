@@ -23,11 +23,33 @@ CORS(app, supports_credentials=True, resources={
     }
 })
 
+# Use environment variable for MongoDB connection with SSL configuration
 mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest")
-mongo_client = MongoClient(mongodb_uri)
-db = mongo_client["face_verification_db"]
-users_collection = db["users"]
-logs_collection = db["logs"]
+
+# Configure MongoDB client with SSL settings for Railway
+try:
+    mongo_client = MongoClient(
+        mongodb_uri,
+        tls=True,
+        tlsAllowInvalidCertificates=True,
+        tlsAllowInvalidHostnames=True,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000
+    )
+    # Test the connection
+    mongo_client.admin.command('ping')
+    print("✅ MongoDB connected successfully")
+    db = mongo_client["face_verification_db"]
+    users_collection = db["users"]
+    logs_collection = db["logs"]
+except Exception as e:
+    print(f"❌ MongoDB connection failed: {e}")
+    print("Using fallback: No database connection")
+    mongo_client = None
+    db = None
+    users_collection = None
+    logs_collection = None
 
 try:
     import cv2

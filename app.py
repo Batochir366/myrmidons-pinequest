@@ -19,14 +19,37 @@ CORS(app, origins=[
     "https://your-frontend-domain.com"  # Replace with your actual frontend URL
 ])
 
-# Use environment variable for MongoDB connection
+# Use environment variable for MongoDB connection with SSL configuration
 mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest")
-mongo_client = MongoClient(mongodb_uri)
 
-# Select DB and collections
-db = mongo_client["face_verification_db"]
-users_collection = db["users"]
-logs_collection = db["logs"]
+# Configure MongoDB client with SSL settings for Railway
+try:
+    mongo_client = MongoClient(
+        mongodb_uri,
+        tls=True,
+        tlsAllowInvalidCertificates=True,
+        tlsAllowInvalidHostnames=True,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000
+    )
+    # Test the connection
+    mongo_client.admin.command('ping')
+    print("✅ MongoDB connected successfully")
+except Exception as e:
+    print(f"❌ MongoDB connection failed: {e}")
+    print("Using fallback: No database connection")
+    mongo_client = None
+
+# Select DB and collections (with fallback if MongoDB is not available)
+if mongo_client:
+    db = mongo_client["face_verification_db"]
+    users_collection = db["users"]
+    logs_collection = db["logs"]
+else:
+    db = None
+    users_collection = None
+    logs_collection = None
 
 # Try to import face recognition libraries, but don't fail if they're not available
 try:
@@ -58,7 +81,17 @@ def recognize_face(frame):
     best_match_user = None
     best_match_distance = 0.45
 
-    users = list(users_collection.find())
+    # Get users from database (with fallback)
+    if users_collection:
+        try:
+            users = list(users_collection.find())
+        except Exception as e:
+            print(f"Database error during user fetch: {e}")
+            return 'face_recognition_disabled', None
+    else:
+        print("No database connection, returning face_recognition_disabled")
+        return 'face_recognition_disabled', None
+    
     for user in users:
         if 'embedding' not in user:
             continue
@@ -268,10 +301,17 @@ def register():
         if not studentId or not name or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Check if user already exists
-        existing_user = users_collection.find_one({"studentId": studentId})
-        if existing_user:
-            return jsonify({"success": False, "message": "User already exists"}), 409
+        # Check if user already exists (with MongoDB fallback)
+        if users_collection:
+            try:
+                existing_user = users_collection.find_one({"studentId": studentId})
+                if existing_user:
+                    return jsonify({"success": False, "message": "User already exists"}), 409
+            except Exception as e:
+                print(f"Database error during user check: {e}")
+                return jsonify({"success": False, "message": "Database connection error"}), 500
+        else:
+            print("Warning: No database connection, skipping user existence check")
 
         # Decode base64 image
         header, encoded = image_base64.split(",", 1)
@@ -301,14 +341,23 @@ def register():
             if not face_encodings:
                 return jsonify({"success": False, "message": "No face detected in image"}), 400
 
-            # Save user data
+            # Save user data (with MongoDB fallback)
             user_data = {
                 "studentId": studentId,
                 "name": name,
                 "embedding": face_encodings[0].tolist(),
                 "created_at": datetime.datetime.now()
             }
-            users_collection.insert_one(user_data)
+            
+            if users_collection:
+                try:
+                    users_collection.insert_one(user_data)
+                    print(f"✅ User {name} saved to database")
+                except Exception as e:
+                    print(f"❌ Database error during user save: {e}")
+                    return jsonify({"success": False, "message": "Failed to save user to database"}), 500
+            else:
+                print(f"⚠️ No database connection, user {name} not saved")
 
             return jsonify({
                 "success": True,
