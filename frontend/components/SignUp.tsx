@@ -33,7 +33,7 @@ export default function Signup() {
 
     try {
       const response = await fetch(
-        "https://your-railway-url.railway.app/register",
+        "https://myrmidons-pinequest-production.up.railway.app/register",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

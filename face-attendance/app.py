@@ -13,11 +13,16 @@ app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
 # Use fixed port 8080 (Railway will handle port mapping)
 port = 8080
 
-CORS(app, origins=[
-    "http://localhost:3000", 
-    "http://127.0.0.1:3000",
-    "https://your-railway-url.railway.app"  # Replace with your actual frontend URL
-])
+CORS(app, supports_credentials=True, resources={
+    r"/*": {
+        "origins": [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "https://your-frontend-domain.com",  # Actual frontend domain
+            "https://myrmidons-pinequest-production.up.railway.app"  
+        ]
+    }
+})
 
 # Use environment variable for MongoDB connection
 mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest")
