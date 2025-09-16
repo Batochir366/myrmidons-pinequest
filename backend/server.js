@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { scanRouter } from "./src/routes/scan.js";
+import teacherRouter from "./src/routes/teacher.js";
 
 const app = express();
 
@@ -10,7 +11,7 @@ app.use(express.json());
 app.use(cors());
 
 app.use("/scan", scanRouter);
-
+app.use("/teacher", teacherRouter);
 app.get("/", (req, res) => {
   res.send("Hello js + Node.js!");
 });
