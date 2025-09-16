@@ -25,55 +25,34 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
     console.log("Login attempt:", formData);
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background justify-center">
       <Navigation />
 
-      <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)] py-12">
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-12">
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
           <div className="flex flex-col space-y-2 text-center">
-            <QrCode className="mx-auto h-8 w-8 text-primary" />
             <h1 className="text-2xl font-semibold tracking-tight">
-              Welcome back
+              Тавтай морилно уу
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Sign in to your AttendanceTracker account
-            </p>
           </div>
 
           <Card>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-xl">Teacher Sign in</CardTitle>
-              <CardDescription>
-                Enter your email and teacher ID to access your dashboard
-              </CardDescription>
+              <CardTitle className="text-xl">Багш нэвтрэх</CardTitle>
+              <CardDescription>Багшийн нэрээ оруулна уу</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="teacherId">Teacher ID</Label>
+                  <Label htmlFor="teacherId">Багшийн нэр</Label>
                   <Input
                     id="teacherId"
                     type="text"
-                    placeholder="Enter your teacher ID"
+                    placeholder="Солонго"
                     value={formData.teacherId}
                     onChange={(e) =>
                       setFormData({ ...formData, teacherId: e.target.value })
@@ -83,7 +62,7 @@ export default function LoginPage() {
                 </div>
 
                 <Button type="submit" className="w-full">
-                  Sign In
+                  Нэвтрэх
                 </Button>
               </form>
 

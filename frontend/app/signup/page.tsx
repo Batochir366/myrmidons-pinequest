@@ -3,29 +3,19 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, GraduationCap, User, Camera, Eye } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [userType, setUserType] = useState<"teacher" | "student" | null>(null);
+
   const [studentStep, setStudentStep] = useState<"details" | "face">("details");
-  const [teacherData, setTeacherData] = useState({
-    email: "",
-    teacherName: "",
-  });
+  const [teacherData, setTeacherData] = useState("");
   const [studentData, setStudentData] = useState({
     studentName: "",
     studentId: "",
@@ -36,7 +26,7 @@ export default function SignupPage() {
   const handleTeacherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Teacher signup attempt:", teacherData);
-    router.push("/");
+    router.push("/teacher");
   };
 
   const handleStudentDetailsSubmit = (e: React.FormEvent) => {
@@ -69,136 +59,41 @@ export default function SignupPage() {
 
   const handleStudentComplete = () => {
     console.log("Student registration complete:", studentData);
-    router.push("/");
+    router.push("/student");
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className=" min-h-screen bg-background justify-center px-4 md:px-0 items-center ">
       <Navigation />
 
-      <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)] py-12">
+      <div className="flex justify-center items-center h-screen -mt-16">
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
-          <div className="flex flex-col space-y-2 text-center">
-            <QrCode className="mx-auto h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Create your account
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Choose your account type to get started
-            </p>
-          </div>
-
-          {!userType && (
-            <Card>
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-xl">Choose Account Type</CardTitle>
-                <CardDescription>
-                  Select whether you're a teacher or student
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button
-                  onClick={() => setUserType("teacher")}
-                  variant="outline"
-                  className="w-full h-16 flex items-center justify-center space-x-3"
-                >
-                  <GraduationCap className="h-6 w-6" />
-                  <div className="text-left">
-                    <div className="font-medium">Teacher</div>
-                    <div className="text-sm text-muted-foreground">
-                      Generate QR codes for attendance
-                    </div>
-                  </div>
-                </Button>
-
-                <Button
-                  onClick={() => setUserType("student")}
-                  variant="outline"
-                  className="w-full h-16 flex items-center justify-center space-x-3"
-                >
-                  <User className="h-6 w-6" />
-                  <div className="text-left">
-                    <div className="font-medium">Student</div>
-                    <div className="text-sm text-muted-foreground">
-                      Register for QR attendance
-                    </div>
-                  </div>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {userType === "teacher" && (
-            <Card>
-              <CardHeader className="space-y-1">
-                <CardTitle className="text-xl">Teacher Sign up</CardTitle>
-                <CardDescription>
-                  Create your account to generate QR codes for student
-                  attendance
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleTeacherSubmit} className="space-y-4">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="flex items-center space-x-2 text-sm font-medium text-primary">
-                      <GraduationCap className="h-4 w-4" />
-                      <span>Teacher Account</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      value={teacherData.email}
-                      onChange={(e) =>
-                        setTeacherData({
-                          ...teacherData,
-                          email: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="teacherName">Teacher Name</Label>
-                    <Input
-                      id="teacherName"
-                      type="text"
-                      placeholder="Enter your full name"
-                      value={teacherData.teacherName}
-                      onChange={(e) =>
-                        setTeacherData({
-                          ...teacherData,
-                          teacherName: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full">
-                    Create Teacher Account
-                  </Button>
-                </form>
-
-                <div className="mt-4 text-center text-sm">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setUserType(null)}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    ← Back to account type
-                  </Button>
+          <Card>
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-xl">Багш бүртгүүлэх</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleTeacherSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="teacherName">Багшийн нэр</Label>
+                  <Input
+                    id="teacherName"
+                    type="text"
+                    placeholder="Бүтэн нэрээ оруулна уу"
+                    value={teacherData}
+                    onChange={(e) => setTeacherData(e.target.value)}
+                    required
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          )}
 
-          {userType === "student" && studentStep === "details" && (
+                <Button type="submit" className="w-full">
+                  үүсгэх
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* {userType === "student" && studentStep === "details" && (
             <Card>
               <CardHeader className="space-y-1">
                 <CardTitle className="text-xl">Student Registration</CardTitle>
@@ -266,9 +161,9 @@ export default function SignupPage() {
                 </div>
               </CardContent>
             </Card>
-          )}
+          )} */}
 
-          {userType === "student" && studentStep === "face" && (
+          {/* {userType === "student" && studentStep === "face" && (
             <Card>
               <CardHeader className="space-y-1 text-center">
                 <CardTitle className="text-xl">Face Registration</CardTitle>
@@ -279,13 +174,13 @@ export default function SignupPage() {
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-center">
                   <div className="relative w-64 h-64">
-                    {/* Concentric circles for camera viewfinder */}
+                 
                     <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20"></div>
                     <div className="absolute inset-4 rounded-full border-2 border-muted-foreground/30"></div>
                     <div className="absolute inset-8 rounded-full border-2 border-muted-foreground/40"></div>
                     <div className="absolute inset-12 rounded-full border-2 border-muted-foreground/50"></div>
 
-                    {/* Camera icon in center */}
+                 
                     <div className="absolute inset-0 flex items-center justify-center">
                       <Camera className="h-12 w-12 text-muted-foreground" />
                     </div>
@@ -334,9 +229,9 @@ export default function SignupPage() {
                 </div>
               </CardContent>
             </Card>
-          )}
+          )} */}
 
-          {userType === "teacher" && (
+          {/* {userType === "teacher" && (
             <>
               <div className="mt-4 text-center text-sm">
                 Already have an account?{" "}
@@ -353,25 +248,7 @@ export default function SignupPage() {
                 </p>
               </div>
             </>
-          )}
-
-          <p className="px-8 text-center text-sm text-muted-foreground">
-            By clicking create account, you agree to our{" "}
-            <Link
-              href="#"
-              className="hover:text-primary underline underline-offset-4"
-            >
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link
-              href="#"
-              className="hover:text-primary underline underline-offset-4"
-            >
-              Privacy Policy
-            </Link>
-            .
-          </p>
+          )} */}
         </div>
       </div>
     </div>
