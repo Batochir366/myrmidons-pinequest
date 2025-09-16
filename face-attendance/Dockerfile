@@ -14,6 +14,16 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libtiff-dev \
     libopenblas-dev \
+    libx11-dev \
+    libxext-dev \
+    libxrender-dev \
+    libxtst-dev \
+    libxi-dev \
+    libxrandr-dev \
+    libxss-dev \
+    libgconf-2-4 \
+    libxss1 \
+    libgconf2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching

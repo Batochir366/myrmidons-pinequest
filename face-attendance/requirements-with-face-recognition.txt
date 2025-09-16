@@ -1,3 +1,4 @@
+# Full requirements with face-recognition (for future use)
 # Essential web dependencies
 Flask==2.3.3
 flask-cors==4.0.0
@@ -13,7 +14,12 @@ Pillow==10.0.1
 torch==2.0.1+cpu
 torchvision==0.15.2+cpu
 
-# ML utilities (without face-recognition for now)
+# Face recognition (with pre-built dlib)
+face-recognition==1.3.0
+# Note: Use pre-built dlib wheel to avoid build issues
+# dlib==19.24.2  # This causes build issues, use pre-built wheel instead
+
+# ML utilities
 scikit-learn==1.3.0
 
 # Additional dependencies for Silent_Face_Anti_Spoofing
@@ -23,6 +29,3 @@ tensorboardX==2.6
 
 # System dependencies
 cmake==3.27.4
-
-# Note: face-recognition and dlib removed due to build issues
-# The app works gracefully without them (face_recognition_disabled mode)
