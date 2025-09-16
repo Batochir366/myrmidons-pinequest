@@ -13,10 +13,20 @@ from flask_cors import CORS
 import traceback
 
 app = Flask(__name__)
-app.secret_key = 'FACE'
+app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
 
-CORS(app, origins=["http://localhost:3000", "http://127.0.0.1:3000"])
-mongo_client = MongoClient("mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest")
+# Get port from environment variable (Render provides this)
+port = int(os.environ.get('PORT', 5000))
+
+CORS(app, origins=[
+    "http://localhost:3000", 
+    "http://127.0.0.1:3000",
+    "https://your-frontend-domain.com"  # Replace with your actual frontend URL
+])
+
+# Use environment variable for MongoDB connection
+mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest")
+mongo_client = MongoClient(mongodb_uri)
 
 # Select DB and collections
 db = mongo_client["face_verification_db"]
@@ -297,4 +307,4 @@ def register():
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
