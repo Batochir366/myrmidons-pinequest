@@ -72,7 +72,7 @@ export default function LivenessCapture() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageDataURL = canvas.toDataURL("image/jpeg");
 
-    fetch("https://myrmidons-pinequest-production.up.railway.app", {
+    fetch("https://myrmidons-pinequest-production.up.railway.app/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

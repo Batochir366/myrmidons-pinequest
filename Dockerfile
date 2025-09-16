@@ -6,10 +6,16 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
+    libopenblas-dev \
+    liblapack-dev \
+    libx11-dev \
+    libgtk-3-dev \
+    libboost-all-dev \
     libjpeg-dev \
     libpng-dev \
     libtiff-dev \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Copy requirements first for better caching
 COPY requirements.txt .
