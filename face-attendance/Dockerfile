@@ -8,6 +8,12 @@ RUN apt-get update && apt-get install -y \
     cmake \
     libgtk-3-dev \
     libboost-all-dev \
+    libblas-dev \
+    liblapack-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libatlas-base-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -15,6 +21,11 @@ COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Install dlib separately with specific build flags
+RUN pip install --no-cache-dir dlib==19.24.2 --verbose
+
+# Install remaining dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
