@@ -65,8 +65,8 @@ def recognize_face(frame):
     best_match_user = None
     best_match_distance = 0.45
 
-    if users_collection is not None:  
-        try:  
+    if users_collection is not None:  # FIXED: proper comparison
+        try:  # FIXED: proper indentation
             users = list(users_collection.find())
         except Exception as e:
             print(f"Database error during user fetch: {e}")
@@ -150,7 +150,7 @@ def login():
             return jsonify({"success": False, "verified": False, "message": "Face not recognized or ID mismatch"}), 401
 
         # Log attendance
-        if logs_collection is not None:
+        if logs_collection is not None:  # FIXED: proper comparison
             logs_collection.insert_one({
                 "studentId": studentId,
                 "name": matched_user["name"],
@@ -184,7 +184,7 @@ def logout():
             return jsonify({"success": False, "verified": False, "message": "Face not recognized or ID mismatch"}), 401
 
         # Log logout
-        if logs_collection is not None:
+        if logs_collection is not None:  # FIXED: proper comparison
             logs_collection.insert_one({
                 "studentId": studentId,
                 "name": matched_user["name"],
@@ -205,15 +205,15 @@ def register():
         name = data.get("name")
         image_base64 = data.get("image_base64")
 
-        # Debugging line to check received data
+        print(f"Register endpoint called")
         print(f"Data received: {data}")
 
         # Check if all required fields are present
         if not studentId or not name or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Ensure users_collection is valid and check if the user already exists
-        if users_collection is not None:
+        # FIXED: Ensure users_collection is valid and check if the user already exists
+        if users_collection is not None:  # FIXED: proper comparison
             user_exists = users_collection.find_one({"studentId": studentId})
             if user_exists:
                 return jsonify({"success": False, "message": "User already exists"}), 409
