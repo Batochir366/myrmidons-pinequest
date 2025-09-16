@@ -16,3 +16,17 @@ export const createClassroom = async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 };
+
+export const getClassroomsByTeacher = async (req, res) => {
+  try {
+    const { teacherId } = req.body;
+
+    const classrooms = await AttendanceModel.find({
+      teacher: teacherId,
+    }).populate("Student");
+
+    res.status(200).json(classrooms);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+};
