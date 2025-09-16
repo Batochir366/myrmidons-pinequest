@@ -287,14 +287,31 @@ def register():
             "created_at": datetime.datetime.now()
         }
         
-        # Save user data (with MongoDB fallback)
+        # Save user data (with improved error handling)
         if users_collection is not None:
             try:
-                users_collection.insert_one(user_data)
-                print(f"✅ User {name} saved to database")
+                result = users_collection.insert_one(user_data)
+                if result.inserted_id:
+                    print(f"✅ User {name} saved to database with ID: {result.inserted_id}")
+                else:
+                    print(f"⚠️ User {name} save returned no inserted_id")
+                    return jsonify({"success": False, "message": "Failed to save user to database"}), 500
             except Exception as e:
                 print(f"❌ Database error during user save: {e}")
-                return jsonify({"success": False, "message": "Failed to save user to database"}), 500
+                print(f"❌ Exception type: {type(e).__name__}")
+                print(f"❌ Exception details: {str(e)}")
+                
+                # Check if the user was actually saved despite the exception
+                try:
+                    saved_user = users_collection.find_one({"studentId": studentId})
+                    if saved_user:
+                        print(f"🔄 User {name} was actually saved successfully despite the exception")
+                    else:
+                        print(f"❌ User {name} was not saved to database")
+                        return jsonify({"success": False, "message": "Failed to save user to database"}), 500
+                except Exception as verify_error:
+                    print(f"❌ Could not verify if user was saved: {verify_error}")
+                    return jsonify({"success": False, "message": "Database verification failed"}), 500
         else:
             print(f"⚠️ No database connection, user {name} not saved")
         
@@ -308,6 +325,5 @@ def register():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
