@@ -51,24 +51,18 @@ else:
     users_collection = None
     logs_collection = None
 
-# Try to import face recognition libraries, but don't fail if they're not available
-try:
-    import cv2
-    import face_recognition
-    from Silent_Face_Anti_Spoofing.test import test
-    FACE_RECOGNITION_AVAILABLE = True
-    print("Face recognition libraries loaded successfully")
-except ImportError as e:
-    print(f"Face recognition libraries not available: {e}")
-    FACE_RECOGNITION_AVAILABLE = False
+# Import face recognition libraries
+import cv2
+import face_recognition
+from Silent_Face_Anti_Spoofing.test import test
+FACE_RECOGNITION_AVAILABLE = True
+print("✅ Face recognition libraries loaded successfully")
 
 db_dir = './db'
 if not os.path.exists(db_dir):
     os.mkdir(db_dir)
 
 def recognize_face(frame):
-    if not FACE_RECOGNITION_AVAILABLE:
-        return 'face_recognition_disabled', None
         
     name = 'unknown_person'
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -127,11 +121,6 @@ def health():
 @app.route('/login', methods=['POST'])
 def login():
     try:
-        if not FACE_RECOGNITION_AVAILABLE:
-            return jsonify({
-                "success": False, 
-                "message": "Face recognition is not available. Please contact administrator."
-            }), 503
 
         data = request.get_json()
         studentId = data.get('studentId')
@@ -207,11 +196,6 @@ def login():
 @app.route('/logout', methods=['POST'])
 def logout():
     try:
-        if not FACE_RECOGNITION_AVAILABLE:
-            return jsonify({
-                "success": False, 
-                "message": "Face recognition is not available. Please contact administrator."
-            }), 503
 
         data = request.get_json()
         studentId = data.get('studentId')
@@ -287,11 +271,6 @@ def logout():
 @app.route('/register', methods=['POST'])
 def register():
     try:
-        if not FACE_RECOGNITION_AVAILABLE:
-            return jsonify({
-                "success": False, 
-                "message": "Face recognition is not available. Please contact administrator."
-            }), 503
 
         data = request.get_json()
         studentId = data.get('studentId')

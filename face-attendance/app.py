@@ -51,18 +51,13 @@ except Exception as e:
     users_collection = None
     logs_collection = None
 
-try:
-    import cv2
-    import face_recognition
-    FACE_RECOGNITION_AVAILABLE = True
-    print("Face recognition libraries loaded successfully")
-except ImportError as e:
-    print(f"Face recognition libraries not available: {e}")
-    FACE_RECOGNITION_AVAILABLE = False
+# Import face recognition libraries
+import cv2
+import face_recognition
+FACE_RECOGNITION_AVAILABLE = True
+print("✅ Face recognition libraries loaded successfully")
 
 def recognize_face(frame):
-    if not FACE_RECOGNITION_AVAILABLE:
-        return 'face_recognition_disabled', None
 
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     face_encodings = face_recognition.face_encodings(rgb_frame)
@@ -108,11 +103,6 @@ def health():
 @app.route('/login', methods=['POST'])
 def login():
     try:
-        if not FACE_RECOGNITION_AVAILABLE:
-            return jsonify({
-                "success": False, 
-                "message": "Face recognition is not available. Please contact administrator."
-            }), 503
 
         data = request.get_json()
         studentId = data.get('studentId')
@@ -167,11 +157,6 @@ def login():
 @app.route('/logout', methods=['POST'])
 def logout():
     try:
-        if not FACE_RECOGNITION_AVAILABLE:
-            return jsonify({
-                "success": False, 
-                "message": "Face recognition is not available. Please contact administrator."
-            }), 503
 
         data = request.get_json()
         studentId = data.get('studentId')
