@@ -204,23 +204,32 @@ def logout():
 @app.route('/register', methods=['POST'])
 def register():
     try:
+        print("Register endpoint called")
         if not FACE_RECOGNITION_AVAILABLE:
+            print("Face recognition not available")
             return jsonify({
                 "success": False, 
                 "message": "Face recognition is not available. Please contact administrator."
             }), 503
 
         data = request.get_json()
+        print("Data received:", data)
         studentId = data.get('studentId')
         name = data.get('name')
         image_base64 = data.get('image_base64')
 
         if not studentId or not name or not image_base64:
+            print("Missing fields in request")
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
         existing_user = users_collection.find_one({"studentId": studentId})
         if existing_user:
+            print("User already exists:", studentId)
             return jsonify({"success": False, "message": "User already exists"}), 409
+
+        if ',' not in image_base64:
+            print("Invalid image format, missing comma")
+            return jsonify({"success": False, "message": "Invalid image format"}), 400
 
         header, encoded = image_base64.split(",", 1)
         image_bytes = base64.b64decode(encoded)
@@ -228,12 +237,15 @@ def register():
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
         if frame is None:
+            print("Failed to decode image")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         face_encodings = face_recognition.face_encodings(rgb_frame)
+        print("Number of faces found:", len(face_encodings))
 
         if not face_encodings:
+            print("No face detected in image")
             return jsonify({"success": False, "message": "No face detected in image"}), 400
 
         user_data = {
@@ -243,6 +255,7 @@ def register():
             "created_at": datetime.datetime.now()
         }
         users_collection.insert_one(user_data)
+        print(f"User {name} registered successfully")
 
         return jsonify({
             "success": True,
