@@ -29,13 +29,15 @@ mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM
 # Configure MongoDB client with SSL settings for Railway
 try:
     mongo_client = MongoClient(
-        mongodb_uri,
+        mongodb_uri.strip(),  # Remove any trailing whitespace/newlines
         tls=True,
         tlsAllowInvalidCertificates=True,
         tlsAllowInvalidHostnames=True,
         serverSelectionTimeoutMS=5000,
         connectTimeoutMS=5000,
-        socketTimeoutMS=5000
+        socketTimeoutMS=5000,
+        w=1,  # Use w=1 instead of 'majority' to avoid replica set issues
+        j=False  # Don't wait for journal confirmation
     )
     # Test the connection
     mongo_client.admin.command('ping')

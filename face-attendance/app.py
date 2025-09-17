@@ -29,13 +29,15 @@ mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM
 # Configure MongoDB client with SSL settings for Railway
 try:
     mongo_client = MongoClient(
-        mongodb_uri,
+        mongodb_uri.strip(),
         tls=True,
         tlsAllowInvalidCertificates=True,
         tlsAllowInvalidHostnames=True,
         serverSelectionTimeoutMS=5000,
         connectTimeoutMS=5000,
-        socketTimeoutMS=5000
+        socketTimeoutMS=5000,
+        w=1,
+        j=False
     )
     # Test the connection
     mongo_client.admin.command('ping')
@@ -52,7 +54,6 @@ try:
     users_collection = db["users"]
     logs_collection = db["logs"]
     teachers_collection = db["teachers"]
-
 
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
@@ -376,161 +377,96 @@ def register():
         })
 
     except Exception as e:
-        # Log full traceback but return controlled error message
-        import traceback
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-    try:
-        print("Register endpoint called")
-        if not FACE_RECOGNITION_AVAILABLE:
-            print("Face recognition not available")
-            return jsonify({
-                "success": False, 
-                "message": "Face recognition is not available. Please contact administrator."
-            }), 503
-
-        data = request.get_json()
-        print("Data received:", data)
-        studentId = data.get('studentId')
-        name = data.get('name')
-        image_base64 = data.get('image_base64')
-
-        if not studentId or not name or not image_base64:
-            print("Missing fields in request")
-            return jsonify({"success": False, "message": "Missing required fields"}), 400
-
-        # Check if user already exists (with MongoDB fallback)
-        if users_collection is not None:
-            try:
-                existing_user = users_collection.find_one({"studentId": studentId})
-                if existing_user:
-                    print("User already exists:", studentId)
-                    return jsonify({"success": False, "message": "User already exists"}), 409
-            except Exception as e:
-                print(f"Database error during user check: {e}")
-                return jsonify({"success": False, "message": "Database connection error"}), 500
-        else:
-            print("Warning: No database connection, skipping user existence check")
-
-        if ',' not in image_base64:
-            print("Invalid image format, missing comma")
-            return jsonify({"success": False, "message": "Invalid image format"}), 400
-
-        header, encoded = image_base64.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-        if frame is None:
-            print("Failed to decode image")
-            return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_encodings = face_recognition.face_encodings(rgb_frame)
-        print("Number of faces found:", len(face_encodings))
-
-        if not face_encodings:
-            print("No face detected in image")
-            return jsonify({"success": False, "message": "No face detected in image"}), 400
-
-        user_data = {
-            "studentId": studentId,
-            "name": name,
-            "embedding": face_encodings[0].tolist(),
-            "created_at": datetime.datetime.now()
-        }
-        
-        # Save user data (with improved error handling)
-        if users_collection is not None:
-            try:
-                result = users_collection.insert_one(user_data)
-                if result.inserted_id:
-                    print(f"✅ User {name} saved to database with ID: {result.inserted_id}")
-                else:
-                    print(f"⚠️ User {name} save returned no inserted_id")
-                    return jsonify({"success": False, "message": "Failed to save user to database"}), 500
-            except Exception as e:
-                print(f"❌ Database error during user save: {e}")
-                print(f"❌ Exception type: {type(e).__name__}")
-                print(f"❌ Exception details: {str(e)}")
-                
-                # Check if the user was actually saved despite the exception
-                try:
-                    saved_user = users_collection.find_one({"studentId": studentId})
-                    if saved_user:
-                        print(f"🔄 User {name} was actually saved successfully despite the exception")
-                    else:
-                        print(f"❌ User {name} was not saved to database")
-                        return jsonify({"success": False, "message": "Failed to save user to database"}), 500
-                except Exception as verify_error:
-                    print(f"❌ Could not verify if user was saved: {verify_error}")
-                    return jsonify({"success": False, "message": "Database verification failed"}), 500
-        else:
-            print(f"⚠️ No database connection, user {name} not saved")
-        
-        print(f"User {name} registered successfully")
-
-        return jsonify({
-            "success": True,
-            "message": f"User {name} registered successfully!"
-        })
-
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal Server Error"}), 500
-    
 @app.route('/teacher/register', methods=['POST'])
 def register_teacher():
     try:
+        print("Teacher register endpoint called")
+        
         data = request.get_json(force=True, silent=True)
+        if not data:
+            print("No JSON data received")
+            return jsonify({"success": False, "message": "Invalid or missing JSON data"}), 400
+            
         teacherName = data.get("teacherName")
         image_base64 = data.get("image_base64")
 
         if not teacherName or not image_base64:
+            print("Missing required fields")
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
+        # Check if database is available
+        if teachers_collection is None:
+            print("No database connection available")
+            return jsonify({"success": False, "message": "Database connection error"}), 500
+
         if ',' not in image_base64:
+            print("Invalid image format")
             return jsonify({"success": False, "message": "Invalid image format"}), 400
 
-        header, encoded = image_base64.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-        if frame is None:
+        try:
+            header, encoded = image_base64.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        except Exception as e:
+            print(f"Error decoding image: {e}")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_encodings = face_recognition.face_encodings(rgb_frame)
+        if frame is None:
+            print("Failed to decode frame")
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+
+        try:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            face_encodings = face_recognition.face_encodings(rgb_frame)
+        except Exception as e:
+            print(f"Error during face encoding: {e}")
+            return jsonify({"success": False, "message": "Face recognition failed"}), 500
 
         if not face_encodings:
+            print("No face detected")
             return jsonify({"success": False, "message": "No face detected in image"}), 400
 
         # Check if teacher already exists
-        if teachers_collection.find_one({"teacherName": teacherName}):
-            return jsonify({"success": False, "message": "Teacher already exists"}), 409
+        try:
+            existing_teacher = teachers_collection.find_one({"teacherName": teacherName})
+            if existing_teacher:
+                print("Teacher already exists:", teacherName)
+                return jsonify({"success": False, "message": "Teacher already exists"}), 409
+        except Exception as e:
+            print(f"Database error during teacher check: {e}")
+            return jsonify({"success": False, "message": "Database connection error"}), 500
 
         now = datetime.datetime.utcnow()
         teacher_data = {
-          "teacherName": teacherName,
-          "embedding": face_encodings[0].tolist(),
-          "attendanceHistory": [],
-          "createdAt": now,
-          "updatedAt": now
+            "teacherName": teacherName,
+            "embedding": face_encodings[0].tolist(),
+            "attendanceHistory": [],
+            "createdAt": now,
+            "updatedAt": now
         }
 
-
-        result = teachers_collection.insert_one(teacher_data)
-        if not result.inserted_id:
-            return jsonify({"success": False, "message": "Failed to save teacher"}), 500
-
-        return jsonify({
-            "success": True,
-            "message": f"Teacher {teacherName} registered successfully!"
-        })
+        try:
+            result = teachers_collection.insert_one(teacher_data)
+            if not result.inserted_id:
+                print(f"Teacher {teacherName} save returned no inserted_id")
+                return jsonify({"success": False, "message": "Failed to save teacher"}), 500
+            
+            print(f"Teacher {teacherName} registered successfully with ID: {result.inserted_id}")
+            return jsonify({
+                "success": True,
+                "message": f"Teacher {teacherName} registered successfully!"
+            })
+            
+        except Exception as e:
+            print(f"Database error during teacher save: {e}")
+            return jsonify({"success": False, "message": "Failed to save teacher to database"}), 500
 
     except Exception as e:
+        print(f"Unexpected error in teacher registration: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
@@ -579,6 +515,5 @@ def login_teacher():
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
