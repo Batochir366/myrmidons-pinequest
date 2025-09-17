@@ -40,10 +40,19 @@ try:
     # Test the connection
     mongo_client.admin.command('ping')
     print("✅ MongoDB connected successfully")
-    db = mongo_client["face_verification_db"]
+       db = mongo_client["face_verification_db"]
+
+    if 'teachers' not in db.list_collection_names():
+        db.create_collection("teachers")
+    if 'users' not in db.list_collection_names():
+        db.create_collection("users")
+    if 'logs' not in db.list_collection_names():
+        db.create_collection("logs")
+
     users_collection = db["users"]
     logs_collection = db["logs"]
     teachers_collection = db["teachers"]
+
 
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
@@ -104,7 +113,7 @@ def recognize_teacher_face(frame):
         return "no_persons_found", None
 
     encoding = face_encodings[0]
-    best_match_user = None
+    best_match_teacher = None
     best_match_distance = 0.45
 
     if teachers_collection is not None:
@@ -114,22 +123,25 @@ def recognize_teacher_face(frame):
             print(f"Database error during teacher fetch: {e}")
             teachers = []
     else:
+        print("Teachers collection is None")
         teachers = []
 
     for teacher in teachers:
         try:
+            if 'embedding' not in teacher:
+                continue
             stored_encoding = np.array(teacher['embedding'])
             distance = face_recognition.face_distance([stored_encoding], encoding)[0]
 
             if distance < best_match_distance:
                 best_match_distance = distance
-                best_match_user = teacher
-                name = teacher['teacherName']
+                best_match_teacher = teacher
+                name = teacher.get('teacherName', 'unknown_teacher')
         except Exception as e:
-            print(f"Error processing teacher {teacher.get('teacherName', 'unknown')}: {e}")
+            print(f"Error processing teacher record: {e}")
             continue
 
-    return name, best_match_user
+    return name, best_match_teacher
 
 @app.route('/')
 def index():

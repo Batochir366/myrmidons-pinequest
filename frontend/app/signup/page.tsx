@@ -22,19 +22,19 @@ import Webcam from "react-webcam";
 export default function SignupPage() {
   const router = useRouter();
   const [userType, setUserType] = useState<"teacher" | "student" | null>(null);
-  const [studentStep, setStudentStep] = useState<"details" | "face">("details");
+  const [step, setStep] = useState<"details" | "face">("details");
   const [teacherData, setTeacherData] = useState({
-    email: "",
     teacherName: "",
   });
+
   const [studentData, setStudentData] = useState({
     studentName: "",
     studentId: "",
   });
   const [teacherErrors, setTeacherErrors] = useState({
-    email: "",
     teacherName: "",
   });
+
   const [studentErrors, setStudentErrors] = useState({
     studentName: "",
     studentId: "",
@@ -51,17 +51,15 @@ export default function SignupPage() {
     e.preventDefault();
 
     const errors = {
-      email: teacherData.email.trim() === "" ? "Email is required" : "",
       teacherName:
         teacherData.teacherName.trim() === "" ? "Name is required" : "",
     };
 
     setTeacherErrors(errors);
 
-    if (errors.email || errors.teacherName) return;
+    if (errors.teacherName) return;
 
-    console.log("Teacher signup attempt:", teacherData);
-    router.push("/");
+    setStep("face");
   };
 
   const handleStudentDetailsSubmit = (e: React.FormEvent) => {
@@ -79,7 +77,7 @@ export default function SignupPage() {
     if (errors.studentName || errors.studentId) return;
 
     console.log("Student details:", studentData);
-    setStudentStep("face");
+    setStep("face");
   };
   const capture = () => {
     if (webcamRef.current) {
@@ -91,28 +89,55 @@ export default function SignupPage() {
     }
   };
 
-  const handleStudentComplete = async () => {
-    if (!studentData.studentName || !studentData.studentId || !imageBase64) {
+  const handleFaceCaptureComplete = async () => {
+    if (!imageBase64) {
       setSubmissionSuccess(false);
-      setSubmissionMessage("Please provide all details and capture an image.");
+      setSubmissionMessage("Please capture an image.");
       return;
     }
 
-    const payload = {
-      name: studentData.studentName,
-      studentId: studentData.studentId,
-      image_base64: imageBase64,
-    };
+    let payload;
+    let endpoint;
+
+    if (userType === "student") {
+      if (!studentData.studentName || !studentData.studentId) {
+        setSubmissionSuccess(false);
+        setSubmissionMessage("Student name and ID are required.");
+        return;
+      }
+
+      payload = {
+        name: studentData.studentName,
+        studentId: studentData.studentId,
+        image_base64: imageBase64,
+      };
+      endpoint =
+        "https://myrmidons-pinequest-production.up.railway.app/register";
+    } else if (userType === "teacher") {
+      if (!teacherData.teacherName) {
+        setSubmissionSuccess(false);
+        setSubmissionMessage("Teacher name is required.");
+        return;
+      }
+
+      payload = {
+        teacherName: teacherData.teacherName,
+        image_base64: imageBase64,
+      };
+      endpoint =
+        "https://myrmidons-pinequest-production.up.railway.app/teacher/register";
+    } else {
+      setSubmissionSuccess(false);
+      setSubmissionMessage("Invalid user type.");
+      return;
+    }
 
     try {
-      const response = await fetch(
-        "https://myrmidons-pinequest-production.up.railway.app/register",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       const data = await response.json();
 
@@ -182,7 +207,7 @@ export default function SignupPage() {
             </Card>
           )}
 
-          {userType === "teacher" && (
+          {userType === "teacher" && step !== "face" && (
             <Card>
               <CardHeader className="space-y-1 text-center">
                 <CardTitle className="text-xl">Teacher Sign up</CardTitle>
@@ -193,28 +218,6 @@ export default function SignupPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleTeacherSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      value={teacherData.email}
-                      onChange={(e) =>
-                        setTeacherData({
-                          ...teacherData,
-                          email: e.target.value,
-                        })
-                      }
-                      className={teacherErrors.email ? "border-red-500" : ""}
-                    />
-                    {teacherErrors.email && (
-                      <p className="text-sm text-red-500">
-                        {teacherErrors.email}
-                      </p>
-                    )}
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="teacherName">Teacher Name</Label>
                     <Input
@@ -257,7 +260,7 @@ export default function SignupPage() {
             </Card>
           )}
 
-          {userType === "student" && studentStep === "details" && (
+          {userType === "student" && step === "details" && (
             <Card>
               <CardHeader className="space-y-1">
                 <CardTitle className="text-xl">Student Registration</CardTitle>
@@ -334,7 +337,7 @@ export default function SignupPage() {
             </Card>
           )}
 
-          {userType === "student" && studentStep === "face" && (
+          {step === "face" && (
             <Card>
               <CardHeader className="space-y-1 text-center">
                 <CardTitle className="text-xl">Face Registration</CardTitle>
@@ -366,6 +369,7 @@ export default function SignupPage() {
                   >
                     Capture Face Image
                   </Button>
+
                   {submissionMessage && (
                     <p
                       className={`text-sm ${
@@ -381,7 +385,7 @@ export default function SignupPage() {
                   )}
 
                   <Button
-                    onClick={handleStudentComplete}
+                    onClick={handleFaceCaptureComplete}
                     className="w-full"
                     disabled={!imageBase64}
                   >
@@ -392,7 +396,7 @@ export default function SignupPage() {
                 <div className="text-center text-sm mt-4">
                   <Button
                     variant="ghost"
-                    onClick={() => setStudentStep("details")}
+                    onClick={() => setStep("details")}
                     className="text-muted-foreground hover:text-foreground"
                   >
                     ← Back to details
