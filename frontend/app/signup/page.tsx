@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrCode, GraduationCap, User, Camera, Eye } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
+import Webcam from "react-webcam";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -32,15 +33,45 @@ export default function SignupPage() {
   });
   const [recognitionProgress, setRecognitionProgress] = useState(0);
   const [isRecognitionComplete, setIsRecognitionComplete] = useState(false);
-
+  const [teacherErrors, setTeacherErrors] = useState({
+    email: "",
+    teacherName: "",
+  });
+  const [studentErrors, setStudentErrors] = useState({
+    studentName: "",
+    studentId: "",
+  });
   const handleTeacherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const errors = {
+      email: teacherData.email.trim() === "" ? "Email is required" : "",
+      teacherName:
+        teacherData.teacherName.trim() === "" ? "Name is required" : "",
+    };
+
+    setTeacherErrors(errors);
+
+    if (errors.email || errors.teacherName) return;
+
     console.log("Teacher signup attempt:", teacherData);
     router.push("/");
   };
 
   const handleStudentDetailsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const errors = {
+      studentName:
+        studentData.studentName.trim() === "" ? "Student name is required" : "",
+      studentId:
+        studentData.studentId.trim() === "" ? "Student ID is required" : "",
+    };
+
+    setStudentErrors(errors);
+
+    if (errors.studentName || errors.studentId) return;
+
     console.log("Student details:", studentData);
     setStudentStep("face");
   };
@@ -60,17 +91,71 @@ export default function SignupPage() {
       });
     }, 200);
   };
+  const webcamRef = useRef<Webcam>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [submissionMessage, setSubmissionMessage] = useState<string | null>(
+    null
+  );
+
+  const capture = () => {
+    if (webcamRef.current) {
+      const screenshot = webcamRef.current.getScreenshot();
+      if (screenshot) {
+        setImageBase64(screenshot);
+        setSubmissionMessage("Face captured and ready.");
+      }
+    }
+  };
+
+  const handleStudentComplete = async () => {
+    if (!studentData.studentName || !studentData.studentId || !imageBase64) {
+      setSubmissionMessage("Please provide all details and capture an image.");
+      return;
+    }
+
+    const payload = {
+      name: studentData.studentName,
+      studentId: studentData.studentId,
+      image_base64: imageBase64,
+    };
+
+    try {
+      const response = await fetch(
+        "https://myrmidons-pinequest-production.up.railway.app/register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Success
+        setSubmissionMessage(data.message || "Signup successful!");
+
+        // Redirect after showing success message (optional delay)
+        setTimeout(() => {
+          router.push("/");
+        }, 2000); // 2 seconds delay to read the message
+      } else {
+        // Failure from backend (e.g., 400 or 500 status)
+        setSubmissionMessage(data.message || "Signup failed.");
+      }
+    } catch (error: any) {
+      // Network or other unexpected error
+      setSubmissionMessage(
+        "Signup failed: " + (error.message || "Unknown error")
+      );
+    }
+  };
 
   useEffect(() => {
     if (studentStep === "face") {
       startFaceRecognition();
     }
   }, [studentStep]);
-
-  const handleStudentComplete = () => {
-    console.log("Student registration complete:", studentData);
-    router.push("/");
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -83,14 +168,11 @@ export default function SignupPage() {
             <h1 className="text-2xl font-semibold tracking-tight">
               Create your account
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Choose your account type to get started
-            </p>
           </div>
 
           {!userType && (
             <Card>
-              <CardHeader className="space-y-1">
+              <CardHeader className="space-y-4 text-center">
                 <CardTitle className="text-xl">Choose Account Type</CardTitle>
                 <CardDescription>
                   Select whether you're a teacher or student
@@ -102,12 +184,9 @@ export default function SignupPage() {
                   variant="outline"
                   className="w-full h-16 flex items-center justify-center space-x-3"
                 >
-                  <GraduationCap className="h-6 w-6" />
-                  <div className="text-left">
+                  <div className="flex justify-center items-center gap-3">
+                    <GraduationCap className="h-6 w-6 ml-2" />
                     <div className="font-medium">Teacher</div>
-                    <div className="text-sm text-muted-foreground">
-                      Generate QR codes for attendance
-                    </div>
                   </div>
                 </Button>
 
@@ -116,12 +195,9 @@ export default function SignupPage() {
                   variant="outline"
                   className="w-full h-16 flex items-center justify-center space-x-3"
                 >
-                  <User className="h-6 w-6" />
-                  <div className="text-left">
+                  <div className="flex justify-center items-center gap-3">
+                    <User className="h-6 w-6 ml-2" />
                     <div className="font-medium">Student</div>
-                    <div className="text-sm text-muted-foreground">
-                      Register for QR attendance
-                    </div>
                   </div>
                 </Button>
               </CardContent>
@@ -130,7 +206,7 @@ export default function SignupPage() {
 
           {userType === "teacher" && (
             <Card>
-              <CardHeader className="space-y-1">
+              <CardHeader className="space-y-1 text-center">
                 <CardTitle className="text-xl">Teacher Sign up</CardTitle>
                 <CardDescription>
                   Create your account to generate QR codes for student
@@ -139,13 +215,6 @@ export default function SignupPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleTeacherSubmit} className="space-y-4">
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="flex items-center space-x-2 text-sm font-medium text-primary">
-                      <GraduationCap className="h-4 w-4" />
-                      <span>Teacher Account</span>
-                    </div>
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
@@ -159,8 +228,13 @@ export default function SignupPage() {
                           email: e.target.value,
                         })
                       }
-                      required
+                      className={teacherErrors.email ? "border-red-500" : ""}
                     />
+                    {teacherErrors.email && (
+                      <p className="text-sm text-red-500">
+                        {teacherErrors.email}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -176,8 +250,15 @@ export default function SignupPage() {
                           teacherName: e.target.value,
                         })
                       }
-                      required
+                      className={
+                        teacherErrors.teacherName ? "border-red-500" : ""
+                      }
                     />
+                    {teacherErrors.teacherName && (
+                      <p className="text-sm text-red-500">
+                        {teacherErrors.teacherName}
+                      </p>
+                    )}
                   </div>
 
                   <Button type="submit" className="w-full">
@@ -209,13 +290,6 @@ export default function SignupPage() {
                   onSubmit={handleStudentDetailsSubmit}
                   className="space-y-4"
                 >
-                  <div className="flex items-center justify-center mb-4">
-                    <div className="flex items-center space-x-2 text-sm font-medium text-primary">
-                      <User className="h-4 w-4" />
-                      <span>Student Registration</span>
-                    </div>
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="studentName">Student Name</Label>
                     <Input
@@ -229,8 +303,15 @@ export default function SignupPage() {
                           studentName: e.target.value,
                         })
                       }
-                      required
+                      className={
+                        studentErrors.studentName ? "border-red-500" : ""
+                      }
                     />
+                    {studentErrors.studentName && (
+                      <p className="text-sm text-red-500">
+                        {studentErrors.studentName}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -246,8 +327,15 @@ export default function SignupPage() {
                           studentId: e.target.value,
                         })
                       }
-                      required
+                      className={
+                        studentErrors.studentId ? "border-red-500" : ""
+                      }
                     />
+                    {studentErrors.studentId && (
+                      <p className="text-sm text-red-500">
+                        {studentErrors.studentId}
+                      </p>
+                    )}
                   </div>
 
                   <Button type="submit" className="w-full">
@@ -273,57 +361,56 @@ export default function SignupPage() {
               <CardHeader className="space-y-1 text-center">
                 <CardTitle className="text-xl">Face Registration</CardTitle>
                 <CardDescription>
-                  Please look directly at the camera
+                  Step 2: Align your face and capture an image
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-center">
-                  <div className="relative w-64 h-64">
-                    {/* Concentric circles for camera viewfinder */}
-                    <div className="absolute inset-0 rounded-full border-2 border-muted-foreground/20"></div>
-                    <div className="absolute inset-4 rounded-full border-2 border-muted-foreground/30"></div>
-                    <div className="absolute inset-8 rounded-full border-2 border-muted-foreground/40"></div>
-                    <div className="absolute inset-12 rounded-full border-2 border-muted-foreground/50"></div>
+                <div className="flex flex-col items-center space-y-4">
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={{ facingMode: "user" }}
+                    style={{
+                      width: 240,
+                      height: 240,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      border: "2px solid #ccc",
+                      margin: "auto",
+                    }}
+                  />
 
-                    {/* Camera icon in center */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Camera className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                  </div>
+                  <Button
+                    className="mt-4"
+                    onClick={capture}
+                    variant="secondary"
+                  >
+                    Capture Face Image
+                  </Button>
+                  {submissionMessage && (
+                    <p
+                      className={`text-sm ${
+                        submissionMessage.includes("fail") ||
+                        submissionMessage.includes("required")
+                          ? "text-red-500"
+                          : "text-green-600"
+                      }`}
+                    >
+                      {submissionMessage}
+                    </p>
+                  )}
+
+                  <Button
+                    onClick={handleStudentComplete}
+                    className="w-full"
+                    disabled={!imageBase64}
+                  >
+                    Complete Registration
+                  </Button>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">
-                      Registration Progress
-                    </span>
-                    <span className="text-sm font-medium">
-                      {recognitionProgress}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
-                      style={{ width: `${recognitionProgress}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {isRecognitionComplete && (
-                  <div className="text-center space-y-4">
-                    <div className="flex items-center justify-center space-x-2 text-green-600">
-                      <Eye className="h-5 w-5" />
-                      <span className="font-medium">
-                        Registration Complete!
-                      </span>
-                    </div>
-                    <Button onClick={handleStudentComplete} className="w-full">
-                      Complete Registration
-                    </Button>
-                  </div>
-                )}
-
-                <div className="text-center text-sm">
+                <div className="text-center text-sm mt-4">
                   <Button
                     variant="ghost"
                     onClick={() => setStudentStep("details")}
@@ -343,14 +430,6 @@ export default function SignupPage() {
                 <Link href="/login" className="text-primary hover:underline">
                   Sign in
                 </Link>
-              </div>
-
-              <div className="text-center text-sm text-muted-foreground bg-muted/50 p-4 rounded-lg">
-                <p className="font-medium mb-1">For Students:</p>
-                <p>
-                  Register once, then simply scan QR codes to mark attendance.
-                  No login required!
-                </p>
               </div>
             </>
           )}
