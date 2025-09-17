@@ -4,7 +4,7 @@
 import React from "react"
 import { QrCode } from "lucide-react"
 
-const QRError: React.FC = () => {
+export const QRError= () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
       <div className="bg-white p-8 rounded-2xl shadow-lg flex flex-col items-center gap-4">
@@ -16,4 +16,4 @@ const QRError: React.FC = () => {
   )
 }
 
-export default QRError
+
