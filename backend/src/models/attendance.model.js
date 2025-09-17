@@ -22,6 +22,10 @@ const AttendanceSchema = new Schema(
         required: true,
       },
     ],
+    endedAt: {
+      type: Date, 
+      default: null,
+    },
   },
   { timestamps: true }
 );

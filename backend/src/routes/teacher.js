@@ -1,17 +1,17 @@
 import { Router } from "express";
 
-import getTeacher, {
+import  {
   createClassroom,
-  createTeacher,
-  teacherLogin,
+  endClassroom,
+  getTeacherWithClasses,
+  
 } from "../controllers/teacher.js";
 
 const teacherRouter = Router();
 
 teacherRouter
   .post("/create-classroom", createClassroom)
-  .get("/get/:teacherId", getTeacher)
-  .post("/sign-up", createTeacher)
-  .post("/login", teacherLogin);
+  .get("/get/:teacherId", getTeacherWithClasses)
+  .put("/end-classroom", endClassroom);
 
 export default teacherRouter;

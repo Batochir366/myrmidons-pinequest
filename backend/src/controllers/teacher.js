@@ -1,32 +1,6 @@
 import { AttendanceModel } from "../models/attendance.model.js";
 import { TeacherModel } from "../models/teacher.model.js";
 
-export const createTeacher = async (req, res) => {
-  try {
-    const newTeacher = await TeacherModel.create({
-      teacherName: "A. Dumbledore",
-    });
-    res.status(201).json(newTeacher);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
-
-export const teacherLogin = async (req, res) => {
-  try {
-    const teacher = await TeacherModel.findOne({
-      teacherName: "A. Dumbledore",
-    });
-
-    if (!teacher) {
-      return res.status(404).json({ message: "Teacher not found" });
-    }
-
-    res.status(200).json(teacher);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
 
 export const createClassroom = async (req, res) => {
   try {
@@ -45,24 +19,37 @@ export const createClassroom = async (req, res) => {
   }
 };
 
-export const getClassroomsByTeacher = async (req, res) => {
+ export const getTeacherWithClasses = async (req,res) => {
+  const { teacherId } = req.params;
+  const teacher = await TeacherModel.findById(teacherId)
+  .populate({
+    path: "attendanceHistory",
+    populate: { path: "attendingStudents" } 
+  });
+  return teacher;
+}
+export const endClassroom = async (req, res) => {
   try {
-    const { teacherId } = req.params;
+    const { classroomId } = req.body;
 
-    const classrooms = await AttendanceModel.find({
-      teacher: teacherId,
-    }).populate("Student");
+    if (!classroomId) {
+      return res.status(400).json({ message: "Classroom ID is required" });
+    }
 
-    res.status(200).json(classrooms);
+    const updatedClassroom = await AttendanceModel.findByIdAndUpdate(
+      classroomId,
+      { endedAt: new Date() },
+      { new: true }
+    );
+
+    if (!updatedClassroom) {
+      return res.status(404).json({ message: "Classroom not found" });
+    }
+
+    return res.status(200).json({ message: "Classroom ended", classroom: updatedClassroom });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.error(error);
+    return res.status(500).json({ message: "Server error", error });
   }
 };
 
-const getTeacher = async (req, res) => {
-  const { teacherId } = req.params;
-  const teacher = await TeacherModel.findById(teacherId);
-  res.status(200).json(teacher);
-};
-
-export default getTeacher;
