@@ -43,6 +43,8 @@ try:
     db = mongo_client["face_verification_db"]
     users_collection = db["users"]
     logs_collection = db["logs"]
+    teachers_collection = db["teachers"]
+
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
     print("Using fallback: No database connection")
@@ -50,6 +52,7 @@ except Exception as e:
     db = None
     users_collection = None
     logs_collection = None
+    teachers_collection = None
 
 # Import face recognition libraries
 import cv2
@@ -89,6 +92,41 @@ def recognize_face(frame):
                 name = user['name']
         except Exception as e:
             print(f"Error processing user {user.get('name', 'unknown')}: {e}")
+            continue
+
+    return name, best_match_user
+
+def recognize_teacher_face(frame):
+    name = "unknown_teacher"
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    face_encodings = face_recognition.face_encodings(rgb_frame)
+    if not face_encodings:
+        return "no_persons_found", None
+
+    encoding = face_encodings[0]
+    best_match_user = None
+    best_match_distance = 0.45
+
+    if teachers_collection is not None:
+        try:
+            teachers = list(teachers_collection.find())
+        except Exception as e:
+            print(f"Database error during teacher fetch: {e}")
+            teachers = []
+    else:
+        teachers = []
+
+    for teacher in teachers:
+        try:
+            stored_encoding = np.array(teacher['embedding'])
+            distance = face_recognition.face_distance([stored_encoding], encoding)[0]
+
+            if distance < best_match_distance:
+                best_match_distance = distance
+                best_match_user = teacher
+                name = teacher['teacherName']
+        except Exception as e:
+            print(f"Error processing teacher {teacher.get('teacherName', 'unknown')}: {e}")
             continue
 
     return name, best_match_user
@@ -429,5 +467,102 @@ def register():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
+    
+@app.route('/teacher/register', methods=['POST'])
+def register_teacher():
+    try:
+        data = request.get_json(force=True, silent=True)
+        teacherName = data.get("teacherName")
+        image_base64 = data.get("image_base64")
+
+        if not teacherName or not image_base64:
+            return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+        if ',' not in image_base64:
+            return jsonify({"success": False, "message": "Invalid image format"}), 400
+
+        header, encoded = image_base64.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        face_encodings = face_recognition.face_encodings(rgb_frame)
+
+        if not face_encodings:
+            return jsonify({"success": False, "message": "No face detected in image"}), 400
+
+        # Check if teacher already exists
+        if teachers_collection.find_one({"teacherName": teacherName}):
+            return jsonify({"success": False, "message": "Teacher already exists"}), 409
+
+        teacher_data = {
+            "teacherName": teacherName,
+            "embedding": face_encodings[0].tolist(),
+            "created_at": datetime.datetime.now()
+        }
+
+        result = teachers_collection.insert_one(teacher_data)
+        if not result.inserted_id:
+            return jsonify({"success": False, "message": "Failed to save teacher"}), 500
+
+        return jsonify({
+            "success": True,
+            "message": f"Teacher {teacherName} registered successfully!"
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
+
+@app.route('/teacher/login', methods=['POST'])
+def login_teacher():
+    try:
+        data = request.get_json()
+        teacherName = data.get("teacherName")
+        image_base64 = data.get("image_base64")
+
+        if not teacherName or not image_base64:
+            return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+        header, encoded = image_base64.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+
+        name, matched_teacher = recognize_teacher_face(frame)
+
+        if name in ['unknown_teacher', 'no_persons_found']:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Unknown face or no face found"
+            }), 401
+
+        if matched_teacher['teacherName'] != teacherName:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Face does not match provided teacher name"
+            }), 403
+
+        return jsonify({
+            "success": True,
+            "verified": True,
+            "teacherName": matched_teacher['teacherName'],
+            "message": f"Welcome, {matched_teacher['teacherName']}!"
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
+
+    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)

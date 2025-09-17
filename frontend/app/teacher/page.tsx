@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, Calendar, Users, QrCode, History, Menu } from "lucide-react";
+import { Calendar, Users, QrCode, History, Menu } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +29,6 @@ import { AttendanceHistory } from "@/components/AttendanceHistory";
 export default function AttendanceDashboard() {
   const sampleStudents = [] as any;
   const [activeView, setActiveView] = useState("attendance");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const menuItems = [
     { id: "attendance", label: "Ирц бүртгэх", icon: QrCode },
