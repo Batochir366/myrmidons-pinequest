@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calendar, Users, QrCode, History, Menu } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,18 @@ import { AttendanceHistory } from "@/components/AttendanceHistory";
 export default function AttendanceDashboard() {
   const sampleStudents = [] as any;
   const [activeView, setActiveView] = useState("attendance");
+  const [teacherName, setTeacherName] = useState("");
+  const [teacherImage, setTeacherImage] = useState("");
 
+  useEffect(() => {
+    const storedName = localStorage.getItem("teacherName");
+    const storedImage = localStorage.getItem("teacherImage");
+
+    if (storedName) {
+      setTeacherName(storedName);
+      setTeacherImage(storedImage || "");
+    }
+  }, []);
   const menuItems = [
     { id: "attendance", label: "Ирц бүртгэх", icon: QrCode },
     { id: "history", label: "Ирцийн түүх", icon: History },
@@ -316,7 +327,7 @@ export default function AttendanceDashboard() {
                 <SidebarTrigger className="hidden md:flex" />
                 <div className="min-w-0">
                   <h1 className="text-xl sm:text-2xl font-semibold text-card-foreground truncate">
-                    Сайн байна уу, Багш Смит
+                    Сайн байна уу, Багш {teacherName}
                   </h1>
                   <p className="text-sm text-muted-foreground hidden sm:block">
                     Ирцийн хяналтын самбарт тавтай морилно уу
@@ -325,7 +336,7 @@ export default function AttendanceDashboard() {
               </div>
               <div className="flex items-center gap-3">
                 <Avatar className="w-8 h-8 sm:w-10 sm:h-10">
-                  <AvatarImage src="/teacher-photo.jpg" />
+                  <AvatarImage src={teacherImage} />
                   <AvatarFallback>PS</AvatarFallback>
                 </Avatar>
               </div>
