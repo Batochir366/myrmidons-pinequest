@@ -10,8 +10,9 @@ import  {
 const teacherRouter = Router();
 
 teacherRouter
-  .post("/create-classroom", createClassroom)
   .get("/get/:teacherId", getTeacherWithClasses)
-  .put("/end-classroom", endClassroom);
+  .put("/end-classroom", endClassroom)
+  .post("/create", createClassroom)
+
 
 export default teacherRouter;

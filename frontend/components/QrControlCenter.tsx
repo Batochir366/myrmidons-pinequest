@@ -53,7 +53,7 @@ const [classroomId, setClassroomId] = useState<string | null>(null);
       // Backend руу classroom үүсгэх request
       // const teacherId = localStorage.getItem("teacherId"); 
       const teacherId = "68ca19c53ecd6845b3ff9508"
-    const { data: classroom } = await axios.post("https://myrmidons-pinequest-backend.vercel.app/teacher/create-classroom", {
+    const { data: classroom } = await axios.post("https://myrmidons-pinequest-backend.vercel.app/teacher/create", {
   teacherId,
   lectureName,
   lectureDate,
