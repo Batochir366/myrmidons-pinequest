@@ -31,8 +31,6 @@ export default function SignupPage() {
     studentName: "",
     studentId: "",
   });
-  const [recognitionProgress, setRecognitionProgress] = useState(0);
-  const [isRecognitionComplete, setIsRecognitionComplete] = useState(false);
   const [teacherErrors, setTeacherErrors] = useState({
     email: "",
     teacherName: "",
@@ -41,6 +39,14 @@ export default function SignupPage() {
     studentName: "",
     studentId: "",
   });
+  const webcamRef = useRef<Webcam>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [submissionMessage, setSubmissionMessage] = useState<string | null>(
+    null
+  );
+  const [submissionSuccess, setSubmissionSuccess] = useState<boolean | null>(
+    null
+  );
   const handleTeacherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -75,31 +81,6 @@ export default function SignupPage() {
     console.log("Student details:", studentData);
     setStudentStep("face");
   };
-
-  const startFaceRecognition = () => {
-    setRecognitionProgress(0);
-    setIsRecognitionComplete(false);
-
-    const interval = setInterval(() => {
-      setRecognitionProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsRecognitionComplete(true);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
-  };
-  const webcamRef = useRef<Webcam>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [submissionMessage, setSubmissionMessage] = useState<string | null>(
-    null
-  );
-  const [submissionSuccess, setSubmissionSuccess] = useState<boolean | null>(
-    null
-  );
-
   const capture = () => {
     if (webcamRef.current) {
       const screenshot = webcamRef.current.getScreenshot();
@@ -153,11 +134,6 @@ export default function SignupPage() {
       );
     }
   };
-  useEffect(() => {
-    if (studentStep === "face") {
-      startFaceRecognition();
-    }
-  }, [studentStep]);
 
   return (
     <div className="min-h-screen bg-background">
