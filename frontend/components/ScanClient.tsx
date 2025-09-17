@@ -17,7 +17,7 @@ export default function ScanClient() {
 
     async function verify() {
       const res = await fetch(
-        `/api/scanQR?token=${token}&expiresAt=${expiresAt}`
+        `https://myrmidons-pinequest-backend.vercel.app/scan?token=${token}&expiresAt=${expiresAt}`
       );
       const data = await res.json();
 
