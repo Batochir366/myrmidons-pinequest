@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, GraduationCap, User } from "lucide-react";
+import { QrCode, GraduationCap, User, Loader2 } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import Webcam from "react-webcam";
 
@@ -47,12 +47,14 @@ export default function SignupPage() {
   const [submissionSuccess, setSubmissionSuccess] = useState<boolean | null>(
     null
   );
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleTeacherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const errors = {
       teacherName:
-        teacherData.teacherName.trim() === "" ? "Name is required" : "",
+        teacherData.teacherName.trim() === "" ? "Нэр заавал бөглөх ёстой" : "",
     };
 
     setTeacherErrors(errors);
@@ -67,9 +69,9 @@ export default function SignupPage() {
 
     const errors = {
       studentName:
-        studentData.studentName.trim() === "" ? "Student name is required" : "",
+        studentData.studentName.trim() === "" ? "Оюутны нэр заавал бөглөх ёстой" : "",
       studentId:
-        studentData.studentId.trim() === "" ? "Student ID is required" : "",
+        studentData.studentId.trim() === "" ? "Оюутны дугаар заавал бөглөх ёстой" : "",
     };
 
     setStudentErrors(errors);
@@ -79,12 +81,13 @@ export default function SignupPage() {
     console.log("Student details:", studentData);
     setStep("face");
   };
+
   const capture = () => {
     if (webcamRef.current) {
       const screenshot = webcamRef.current.getScreenshot();
       if (screenshot) {
         setImageBase64(screenshot);
-        setSubmissionMessage("Face captured and ready.");
+        setSubmissionMessage("Царай амжилттай авагдлаа.");
       }
     }
   };
@@ -92,7 +95,7 @@ export default function SignupPage() {
   const handleFaceCaptureComplete = async () => {
     if (!imageBase64) {
       setSubmissionSuccess(false);
-      setSubmissionMessage("Please capture an image.");
+      setSubmissionMessage("Зураг авна уу.");
       return;
     }
 
@@ -102,7 +105,7 @@ export default function SignupPage() {
     if (userType === "student") {
       if (!studentData.studentName || !studentData.studentId) {
         setSubmissionSuccess(false);
-        setSubmissionMessage("Student name and ID are required.");
+        setSubmissionMessage("Оюутны нэр болон дугаар заавал шаардлагатай.");
         return;
       }
 
@@ -116,7 +119,7 @@ export default function SignupPage() {
     } else if (userType === "teacher") {
       if (!teacherData.teacherName) {
         setSubmissionSuccess(false);
-        setSubmissionMessage("Teacher name is required.");
+        setSubmissionMessage("Багшийн нэр заавал шаардлагатай.");
         return;
       }
 
@@ -128,9 +131,13 @@ export default function SignupPage() {
         "https://myrmidons-pinequest-production.up.railway.app/teacher/register";
     } else {
       setSubmissionSuccess(false);
-      setSubmissionMessage("Invalid user type.");
+      setSubmissionMessage("Хэрэглэгчийн төрөл буруу байна.");
       return;
     }
+
+    setIsLoading(true);
+    setSubmissionMessage("Бүртгэж байна...");
+    setSubmissionSuccess(null);
 
     try {
       const response = await fetch(endpoint, {
@@ -143,20 +150,22 @@ export default function SignupPage() {
 
       if (response.ok) {
         setSubmissionSuccess(true);
-        setSubmissionMessage(data.message || "Signup successful!");
+        setSubmissionMessage(data.message || "Бүртгэл амжилттай үүслээ!");
 
         setTimeout(() => {
           router.push("/");
         }, 2000);
       } else {
         setSubmissionSuccess(false);
-        setSubmissionMessage(data.message || "Signup failed.");
+        setSubmissionMessage(data.message || "Бүртгэл үүсэхэд алдаа гарлаа.");
       }
     } catch (error: any) {
       setSubmissionSuccess(false);
       setSubmissionMessage(
-        "Signup failed: " + (error.message || "Unknown error")
+        "Бүртгэл үүсэхэд алдаа гарлаа: " + (error.message || "Тодорхойгүй алдаа")
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -164,21 +173,21 @@ export default function SignupPage() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <div className="container flex items-center justify-center min-h-[calc(100vh-4rem)] py-12">
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-12">
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
           <div className="flex flex-col space-y-2 text-center">
             <QrCode className="mx-auto h-8 w-8 text-primary" />
             <h1 className="text-2xl font-semibold tracking-tight">
-              Create your account
+              Бүртгэл үүсгэх
             </h1>
           </div>
 
           {!userType && (
             <Card>
               <CardHeader className="space-y-4 text-center">
-                <CardTitle className="text-xl">Choose Account Type</CardTitle>
+                <CardTitle className="text-xl">Доорхоос төрлийг сонгоно уу</CardTitle>
                 <CardDescription>
-                  Select whether you're a teacher or student
+                  Та багш эсвэл оюутан эсэхээ сонгоорой
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -186,10 +195,11 @@ export default function SignupPage() {
                   onClick={() => setUserType("teacher")}
                   variant="outline"
                   className="w-full h-16 flex items-center justify-center space-x-3"
+                  disabled={isLoading}
                 >
                   <div className="flex justify-center items-center gap-3">
                     <GraduationCap className="h-6 w-6 ml-2" />
-                    <div className="font-medium">Teacher</div>
+                    <div className="font-medium">Багш</div>
                   </div>
                 </Button>
 
@@ -197,10 +207,11 @@ export default function SignupPage() {
                   onClick={() => setUserType("student")}
                   variant="outline"
                   className="w-full h-16 flex items-center justify-center space-x-3"
+                  disabled={isLoading}
                 >
                   <div className="flex justify-center items-center gap-3">
                     <User className="h-6 w-6 ml-2" />
-                    <div className="font-medium">Student</div>
+                    <div className="font-medium">Оюутан</div>
                   </div>
                 </Button>
               </CardContent>
@@ -210,20 +221,19 @@ export default function SignupPage() {
           {userType === "teacher" && step !== "face" && (
             <Card>
               <CardHeader className="space-y-1 text-center">
-                <CardTitle className="text-xl">Teacher Sign up</CardTitle>
+                <CardTitle className="text-xl">Багш бүртгүүлнэ үү</CardTitle>
                 <CardDescription>
-                  Create your account to generate QR codes for student
-                  attendance
+                  Оюутнуудад зориулсан QR код үүсгэхийн тулд дараахыг үүсгээрэй
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleTeacherSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="teacherName">Teacher Name</Label>
+                    <Label htmlFor="teacherName">Багшийн нэр</Label>
                     <Input
                       id="teacherName"
                       type="text"
-                      placeholder="Enter your full name"
+                      placeholder="Бүтэн нэрээ оруулна уу"
                       value={teacherData.teacherName}
                       onChange={(e) =>
                         setTeacherData({
@@ -234,6 +244,7 @@ export default function SignupPage() {
                       className={
                         teacherErrors.teacherName ? "border-red-500" : ""
                       }
+                      disabled={isLoading}
                     />
                     {teacherErrors.teacherName && (
                       <p className="text-sm text-red-500">
@@ -242,8 +253,8 @@ export default function SignupPage() {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full">
-                    Create Teacher Account
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    Үргэлжлүүлэх
                   </Button>
                 </form>
 
@@ -252,8 +263,9 @@ export default function SignupPage() {
                     variant="ghost"
                     onClick={() => setUserType(null)}
                     className="text-muted-foreground hover:text-foreground"
+                    disabled={isLoading}
                   >
-                    ← Back to account type
+                    ← Бүртгэлийн төрөл рүү буцах
                   </Button>
                 </div>
               </CardContent>
@@ -263,8 +275,8 @@ export default function SignupPage() {
           {userType === "student" && step === "details" && (
             <Card>
               <CardHeader className="space-y-1">
-                <CardTitle className="text-xl">Student Registration</CardTitle>
-                <CardDescription>Step 1: Enter your details</CardDescription>
+                <CardTitle className="text-xl">Оюутны бүртгэл</CardTitle>
+                <CardDescription>1-р алхам: Мэдээллээ оруулна уу</CardDescription>
               </CardHeader>
               <CardContent>
                 <form
@@ -272,11 +284,11 @@ export default function SignupPage() {
                   className="space-y-4"
                 >
                   <div className="space-y-2">
-                    <Label htmlFor="studentName">Student Name</Label>
+                    <Label htmlFor="studentName">Оюутны нэр</Label>
                     <Input
                       id="studentName"
                       type="text"
-                      placeholder="Enter your full name"
+                      placeholder="Бүтэн нэрээ оруулна уу"
                       value={studentData.studentName}
                       onChange={(e) =>
                         setStudentData({
@@ -287,6 +299,7 @@ export default function SignupPage() {
                       className={
                         studentErrors.studentName ? "border-red-500" : ""
                       }
+                      disabled={isLoading}
                     />
                     {studentErrors.studentName && (
                       <p className="text-sm text-red-500">
@@ -296,11 +309,11 @@ export default function SignupPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="studentId">Student ID</Label>
+                    <Label htmlFor="studentId">Оюутны дугаар</Label>
                     <Input
                       id="studentId"
                       type="text"
-                      placeholder="Enter your student ID"
+                      placeholder="Оюутны дугаараа оруулна уу"
                       value={studentData.studentId}
                       onChange={(e) =>
                         setStudentData({
@@ -311,6 +324,7 @@ export default function SignupPage() {
                       className={
                         studentErrors.studentId ? "border-red-500" : ""
                       }
+                      disabled={isLoading}
                     />
                     {studentErrors.studentId && (
                       <p className="text-sm text-red-500">
@@ -319,8 +333,8 @@ export default function SignupPage() {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full">
-                    Next: Face Registration
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    Дараагийнх: Царай бүртгүүлэх
                   </Button>
                 </form>
 
@@ -329,8 +343,9 @@ export default function SignupPage() {
                     variant="ghost"
                     onClick={() => setUserType(null)}
                     className="text-muted-foreground hover:text-foreground"
+                    disabled={isLoading}
                   >
-                    ← Back to account type
+                    ← Бүртгэлийн төрөл рүү буцах
                   </Button>
                 </div>
               </CardContent>
@@ -340,9 +355,9 @@ export default function SignupPage() {
           {step === "face" && (
             <Card>
               <CardHeader className="space-y-1 text-center">
-                <CardTitle className="text-xl">Face Registration</CardTitle>
+                <CardTitle className="text-xl">Царай бүртгүүлэх</CardTitle>
                 <CardDescription>
-                  Step 2: Align your face and capture an image
+                  2-р алхам: Цараагаа камер дээр тавиад зураг авна уу
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -366,8 +381,9 @@ export default function SignupPage() {
                     className="mt-4"
                     onClick={capture}
                     variant="secondary"
+                    disabled={isLoading}
                   >
-                    Capture Face Image
+                    Царайн зураг авах
                   </Button>
 
                   {submissionMessage && (
@@ -387,9 +403,16 @@ export default function SignupPage() {
                   <Button
                     onClick={handleFaceCaptureComplete}
                     className="w-full"
-                    disabled={!imageBase64}
+                    disabled={!imageBase64 || isLoading}
                   >
-                    Complete Registration
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Бүртгэж байна...
+                      </>
+                    ) : (
+                      "Бүртгэлийг дуусгах"
+                    )}
                   </Button>
                 </div>
 
@@ -398,8 +421,9 @@ export default function SignupPage() {
                     variant="ghost"
                     onClick={() => setStep("details")}
                     className="text-muted-foreground hover:text-foreground"
+                    disabled={isLoading}
                   >
-                    ← Back to details
+                    ← Мэдээлэл рүү буцах
                   </Button>
                 </div>
               </CardContent>
@@ -409,30 +433,30 @@ export default function SignupPage() {
           {userType === "teacher" && (
             <>
               <div className="mt-4 text-center text-sm">
-                Already have an account?{" "}
+                Бүртгэлтэй юу?{" "}
                 <Link href="/login" className="text-primary hover:underline">
-                  Sign in
+                  Нэвтрэх
                 </Link>
               </div>
             </>
           )}
 
           <p className="px-8 text-center text-sm text-muted-foreground">
-            By clicking create account, you agree to our{" "}
+            Бүртгэл үүсгэх товчлуурыг дарснаар та манай{" "}
             <Link
               href="#"
               className="hover:text-primary underline underline-offset-4"
             >
-              Terms of Service
+              Үйлчилгээний нөхцөл
             </Link>{" "}
-            and{" "}
+            болон{" "}
             <Link
               href="#"
               className="hover:text-primary underline underline-offset-4"
             >
-              Privacy Policy
+              Нууцлалын бодлого
             </Link>
-            .
+            -той зөвшөөрч байна.
           </p>
         </div>
       </div>
