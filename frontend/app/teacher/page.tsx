@@ -45,6 +45,24 @@ export default function AttendanceDashboard() {
     { id: "attendance", label: "Ирц бүртгэх", icon: QrCode },
     { id: "history", label: "Ирцийн түүх", icon: History },
   ];
+  async function verifyQRCode(token: string, expiresAt: number) {
+    try {
+      const res = await fetch(
+        `/api/scanQR?token=${token}&expiresAt=${expiresAt}`
+      );
+      const data = await res.json();
+
+      if (data.ok) {
+        // QR valid, proceed with your logic
+        console.log("QR valid:", data.message);
+      } else {
+        // QR invalid or expired
+        console.error("QR invalid:", data.message);
+      }
+    } catch (error) {
+      console.error("Network or server error:", error);
+    }
+  }
 
   const MobileSidebar = () => (
     <Sheet>
