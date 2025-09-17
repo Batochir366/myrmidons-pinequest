@@ -1,10 +1,15 @@
 "use client";
-import { useRouter } from "next/router";
+
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function ScanPage() {
   const router = useRouter();
-  const { token, expiresAt } = router.query;
+  const searchParams = useSearchParams();
+
+  const token = searchParams.get("token");
+  const expiresAt = searchParams.get("expiresAt");
+
   const [status, setStatus] = useState("Validating QR code...");
 
   useEffect(() => {
@@ -25,7 +30,7 @@ export default function ScanPage() {
     }
 
     verify();
-  }, [token, expiresAt]);
+  }, [token, expiresAt, router]);
 
   return <div>{status}</div>;
 }
