@@ -511,11 +511,15 @@ def register_teacher():
         if teachers_collection.find_one({"teacherName": teacherName}):
             return jsonify({"success": False, "message": "Teacher already exists"}), 409
 
+        now = datetime.datetime.utcnow()
         teacher_data = {
-            "teacherName": teacherName,
-            "embedding": face_encodings[0].tolist(),
-            "created_at": datetime.datetime.now()
+          "teacherName": teacherName,
+          "embedding": face_encodings[0].tolist(),
+          "attendanceHistory": [],
+          "createdAt": now,
+          "updatedAt": now
         }
+
 
         result = teachers_collection.insert_one(teacher_data)
         if not result.inserted_id:
