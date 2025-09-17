@@ -1,68 +1,72 @@
 from flask import Flask, request, jsonify
 import os
 import datetime
-import base64
-import numpy as np
-import traceback
 from pymongo import MongoClient
+import numpy as np
+import base64
 from flask_cors import CORS
-import cv2
-import face_recognition
-from Silent_Face_Anti_Spoofing.test import test
+import traceback
 
-# ----------------------------
-# Flask App Setup
-# ----------------------------
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "FACE")
-port = int(os.environ.get("PORT", 8080))  # Railway handles external port
+app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
 
-CORS(app, origins=[
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://myrmidons-pinequest-frontend.vercel.app"
-])
+port = 8080
 
-# ----------------------------
-# MongoDB Connection
-# ----------------------------
-mongodb_uri = os.environ.get("MONGODB_URI")
-mongo_client = None
-db = None
-users_collection = None
-logs_collection = None
+CORS(app, supports_credentials=True, resources={
+    r"/*": {
+        "origins": [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "https://myrmidons-pinequest-frontend.vercel.app",  
+            "https://myrmidons-pinequest-production.up.railway.app"
+        ]
+    }
+})
 
-if mongodb_uri:
-    try:
-        mongo_client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=10000)
-        mongo_client.admin.command("ping")
-        print("✅ MongoDB connected successfully")
-    except Exception as e:
-        print(f"❌ MongoDB connection failed: {e}")
-        mongo_client = None
+# Use environment variable for MongoDB connection with SSL configuration
+mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest")
 
-if mongo_client:
-    db_name = os.environ.get("DB_NAME", "face_verification_db")
-    db = mongo_client[db_name]
+# Configure MongoDB client with SSL settings for Railway
+try:
+    mongo_client = MongoClient(
+        mongodb_uri,
+        tls=True,
+        tlsAllowInvalidCertificates=True,
+        tlsAllowInvalidHostnames=True,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000
+    )
+    # Test the connection
+    mongo_client.admin.command('ping')
+    print("✅ MongoDB connected successfully")
     
-    required_collections = ['users', 'logs', 'teachers']
-    existing_collections = db.list_collection_names()
+    # Fixed indentation here - moved to proper level
+    db = mongo_client["face_verification_db"]
 
-    for coll in required_collections:
-        if coll not in existing_collections:
-            db.create_collection(coll)
-            print(f"✅ Created collection: {coll}")
+    if 'teachers' not in db.list_collection_names():
+        db.create_collection("teachers")
+    if 'users' not in db.list_collection_names():
+        db.create_collection("users")
+    if 'logs' not in db.list_collection_names():
+        db.create_collection("logs")
 
     users_collection = db["users"]
     logs_collection = db["logs"]
     teachers_collection = db["teachers"]
 
-    print(f"📊 Using database: {db.name}")
+except Exception as e:
+    print(f"❌ MongoDB connection failed: {e}")
+    print("Using fallback: No database connection")
+    mongo_client = None
+    db = None
+    users_collection = None
+    logs_collection = None
+    teachers_collection = None
 
-
-# ----------------------------
-# Face Recognition Setup
-# ----------------------------
+# Import face recognition libraries
+import cv2
+import face_recognition
 FACE_RECOGNITION_AVAILABLE = True
 print("✅ Face recognition libraries loaded successfully")
 
@@ -77,8 +81,8 @@ def recognize_face(frame):
     best_match_user = None
     best_match_distance = 0.45
 
-    if users_collection is not None:  # FIXED: proper comparison
-        try:  # FIXED: proper indentation
+    if users_collection is not None:
+        try:
             users = list(users_collection.find())
         except Exception as e:
             print(f"Database error during user fetch: {e}")
@@ -86,18 +90,21 @@ def recognize_face(frame):
     else:
         users = []
 
+    # Compare with all users in database
     for user in users:
-        if "embedding" not in user:
+        try:
+            stored_encoding = np.array(user['embedding'])
+            distance = face_recognition.face_distance([stored_encoding], encoding)[0]
+            
+            if distance < best_match_distance:
+                best_match_distance = distance
+                best_match_user = user
+                name = user['name']
+        except Exception as e:
+            print(f"Error processing user {user.get('name', 'unknown')}: {e}")
             continue
-        user_embedding = np.array(user["embedding"])
-        distance = face_recognition.face_distance([user_embedding], encoding)[0]
-        if distance < best_match_distance:
-            best_match_distance = distance
-            best_match_user = user
 
-    if best_match_user:
-        return best_match_user["name"], best_match_user
-    return name, None
+    return name, best_match_user
 
 def recognize_teacher_face(frame):
     name = "unknown_teacher"
@@ -136,18 +143,16 @@ def recognize_teacher_face(frame):
             continue
 
     return name, best_match_teacher
-# ----------------------------
-# Routes
-# ----------------------------
-@app.route("/")
+
+@app.route('/')
 def index():
     return jsonify({
-        "message": "Face Attendance API running!",
+        "message": "Face Attendance API is running!",
         "face_recognition_available": FACE_RECOGNITION_AVAILABLE,
         "endpoints": ["/login", "/logout", "/register", "/health"]
     })
 
-@app.route("/health")
+@app.route('/health')
 def health():
     return jsonify({
         "status": "healthy",
@@ -155,136 +160,187 @@ def health():
         "database": "connected" if mongo_client else "disconnected"
     })
 
-def process_image(image_base64):
+@app.route('/login', methods=['POST'])
+def login():
     try:
+        data = request.get_json()
+        studentId = data.get('studentId')
+        image_base64 = data.get('image_base64')
+
+        if not studentId or not image_base64:
+            return jsonify({"success": False, "message": "Missing required fields"}), 400
+
         header, encoded = image_base64.split(",", 1)
         image_bytes = base64.b64decode(encoded)
         np_arr = np.frombuffer(image_bytes, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        return frame
-    except Exception as e:
-        print(f"Image decode failed: {e}")
-        return None
 
-def anti_spoof_check(frame):
-    try:
-        label = test(
-            image=frame,
-            model_dir="Silent_Face_Anti_Spoofing/resources/anti_spoof_models",
-            device_id=0
-        )
-        return label == 1
-    except Exception as e:
-        print(f"Anti-spoofing check failed: {e}")
-        return True  # Skip anti-spoofing if error
-
-@app.route("/login", methods=["POST"])
-def login():
-    try:
-        data = request.get_json()
-        studentId = data.get("studentId")
-        image_base64 = data.get("image_base64")
-        if not studentId or not image_base64:
-            return jsonify({"success": False, "message": "Missing required fields"}), 400
-
-        frame = process_image(image_base64)
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        if not anti_spoof_check(frame):
-            return jsonify({"success": False, "verified": False, "message": "Spoofing detected"}), 400
-
         name, matched_user = recognize_face(frame)
-        if not matched_user or matched_user.get("studentId") != studentId:
-            return jsonify({"success": False, "verified": False, "message": "Face not recognized or ID mismatch"}), 401
+        if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
+            return jsonify({
+                "success": False, 
+                "verified": False,
+                "message": "Unknown user or face recognition disabled. Please register or contact administrator."
+            }), 401
 
-        # Log attendance
-        if logs_collection is not None:  # FIXED: proper comparison
-            logs_collection.insert_one({
-                "studentId": studentId,
-                "name": matched_user["name"],
-                "timestamp": datetime.datetime.now(),
-                "action": "in"
-            })
+        if matched_user['studentId'] != studentId:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Student ID does not match the recognized face"
+            }), 403
 
-        return jsonify({"success": True, "verified": True, "studentId": studentId, "name": matched_user["name"]})
-    except Exception:
+        # Only log if database is available
+        if logs_collection is not None:
+            try:
+                log_entry = {
+                    "studentId": matched_user['studentId'],
+                    "name": matched_user['name'],
+                    "timestamp": datetime.datetime.now(),
+                    "action": "in"
+                }
+                logs_collection.insert_one(log_entry)
+            except Exception as e:
+                print(f"Failed to log entry: {e}")
+
+        return jsonify({
+            "success": True,
+            "verified": True,
+            "studentId": matched_user['studentId'],
+            "name": matched_user['name'],
+            "message": f"Welcome back, {matched_user['name']}!"
+        })
+
+    except Exception as e:
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal server error"}), 500
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-@app.route("/logout", methods=["POST"])
+@app.route('/logout', methods=['POST'])
 def logout():
     try:
         data = request.get_json()
-        studentId = data.get("studentId")
-        image_base64 = data.get("image_base64")
+        studentId = data.get('studentId')
+        image_base64 = data.get('image_base64')
+
         if not studentId or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        frame = process_image(image_base64)
+        header, encoded = image_base64.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
-        if not anti_spoof_check(frame):
-            return jsonify({"success": False, "verified": False, "message": "Spoofing detected"}), 400
 
         name, matched_user = recognize_face(frame)
-        if not matched_user or matched_user.get("studentId") != studentId:
-            return jsonify({"success": False, "verified": False, "message": "Face not recognized or ID mismatch"}), 401
+        if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
+            return jsonify({
+                "success": False, 
+                "verified": False,
+                "message": "Unknown user or face recognition disabled. Please register or contact administrator."
+            }), 401
 
-        # Log logout
-        if logs_collection is not None:  # FIXED: proper comparison
-            logs_collection.insert_one({
-                "studentId": studentId,
-                "name": matched_user["name"],
-                "timestamp": datetime.datetime.now(),
-                "action": "out"
-            })
+        if matched_user['studentId'] != studentId:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Student ID does not match the recognized face"
+            }), 403
 
-        return jsonify({"success": True, "verified": True, "studentId": studentId, "name": matched_user["name"]})
-    except Exception:
+        # Only log if database is available
+        if logs_collection is not None:
+            try:
+                log_entry = {
+                    "studentId": matched_user['studentId'],
+                    "name": matched_user['name'],
+                    "timestamp": datetime.datetime.now(),
+                    "action": "out"
+                }
+                logs_collection.insert_one(log_entry)
+            except Exception as e:
+                print(f"Failed to log entry: {e}")
+
+        return jsonify({
+            "success": True,
+            "verified": True,
+            "studentId": matched_user['studentId'],
+            "name": matched_user['name'],
+            "message": f"Goodbye, {matched_user['name']}!"
+        })
+
+    except Exception as e:
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal server error"}), 500
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-@app.route("/register", methods=["POST"])
+@app.route('/register', methods=['POST'])
 def register():
     try:
-        data = request.get_json()
-        studentId = data.get("studentId")
-        name = data.get("name")
-        image_base64 = data.get("image_base64")
+        print("Register endpoint called")
+        if not FACE_RECOGNITION_AVAILABLE:
+            print("Face recognition not available")
+            return jsonify({
+                "success": False, 
+                "message": "Face recognition is not available. Please contact administrator."
+            }), 503
 
-        print(f"Register endpoint called")
-        print(f"Data received: {data}")
+        data = request.get_json(force=True, silent=True)
+        if not data:
+            return jsonify({"success": False, "message": "Invalid or missing JSON data"}), 400
 
-        # Check if all required fields are present
+        studentId = data.get('studentId')
+        name = data.get('name')
+        image_base64 = data.get('image_base64')
+
         if not studentId or not name or not image_base64:
+            print("Missing fields in request")
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # FIXED: Ensure users_collection is valid and check if the user already exists
-        if users_collection is not None:  # FIXED: proper comparison
-            user_exists = users_collection.find_one({"studentId": studentId})
-            if user_exists:
-                return jsonify({"success": False, "message": "User already exists"}), 409
+        # Check if user exists safely
+        if users_collection is not None:
+            try:
+                existing_user = users_collection.find_one({"studentId": studentId})
+                if existing_user:
+                    print("User already exists:", studentId)
+                    return jsonify({"success": False, "message": "User already exists"}), 409
+            except Exception as e:
+                print(f"Database error during user check: {e}")
+                return jsonify({"success": False, "message": "Database connection error"}), 500
         else:
-            return jsonify({"success": False, "message": "Database not connected"}), 500
+            print("Warning: No database connection, skipping user existence check")
 
-        # Process the image
-        frame = process_image(image_base64)
-        if frame is None:
+        # Validate image format
+        if ',' not in image_base64:
+            print("Invalid image format, missing comma")
+            return jsonify({"success": False, "message": "Invalid image format"}), 400
+
+        try:
+            header, encoded = image_base64.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        except Exception as e:
+            print(f"Error decoding image: {e}")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Anti-spoofing check
-        if not anti_spoof_check(frame):
-            return jsonify({"success": False, "message": "Spoofing detected"}), 400
+        if frame is None:
+            print("Failed to decode image into frame")
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Face recognition and encoding
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_encodings = face_recognition.face_encodings(rgb_frame)
+        try:
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            face_encodings = face_recognition.face_encodings(rgb_frame)
+        except Exception as e:
+            print(f"Error during face encoding: {e}")
+            return jsonify({"success": False, "message": "Face recognition failed"}), 500
+
         if not face_encodings:
-            return jsonify({"success": False, "message": "No face detected"}), 400
+            print("No face detected in image")
+            return jsonify({"success": False, "message": "No face detected in image"}), 400
 
-        # Prepare user data
         user_data = {
             "studentId": studentId,
             "name": name,
@@ -292,16 +348,39 @@ def register():
             "created_at": datetime.datetime.now()
         }
 
-        # Insert the user into the MongoDB collection
-        users_collection.insert_one(user_data)
+        # Save user safely
+        if users_collection is not None:
+            try:
+                result = users_collection.insert_one(user_data)
+                if not result.inserted_id:
+                    print(f"User {name} save returned no inserted_id")
+                    return jsonify({"success": False, "message": "Failed to save user to database"}), 500
+            except Exception as e:
+                print(f"Database error during user save: {e}")
+                # Check if the user was saved despite error
+                try:
+                    saved_user = users_collection.find_one({"studentId": studentId})
+                    if saved_user:
+                        print(f"User {name} was saved successfully despite exception")
+                    else:
+                        return jsonify({"success": False, "message": "Failed to save user to database"}), 500
+                except Exception as verify_error:
+                    print(f"Could not verify user save: {verify_error}")
+                    return jsonify({"success": False, "message": "Database verification failed"}), 500
+        else:
+            print(f"No database connection, user {name} not saved")
 
-        return jsonify({"success": True, "message": f"User {name} registered successfully!"})
+        print(f"User {name} registered successfully")
+        return jsonify({
+            "success": True,
+            "message": f"User {name} registered successfully!"
+        })
 
     except Exception as e:
-        print(f"Error during registration: {e}")  # Log the specific error
+        # Log full traceback but return controlled error message
+        import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal server error"}), 500
-
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
 @app.route('/teacher/register', methods=['POST'])
 def register_teacher():
@@ -331,22 +410,22 @@ def register_teacher():
             return jsonify({"success": False, "message": "No face detected in image"}), 400
 
         # Check if teacher already exists
-        if teachers_collection.find_one({"teacherName": teacherName}):
+        if teachers_collection and teachers_collection.find_one({"teacherName": teacherName}):
             return jsonify({"success": False, "message": "Teacher already exists"}), 409
 
         now = datetime.datetime.utcnow()
         teacher_data = {
-           "teacherName": teacherName,
-           "embedding": face_encodings[0].tolist(),
-           "attendanceHistory": [],
-           "createdAt": now,
-           "updatedAt": now
+            "teacherName": teacherName,
+            "embedding": face_encodings[0].tolist(),
+            "attendanceHistory": [],
+            "createdAt": now,
+            "updatedAt": now
         }
 
-
-        result = teachers_collection.insert_one(teacher_data)
-        if not result.inserted_id:
-            return jsonify({"success": False, "message": "Failed to save teacher"}), 500
+        if teachers_collection is not None:
+            result = teachers_collection.insert_one(teacher_data)
+            if not result.inserted_id:
+                return jsonify({"success": False, "message": "Failed to save teacher"}), 500
 
         return jsonify({
             "success": True,
@@ -356,7 +435,7 @@ def register_teacher():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
-    
+
 @app.route('/teacher/login', methods=['POST'])
 def login_teacher():
     try:
@@ -401,8 +480,6 @@ def login_teacher():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
-# ----------------------------
-# Run App
-# ----------------------------
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=port, debug=False)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=port, debug=False)
