@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, GraduationCap, User, Camera, Eye } from "lucide-react";
+import { QrCode, GraduationCap, User } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import Webcam from "react-webcam";
 
