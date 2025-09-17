@@ -15,7 +15,7 @@ export default function QrGenerator() {
   const generateQr = () => {
     const token = uuidv4();
     const expiresAt = Date.now() + 5000;
-    const url = `https://myrmidons-pinequest-of9n.vercel.app/scan?token=${token}&expiresAt=${expiresAt}`;
+    const url = `https://myrmidons-pinequest-frontend.vercel.app/scan?token=${token}&expiresAt=${expiresAt}`;
     setQrData(url);
 
     QRCode.toDataURL(url, { width: 256 }, (err, dataUrl) => {

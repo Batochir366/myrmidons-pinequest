@@ -32,5 +32,5 @@ export default function ScanClient() {
     verify();
   }, [token, expiresAt, router]);
 
-  return <div>{status}</div>;
+  return <div className="bg-white">{status}lalar</div>;
 }
