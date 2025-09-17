@@ -40,8 +40,6 @@ try:
     # Test the connection
     mongo_client.admin.command('ping')
     print("✅ MongoDB connected successfully")
-    
-    # Fixed indentation here - moved to proper level
     db = mongo_client["face_verification_db"]
 
     if 'teachers' not in db.list_collection_names():
@@ -377,8 +375,6 @@ def register():
         })
 
     except Exception as e:
-        # Log full traceback but return controlled error message
-        import traceback
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 

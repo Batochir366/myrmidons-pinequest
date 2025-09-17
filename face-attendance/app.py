@@ -40,7 +40,7 @@ try:
     # Test the connection
     mongo_client.admin.command('ping')
     print("✅ MongoDB connected successfully")
-       db = mongo_client["face_verification_db"]
+    db = mongo_client["face_verification_db"]
 
     if 'teachers' not in db.list_collection_names():
         db.create_collection("teachers")
