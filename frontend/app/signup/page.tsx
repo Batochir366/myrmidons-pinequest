@@ -96,6 +96,9 @@ export default function SignupPage() {
   const [submissionMessage, setSubmissionMessage] = useState<string | null>(
     null
   );
+  const [submissionSuccess, setSubmissionSuccess] = useState<boolean | null>(
+    null
+  );
 
   const capture = () => {
     if (webcamRef.current) {
@@ -109,6 +112,7 @@ export default function SignupPage() {
 
   const handleStudentComplete = async () => {
     if (!studentData.studentName || !studentData.studentId || !imageBase64) {
+      setSubmissionSuccess(false);
       setSubmissionMessage("Please provide all details and capture an image.");
       return;
     }
@@ -132,25 +136,23 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (response.ok) {
-        // Success
+        setSubmissionSuccess(true);
         setSubmissionMessage(data.message || "Signup successful!");
 
-        // Redirect after showing success message (optional delay)
         setTimeout(() => {
           router.push("/");
-        }, 2000); // 2 seconds delay to read the message
+        }, 2000);
       } else {
-        // Failure from backend (e.g., 400 or 500 status)
+        setSubmissionSuccess(false);
         setSubmissionMessage(data.message || "Signup failed.");
       }
     } catch (error: any) {
-      // Network or other unexpected error
+      setSubmissionSuccess(false);
       setSubmissionMessage(
         "Signup failed: " + (error.message || "Unknown error")
       );
     }
   };
-
   useEffect(() => {
     if (studentStep === "face") {
       startFaceRecognition();
@@ -391,10 +393,11 @@ export default function SignupPage() {
                   {submissionMessage && (
                     <p
                       className={`text-sm ${
-                        submissionMessage.includes("fail") ||
-                        submissionMessage.includes("required")
+                        submissionSuccess === false
                           ? "text-red-500"
-                          : "text-green-600"
+                          : submissionSuccess === true
+                          ? "text-green-600"
+                          : "text-gray-800"
                       }`}
                     >
                       {submissionMessage}
