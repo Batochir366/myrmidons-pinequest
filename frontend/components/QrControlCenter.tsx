@@ -31,7 +31,7 @@ const [classroomId, setClassroomId] = useState<string | null>(null);
   const generateQr = (classroomId: string) => {
     const token = uuidv4();
     const expiresAt = Date.now() + 5000;
-    const url = `http://localhost:3000/student?token=${token}&expiresAt=${expiresAt}&classroomId=${classroomId}`;
+    const url = `https://myrmidons-pinequest-frontend.vercel.app/student?token=${token}&expiresAt=${expiresAt}&classroomId=${classroomId}`;
     setQrData(url);
 
     QRCode.toDataURL(url, { width: 256 }, (err, dataUrl) => {
@@ -53,7 +53,7 @@ const [classroomId, setClassroomId] = useState<string | null>(null);
       // Backend руу classroom үүсгэх request
       // const teacherId = localStorage.getItem("teacherId"); 
       const teacherId = "68ca19c53ecd6845b3ff9508"
-    const { data: classroom } = await axios.post("http://localhost:5000/teacher/create-classroom", {
+    const { data: classroom } = await axios.post("https://myrmidons-pinequest-backend.vercel.app/teacher/create-classroom", {
   teacherId,
   lectureName,
   lectureDate,
@@ -99,7 +99,7 @@ const stop = async () => {
 
   if (classroomId) {
     try {
-      await axios.post("http://localhost:5000/teacher/end-classroom", { classroomId });
+      await axios.post("https://myrmidons-pinequest-backend.vercel.app/teacher/end-classroom", { classroomId });
       console.log("Classroom ended successfully");
     } catch (err: any) {
       console.error(err);

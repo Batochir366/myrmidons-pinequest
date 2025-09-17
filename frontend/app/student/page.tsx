@@ -1,12 +1,12 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, Suspense } from "react"
 import { QrCode, User, Camera, CheckCircle, ArrowRight, Eye } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import QRError from "@/components/QRerror"
 
-const AttendanceSystem: React.FC = () => {
+const AttendanceSystemInner: React.FC = () => {
   const [studentId, setStudentId] = useState("")
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [message, setMessage] = useState("")
@@ -27,7 +27,7 @@ const AttendanceSystem: React.FC = () => {
   }
 
   if (now > expiresAt) {
-    return <QRError/>
+    return<QRError/>
   }
 
   const steps = [
@@ -308,5 +308,10 @@ const AttendanceSystem: React.FC = () => {
   )
 }
 
+const AttendanceSystem =() =>{
+  <Suspense fallback={<div>Loading...</div>}>
+    <AttendanceSystemInner />
+  </Suspense>
+}
 export default AttendanceSystem
 
