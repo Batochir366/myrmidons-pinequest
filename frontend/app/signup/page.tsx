@@ -69,9 +69,13 @@ export default function SignupPage() {
 
     const errors = {
       studentName:
-        studentData.studentName.trim() === "" ? "Оюутны нэр заавал бөглөх ёстой" : "",
+        studentData.studentName.trim() === ""
+          ? "Оюутны нэр заавал бөглөх ёстой"
+          : "",
       studentId:
-        studentData.studentId.trim() === "" ? "Оюутны дугаар заавал бөглөх ёстой" : "",
+        studentData.studentId.trim() === ""
+          ? "Оюутны дугаар заавал бөглөх ёстой"
+          : "",
     };
 
     setStudentErrors(errors);
@@ -110,10 +114,11 @@ export default function SignupPage() {
       }
 
       payload = {
-        name: studentData.studentName,
+        studentName: studentData.studentName,
         studentId: studentData.studentId,
         image_base64: imageBase64,
       };
+
       endpoint =
         "https://myrmidons-pinequest-production.up.railway.app/register";
     } else if (userType === "teacher") {
@@ -162,7 +167,8 @@ export default function SignupPage() {
     } catch (error: any) {
       setSubmissionSuccess(false);
       setSubmissionMessage(
-        "Бүртгэл үүсэхэд алдаа гарлаа: " + (error.message || "Тодорхойгүй алдаа")
+        "Бүртгэл үүсэхэд алдаа гарлаа: " +
+          (error.message || "Тодорхойгүй алдаа")
       );
     } finally {
       setIsLoading(false);
@@ -185,7 +191,9 @@ export default function SignupPage() {
           {!userType && (
             <Card>
               <CardHeader className="space-y-4 text-center">
-                <CardTitle className="text-xl">Доорхоос төрлийг сонгоно уу</CardTitle>
+                <CardTitle className="text-xl">
+                  Доорхоос төрлийг сонгоно уу
+                </CardTitle>
                 <CardDescription>
                   Та багш эсвэл оюутан эсэхээ сонгоорой
                 </CardDescription>
@@ -276,7 +284,9 @@ export default function SignupPage() {
             <Card>
               <CardHeader className="space-y-1">
                 <CardTitle className="text-xl">Оюутны бүртгэл</CardTitle>
-                <CardDescription>1-р алхам: Мэдээллээ оруулна уу</CardDescription>
+                <CardDescription>
+                  1-р алхам: Мэдээллээ оруулна уу
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form

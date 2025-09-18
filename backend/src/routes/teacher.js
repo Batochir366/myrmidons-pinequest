@@ -1,4 +1,5 @@
 import {
+  createAttendance,
   createClassroom,
   endAttendance,
   getTeacherWithClasses,
@@ -9,6 +10,9 @@ const teacherRouter = Router();
 teacherRouter
   .get("/get/:teacherId", getTeacherWithClasses)
   .put("/end-classroom", endAttendance) 
-  .post("/create", createClassroom);
+  .post("/create-classroom", createClassroom)
+  .post("/create-attendance", createAttendance);
+
+
 
 export default teacherRouter;

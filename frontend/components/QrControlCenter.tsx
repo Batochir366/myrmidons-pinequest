@@ -23,7 +23,7 @@ export function QRControlCenter() {
   const [countdown, setCountdown] = useState(5);
   const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(false);
-const [classroomId, setClassroomId] = useState<string | null>(null);
+  const [classroomId, setClassroomId] = useState<string | null>(null);
 
   const timerRef = useRef<NodeJS.Timer | null>(null);
 
@@ -49,18 +49,19 @@ const [classroomId, setClassroomId] = useState<string | null>(null);
 
     try {
       setLoading(true);
-      // Backend руу classroom үүсгэх request
-      // const teacherId = localStorage.getItem("teacherId"); 
-      const teacherId = "68ca19c53ecd6845b3ff9508"
-    const { data: classroom } = await axios.post("https://myrmidons-pinequest-backend.vercel.app/teacher/create", {
-  teacherId,
-  lectureName,
-});
+      const teacherId = localStorage.getItem("teacherId");
+      const { data: classroom } = await axios.post(
+        "https://myrmidons-pinequest-backend.vercel.app/teacher/create-attendance",
+        {
+          teacherId,
+          lectureName,
+        }
+      );
 
-setClassroomId(classroom._id);
-generateQr(classroom._id);
+      setClassroomId(classroom._id);
+      generateQr(classroom._id);
 
-      console.log("Classroom үүслээ:", classroom);
+      console.log("Attendance үүслээ:", classroom);
 
       // QR код үүсгэх
       generateQr(classroom._id);
@@ -85,26 +86,31 @@ generateQr(classroom._id);
     }
   };
 
-const stop = async () => {
-  if (timerRef.current) {
-    clearInterval(timerRef.current as any);
-    timerRef.current = null;
-  }
-
-  setRunning(false);
-  setQrData(null);
-  setQrImage(null);
-
-  if (classroomId) {
-    try {
-      await axios.post("https://myrmidons-pinequest-backend.vercel.app/teacher/end-classroom", { classroomId });
-      console.log("Classroom ended successfully");
-    } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.message || "Classroom дуусгах үед алдаа гарлаа");
+  const stop = async () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current as any);
+      timerRef.current = null;
     }
-  }
-};
+
+    setRunning(false);
+    setQrData(null);
+    setQrImage(null);
+
+    if (classroomId) {
+      try {
+        await axios.post(
+          "https://myrmidons-pinequest-backend.vercel.app/teacher/end-classroom",
+          { classroomId }
+        );
+        console.log("Classroom ended successfully");
+      } catch (err: any) {
+        console.error(err);
+        alert(
+          err.response?.data?.message || "Classroom дуусгах үед алдаа гарлаа"
+        );
+      }
+    }
+  };
 
   useEffect(() => {
     return () => {
