@@ -11,10 +11,21 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, Play, QrCode, Square } from "lucide-react";
+import {
+  Clock,
+  Play,
+  QrCode,
+  Square,
+  Users,
+  UserCheck,
+  RefreshCw,
+  ZoomIn,
+  X,
+} from "lucide-react";
 import QRCode from "qrcode";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
+import AttendanceList from "./AttendanceList";
 
 export function QRControlCenter() {
   const [lectureName, setLectureName] = useState("");
@@ -24,9 +35,65 @@ export function QRControlCenter() {
   const [countdown, setCountdown] = useState(5);
   const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(false);
-const [classroomId, setClassroomId] = useState<string | null>(null);
+  const [classroomId, setClassroomId] = useState<string | null>(null);
+  const [attendedStudents, setAttendedStudents] = useState<
+    Array<{
+      id: string;
+      name: string;
+      time: string;
+      studentCode: string;
+      avatar?: string;
+    }>
+  >([]);
+  const [qrFullscreen, setQrFullscreen] = useState(false);
 
   const timerRef = useRef<NodeJS.Timer | null>(null);
+
+  // Жишээ сурагчдын өгөгдөл
+  const sampleStudents = [
+    "Батбаяр",
+    "Оюунболд",
+    "Цэцэгмаа",
+    "Болдбаяр",
+    "Сарантуяа",
+    "Энхбат",
+    "Алтанцэцэг",
+    "Мөнхбат",
+    "Одгэрэл",
+    "Бямбасүрэн",
+    "Нарантуяа",
+    "Төмөрбат",
+    "Цагаанцэцэг",
+    "Баярмагнай",
+    "Мөнхтуяа",
+  ];
+
+  const addRandomStudent = () => {
+    const availableNames = sampleStudents.filter(
+      (name) => !attendedStudents.some((student) => student.name === name)
+    );
+    if (availableNames.length === 0) return;
+
+    const randomName =
+      availableNames[Math.floor(Math.random() * availableNames.length)];
+    const studentCode = `ST${String(Math.floor(Math.random() * 9999)).padStart(
+      4,
+      "0"
+    )}`;
+    const now = new Date();
+    const timeString = now.toLocaleTimeString("mn-MN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const newStudent = {
+      id: `student_${Date.now()}`,
+      name: randomName,
+      time: timeString,
+      studentCode,
+      avatar: `https://i.pravatar.cc/40?u=${randomName}`,
+    };
+    setAttendedStudents((prev) => [newStudent, ...prev]);
+  };
 
   const generateQr = (classroomId: string) => {
     const token = uuidv4();
@@ -35,38 +102,27 @@ const [classroomId, setClassroomId] = useState<string | null>(null);
     setQrData(url);
 
     QRCode.toDataURL(url, { width: 256 }, (err, dataUrl) => {
-      if (err) {
-        console.error("Error generating QR code:", err);
-      } else {
-        setQrImage(dataUrl);
-      }
+      if (err) console.error(err);
+      else setQrImage(dataUrl);
     });
+
+    // Симуляцийн хувьд санамсаргүй сурагч нэмэх
+    if (Math.random() > 0.3)
+      setTimeout(() => addRandomStudent(), Math.random() * 4000 + 1000);
   };
 
   const start = async () => {
-    if (running) return;
-
-    if (!lectureName || !lectureDate) return;
-
+    if (running || !lectureName || !lectureDate) return;
     try {
       setLoading(true);
-      // Backend руу classroom үүсгэх request
-      // const teacherId = localStorage.getItem("teacherId"); 
-      const teacherId = "68ca19c53ecd6845b3ff9508"
-    const { data: classroom } = await axios.post("https://myrmidons-pinequest-backend.vercel.app/teacher/create", {
-  teacherId,
-  lectureName,
-  lectureDate,
-});
-
-setClassroomId(classroom._id);
-generateQr(classroom._id);
-
-      console.log("Classroom үүслээ:", classroom);
-
-      // QR код үүсгэх
+      setAttendedStudents([]);
+      const teacherId = "68ca19c53ecd6845b3ff9508";
+      const { data: classroom } = await axios.post(
+        "https://myrmidons-pinequest-backend.vercel.app/teacher/create",
+        { teacherId, lectureName, lectureDate }
+      );
+      setClassroomId(classroom._id);
       generateQr(classroom._id);
-
       setCountdown(5);
       setRunning(true);
 
@@ -87,26 +143,30 @@ generateQr(classroom._id);
     }
   };
 
-const stop = async () => {
-  if (timerRef.current) {
-    clearInterval(timerRef.current as any);
-    timerRef.current = null;
-  }
-
-  setRunning(false);
-  setQrData(null);
-  setQrImage(null);
-
-  if (classroomId) {
-    try {
-      await axios.post("https://myrmidons-pinequest-backend.vercel.app/teacher/end-classroom", { classroomId });
-      console.log("Classroom ended successfully");
-    } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.message || "Classroom дуусгах үед алдаа гарлаа");
+  const stop = async () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current as any);
+      timerRef.current = null;
     }
-  }
-};
+    setRunning(false);
+    setQrData(null);
+    setQrImage(null);
+    setQrFullscreen(false);
+
+    if (classroomId) {
+      try {
+        await axios.post(
+          "https://myrmidons-pinequest-backend.vercel.app/teacher/end-classroom",
+          { classroomId }
+        );
+      } catch (err: any) {
+        console.error(err);
+        alert(
+          err.response?.data?.message || "Classroom дуусгах үед алдаа гарлаа"
+        );
+      }
+    }
+  };
 
   useEffect(() => {
     return () => {
@@ -150,24 +210,21 @@ const stop = async () => {
               />
             </div>
           </div>
-
           <div className="flex gap-3">
             <Button
               onClick={start}
               disabled={!lectureName || !lectureDate || loading}
               className="flex items-center gap-2 bg-slate-700 hover:bg-slate-800 text-white"
             >
-              <Play className="w-4 h-4" />
-              {loading ? "Болно..." : "QR үүсгэх"}
+              <Play className="w-4 h-4" /> {loading ? "Болно..." : "QR үүсгэх"}
             </Button>
             <Button
-              disabled={!running}
               onClick={stop}
+              disabled={!running}
               variant="destructive"
               className="flex items-center gap-2"
             >
-              <Square className="w-4 h-4" />
-              QR зогсоох
+              <Square className="w-4 h-4" /> QR зогсоох
             </Button>
           </div>
         </CardContent>
@@ -176,40 +233,84 @@ const stop = async () => {
       {/* QR Display Card */}
       {running && lectureName && lectureDate && qrData && qrImage && (
         <Card className="border-slate-200 bg-slate-50/50">
-          <CardContent className="p-8">
-            <div className="flex flex-col xl:flex-row items-center gap-8">
-              <div className="flex-1 space-y-4">
-                <div className="text-center xl:text-left">
-                  <div className="flex flex-col items-center mb-6">
-                    <img
-                      src={qrImage}
-                      alt="QR Code"
-                      className="w-64 h-64 rounded-lg shadow-lg mb-4"
-                    />
-                    <div className="text-xs text-gray-600 break-all max-w-xs bg-white p-2 rounded shadow">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 min-h-[500px]">
+              {/* Left - QR Code */}
+              <div className="flex flex-col relative items-center justify-center">
+                <Card className="flex-1 w-full">
+                  <CardContent className="p-6 flex flex-col items-center justify-center h-full">
+                    <button
+                      onClick={() => setQrFullscreen(true)}
+                      className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-md hover:bg-gray-100 transition"
+                    >
+                      <ZoomIn />
+                    </button>
+
+                    <div className="relative">
+                      <img
+                        src={qrImage}
+                        alt="QR Code"
+                        className="w-100 h-100 rounded-lg shadow-lg mx-auto"
+                      />
+                      {/* Countdown */}
+                      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+                        <div className="bg-white px-3 py-1 rounded-full shadow-lg border flex items-center gap-2">
+                          <RefreshCw
+                            className={`w-3 h-3 text-blue-600 ${
+                              running ? "animate-spin" : ""
+                            }`}
+                          />
+                          <span className="text-xs font-medium">
+                            {countdown}с дараа шинэчлэгдэнэ
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
                       <a
                         href={qrData}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 underline"
+                        className="inline-block px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
                       >
-                        {qrData}
+                        Сурагчдын холбоос
                       </a>
                     </div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-card-foreground">
-                    {lectureName}
-                  </h3>
-                  <p className="text-muted-foreground">{lectureDate}</p>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span>{new Date().toLocaleTimeString()}-д эхэлсэн</span>
-                </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right - Attendance */}
+              <div className="flex flex-col">
+                <AttendanceList
+                  students={attendedStudents}
+                  running={running}
+                  onAddRandomStudent={addRandomStudent}
+                />
               </div>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Fullscreen Overlay */}
+      {qrFullscreen && (
+        <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
+          <div className="relative">
+            <img
+              src={qrImage!}
+              alt="QR Fullscreen"
+              className="w-[100vw] h-[100vw] max-w-[850px] max-h-[850px] rounded-lg shadow-2xl"
+            />
+            <button
+              onClick={() => setQrFullscreen(false)}
+              className="absolute top-2 right-2 bg-white p-3 rounded-full shadow-md hover:bg-gray-100 transition text-xl"
+            >
+              <X />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
