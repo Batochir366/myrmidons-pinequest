@@ -368,6 +368,7 @@ def register():
         user_data = {
             "studentId": studentId,
             "name": studentName,
+            "Classrooms": [],
             "embedding": new_face_encoding.tolist(),
             "created_at": datetime.datetime.now()
         }
@@ -451,6 +452,7 @@ def register_teacher():
         teacher_data = {
             "teacherName": teacherName,
             "embedding": new_face_encoding.tolist(),
+            "Classrooms": [],
             "attendanceHistory": [],
             "createdAt": now,
             "updatedAt": now
