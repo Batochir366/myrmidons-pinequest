@@ -283,7 +283,7 @@ def register():
         if not FACE_RECOGNITION_AVAILABLE:
             print("Face recognition not available")
             return jsonify({
-                "success": False, 
+                "success": False,
                 "message": "Face recognition is not available. Please contact administrator."
             }), 503
 
@@ -292,14 +292,15 @@ def register():
             return jsonify({"success": False, "message": "Invalid or missing JSON data"}), 400
 
         studentId = data.get('studentId')
-        name = data.get('name')
+        studentName = data.get('studentName')
+        classrooms = data.get('Classrooms', [])
         image_base64 = data.get('image_base64')
 
-        if not studentId or not name or not image_base64:
+        if not studentId or not studentName or not image_base64:
             print("Missing fields in request")
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Check if user exists safely
+        # Check if studentId already exists
         if users_collection is not None:
             try:
                 existing_user = users_collection.find_one({"studentId": studentId})
@@ -309,10 +310,8 @@ def register():
             except Exception as e:
                 print(f"Database error during user check: {e}")
                 return jsonify({"success": False, "message": "Database connection error"}), 500
-        else:
-            print("Warning: No database connection, skipping user existence check")
 
-        # Validate image format
+        # Decode and prepare the image
         if ',' not in image_base64:
             print("Invalid image format, missing comma")
             return jsonify({"success": False, "message": "Invalid image format"}), 400
@@ -330,6 +329,7 @@ def register():
             print("Failed to decode image into frame")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
+        # Extract face encoding
         try:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             face_encodings = face_recognition.face_encodings(rgb_frame)
@@ -341,151 +341,68 @@ def register():
             print("No face detected in image")
             return jsonify({"success": False, "message": "No face detected in image"}), 400
 
+        new_face_encoding = face_encodings[0]
+
+        # Check for duplicate face (regardless of studentId)
+        if users_collection is not None:
+            try:
+                all_users = list(users_collection.find())
+                for user in all_users:
+                    try:
+                        existing_encoding = np.array(user['embedding'])
+                        distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
+                        if distance < 0.45:
+                            print(f"Duplicate face detected. Matches with studentId: {user['studentId']}")
+                            return jsonify({
+                                "success": False,
+                                "message": f"Face already registered under studentId {user['studentId']}. Duplicate registration not allowed."
+                            }), 409
+                    except Exception as inner_e:
+                        print(f"Error comparing face for user {user.get('studentId', 'unknown')}: {inner_e}")
+                        continue
+            except Exception as e:
+                print(f"Error checking duplicate faces: {e}")
+                return jsonify({"success": False, "message": "Error checking duplicate faces"}), 500
+
+        # Save user
         user_data = {
             "studentId": studentId,
-            "name": name,
-            "embedding": face_encodings[0].tolist(),
+            "name": studentName,
+            "embedding": new_face_encoding.tolist(),
             "created_at": datetime.datetime.now()
         }
 
-        # Save user safely
         if users_collection is not None:
             try:
                 result = users_collection.insert_one(user_data)
                 if not result.inserted_id:
-                    print(f"User {name} save returned no inserted_id")
+                    print(f"User {studentName} save returned no inserted_id")
                     return jsonify({"success": False, "message": "Failed to save user to database"}), 500
             except Exception as e:
                 print(f"Database error during user save: {e}")
-                # Check if the user was saved despite error
-                try:
-                    saved_user = users_collection.find_one({"studentId": studentId})
-                    if saved_user:
-                        print(f"User {name} was saved successfully despite exception")
-                    else:
-                        return jsonify({"success": False, "message": "Failed to save user to database"}), 500
-                except Exception as verify_error:
-                    print(f"Could not verify user save: {verify_error}")
-                    return jsonify({"success": False, "message": "Database verification failed"}), 500
+                return jsonify({"success": False, "message": "Failed to save user to database"}), 500
         else:
-            print(f"No database connection, user {name} not saved")
+            print(f"No database connection, user {studentName} not saved")
+            return jsonify({"success": False, "message": "Database not connected"}), 500
 
-        print(f"User {name} registered successfully")
+        print(f"✅ User {studentName} registered successfully")
         return jsonify({
             "success": True,
-            "message": f"User {name} registered successfully!"
+            "message": f"User {studentName} registered successfully!"
         })
 
     except Exception as e:
-        # Log full traceback but return controlled error message
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-    try:
-        print("Register endpoint called")
-        if not FACE_RECOGNITION_AVAILABLE:
-            print("Face recognition not available")
-            return jsonify({
-                "success": False, 
-                "message": "Face recognition is not available. Please contact administrator."
-            }), 503
-
-        data = request.get_json()
-        print("Data received:", data)
-        studentId = data.get('studentId')
-        name = data.get('name')
-        image_base64 = data.get('image_base64')
-
-        if not studentId or not name or not image_base64:
-            print("Missing fields in request")
-            return jsonify({"success": False, "message": "Missing required fields"}), 400
-
-        # Check if user already exists (with MongoDB fallback)
-        if users_collection is not None:
-            try:
-                existing_user = users_collection.find_one({"studentId": studentId})
-                if existing_user:
-                    print("User already exists:", studentId)
-                    return jsonify({"success": False, "message": "User already exists"}), 409
-            except Exception as e:
-                print(f"Database error during user check: {e}")
-                return jsonify({"success": False, "message": "Database connection error"}), 500
-        else:
-            print("Warning: No database connection, skipping user existence check")
-
-        if ',' not in image_base64:
-            print("Invalid image format, missing comma")
-            return jsonify({"success": False, "message": "Invalid image format"}), 400
-
-        header, encoded = image_base64.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-        if frame is None:
-            print("Failed to decode image")
-            return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_encodings = face_recognition.face_encodings(rgb_frame)
-        print("Number of faces found:", len(face_encodings))
-
-        if not face_encodings:
-            print("No face detected in image")
-            return jsonify({"success": False, "message": "No face detected in image"}), 400
-
-        user_data = {
-            "studentId": studentId,
-            "name": name,
-            "embedding": face_encodings[0].tolist(),
-            "created_at": datetime.datetime.now()
-        }
-        
-        # Save user data (with improved error handling)
-        if users_collection is not None:
-            try:
-                result = users_collection.insert_one(user_data)
-                if result.inserted_id:
-                    print(f"✅ User {name} saved to database with ID: {result.inserted_id}")
-                else:
-                    print(f"⚠️ User {name} save returned no inserted_id")
-                    return jsonify({"success": False, "message": "Failed to save user to database"}), 500
-            except Exception as e:
-                print(f"❌ Database error during user save: {e}")
-                print(f"❌ Exception type: {type(e).__name__}")
-                print(f"❌ Exception details: {str(e)}")
-                
-                # Check if the user was actually saved despite the exception
-                try:
-                    saved_user = users_collection.find_one({"studentId": studentId})
-                    if saved_user:
-                        print(f"🔄 User {name} was actually saved successfully despite the exception")
-                    else:
-                        print(f"❌ User {name} was not saved to database")
-                        return jsonify({"success": False, "message": "Failed to save user to database"}), 500
-                except Exception as verify_error:
-                    print(f"❌ Could not verify if user was saved: {verify_error}")
-                    return jsonify({"success": False, "message": "Database verification failed"}), 500
-        else:
-            print(f"⚠️ No database connection, user {name} not saved")
-        
-        print(f"User {name} registered successfully")
-
-        return jsonify({
-            "success": True,
-            "message": f"User {name} registered successfully!"
-        })
-
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal Server Error"}), 500
     
 @app.route('/teacher/register', methods=['POST'])
 def register_teacher():
     try:
         data = request.get_json(force=True, silent=True)
         teacherName = data.get("teacherName")
+        classrooms = data.get("Classrooms", [])
         image_base64 = data.get("image_base64")
 
         if not teacherName or not image_base64:
@@ -493,11 +410,14 @@ def register_teacher():
 
         if ',' not in image_base64:
             return jsonify({"success": False, "message": "Invalid image format"}), 400
-
-        header, encoded = image_base64.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        try:
+            header, encoded = image_base64.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        except Exception as e:
+            print(f"Image decoding error: {e}")
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
@@ -508,19 +428,33 @@ def register_teacher():
         if not face_encodings:
             return jsonify({"success": False, "message": "No face detected in image"}), 400
 
-        # Check if teacher already exists
+        new_face_encoding = face_encodings[0]
+
         if teachers_collection.find_one({"teacherName": teacherName}):
             return jsonify({"success": False, "message": "Teacher already exists"}), 409
 
+        try:
+            existing_teachers = list(teachers_collection.find())
+            for teacher in existing_teachers:
+                existing_encoding = np.array(teacher['embedding'])
+                distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
+                if distance < 0.45: 
+                    print(f"Duplicate face detected for teacher: {teacher['teacherName']}")
+                    return jsonify({
+                        "success": False,
+                        "message": f"Face already registered under teacher {teacher['teacherName']}. Duplicate not allowed."
+                    }), 409
+        except Exception as e:
+            print(f"Error during face duplication check: {e}")
+            return jsonify({"success": False, "message": "Face duplication check failed"}), 500
         now = datetime.datetime.utcnow()
         teacher_data = {
-          "teacherName": teacherName,
-          "embedding": face_encodings[0].tolist(),
-          "attendanceHistory": [],
-          "createdAt": now,
-          "updatedAt": now
+            "teacherName": teacherName,
+            "embedding": new_face_encoding.tolist(),
+            "attendanceHistory": [],
+            "createdAt": now,
+            "updatedAt": now
         }
-
 
         result = teachers_collection.insert_one(teacher_data)
         if not result.inserted_id:
