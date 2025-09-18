@@ -25,6 +25,7 @@ export const ClassroomSchema = new Schema(
         ref: "Attendance",
       },
     ],
+      joinLink: { type: String }, 
   },
   {
     timestamps: true,

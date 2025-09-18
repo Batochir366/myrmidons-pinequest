@@ -2,14 +2,15 @@ import { AttendanceModel } from "../models/attendance.model.js";
 import { ClassroomModel } from "../models/classroom.model.js";
 import { TeacherModel } from "../models/teacher.model.js";
 
-
 //Classroom controllers
 export const createClassroom = async (req, res) => {
   try {
     const { lectureName, teacherId } = req.body;
 
     if (!lectureName || !teacherId) {
-      return res.status(400).json({ message: "lectureName болон teacherId шаардлагатай" });
+      return res
+        .status(400)
+        .json({ message: "lectureName болон teacherId шаардлагатай" });
     }
 
     const teacher = await TeacherModel.findById(teacherId);
@@ -21,26 +22,30 @@ export const createClassroom = async (req, res) => {
       lectureName,
       teacher: teacherId,
       ClassroomStudents: [],
-      attendanceHistory: []
+      attendanceHistory: [],
     });
 
     const savedClassroom = await newClassroom.save();
 
-    await TeacherModel.findByIdAndUpdate(teacherId, {
-      $addToSet: { Classrooms: savedClassroom._id }
-    });
-
-    // Generate join link (customize the frontend URL as needed)
     const joinLink = `https://myrmidons-pinequest-frontend.vercel.app/classroom/join/${savedClassroom._id}`;
+
+    savedClassroom.joinLink = joinLink;
+    await savedClassroom.save();
+
+    await TeacherModel.findByIdAndUpdate(teacherId, {
+      $addToSet: { Classrooms: savedClassroom._id },
+    });
 
     return res.status(201).json({
       message: "Ангийг амжилттай үүсгэлээ",
       classroom: savedClassroom,
-      joinLink
+      joinLink,
     });
   } catch (error) {
     console.error("❌ createClassroom error:", error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 export const getClassroomsByTeacherId = async (req, res) => {
@@ -56,12 +61,11 @@ export const getClassroomsByTeacherId = async (req, res) => {
     return res.status(200).json({ classrooms });
   } catch (error) {
     console.error("❌ getClassroomsByTeacherId error:", error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
-
-
-
 
 //Attendance controllers
 
