@@ -11,10 +11,6 @@ const AttendanceSchema = new Schema(
       type: String,
       required: true,
     },
-    lectureDate: {
-      type: String,
-      required: true,
-    },
     attendingStudents: [
       {
         type: Schema.Types.ObjectId,
@@ -23,7 +19,7 @@ const AttendanceSchema = new Schema(
       },
     ],
     endedAt: {
-      type: Date, 
+      type: Date,
       default: null,
     },
   },
