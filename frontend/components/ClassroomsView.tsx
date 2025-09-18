@@ -11,6 +11,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { CreateClassroomForm } from "./CreateClassroom";
+import { Toaster } from "sonner";
 
 interface Classroom {
   _id: string;
@@ -78,7 +79,9 @@ export const ClassroomsView = () => {
       {loading ? (
         <p>Түр хүлээнэ үү...</p>
       ) : classrooms.length === 0 ? (
-        <p>Ангийн мэдээлэл олдсонгүй.</p>
+        <div className="text-center py-10">
+          <p className="mb-4 text-gray-600">Ангийн мэдээлэл олдсонгүй.</p>
+        </div>
       ) : (
         <div className="space-y-3">
           {classrooms.map((classroom) => (
@@ -101,6 +104,7 @@ export const ClassroomsView = () => {
           ))}
         </div>
       )}
+      <Toaster position="bottom-right" />
     </div>
   );
 };
