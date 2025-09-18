@@ -591,6 +591,7 @@ def login_teacher():
         return jsonify({
             "success": True,
             "verified": True,
+            "teacherId": str(result.inserted_id)
             "teacherName": matched_teacher['teacherName'],
             "message": f"Welcome, {matched_teacher['teacherName']}!"
         })
