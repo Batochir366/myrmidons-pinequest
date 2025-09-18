@@ -32,7 +32,7 @@ export const createClassroom = async (req, res) => {
     const tokenPayload = {
       classroomId: savedClassroom._id,
       lectureName,
-      teacherName: teacher.name,
+      teacherName: teacher.teacherName,
     };
 
     const token = jwt.sign(tokenPayload, SECRET_KEY, { expiresIn: "30d" });
