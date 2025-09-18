@@ -30,7 +30,7 @@ export function QRControlCenter() {
   const [countdown, setCountdown] = useState(5);
   const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [classroomId, setClassroomId] = useState<string | null>(null);
+  const [attendanceId, setAttendanceId] = useState<string | null>(null);
   const [joinLinkQr, setJoinLinkQr] = useState<string | null>(null);
 
   // Timer ref now typed as number (browser timer ID)
@@ -68,10 +68,12 @@ export function QRControlCenter() {
     });
   };
 
-  const generateQr = (classroomId: string) => {
+  const generateQr = (attendanceId: string) => {
     const token = uuidv4();
     const expiresAt = Date.now() + 5000;
-    const url = `https://myrmidons-pinequest-frontend.vercel.app/student?token=${token}&expiresAt=${expiresAt}&classroomId=${classroomId}`;
+
+    const url = `https://myrmidons-pinequest-frontend.vercel.app/student?token=${token}&expiresAt=${expiresAt}&attendanceId=${attendanceId}`;
+
     setQrData(url);
 
     QRCode.toDataURL(url, { width: 256 }, (err, dataUrl) => {
@@ -112,8 +114,19 @@ export function QRControlCenter() {
 
     try {
       setLoading(true);
-      setClassroomId(selectedClassroomId);
-      generateQr(selectedClassroomId);
+
+      // 🔥 Call backend to create attendance
+      const res = await axios.post(
+        "https://myrmidons-pinequest-backend.vercel.app/teacher/create-attendance",
+        { classroomId: selectedClassroomId }
+      );
+
+      const newAttendance = res.data;
+      const id = newAttendance._id;
+
+      setAttendanceId(id); // 🔥 Store it
+
+      generateQr(id); // ✅ Generate first QR with attendanceId
 
       setCountdown(5);
       setRunning(true);
@@ -121,7 +134,7 @@ export function QRControlCenter() {
       timerRef.current = window.setInterval(() => {
         setCountdown((prev) => {
           if (prev === 1) {
-            generateQr(selectedClassroomId);
+            generateQr(id); // 🔁 Regenerate with attendanceId
             return 5;
           }
           return prev - 1;
@@ -129,7 +142,7 @@ export function QRControlCenter() {
       }, 1000);
     } catch (error: any) {
       console.error(error);
-      alert(error.response?.data?.message || "Classroom үүсгэхэд алдаа гарлаа");
+      alert(error.response?.data?.message || "Ирц үүсгэхэд алдаа гарлаа");
     } finally {
       setLoading(false);
     }
@@ -145,18 +158,16 @@ export function QRControlCenter() {
     setQrData(null);
     setQrImage(null);
 
-    if (classroomId) {
+    if (attendanceId) {
       try {
-        await axios.post(
+        await axios.put(
           "https://myrmidons-pinequest-backend.vercel.app/teacher/end-classroom",
-          { classroomId }
+          { attendanceId }
         );
-        console.log("Classroom ended successfully");
+        console.log("Attendance session ended.");
       } catch (err: any) {
         console.error(err);
-        alert(
-          err.response?.data?.message || "Classroom дуусгах үед алдаа гарлаа"
-        );
+        alert(err.response?.data?.message || "Ирц дуусгах үед алдаа гарлаа");
       }
     }
   };
@@ -170,7 +181,7 @@ export function QRControlCenter() {
     setCountdown(5);
     setQrData(null);
     setQrImage(null);
-    setClassroomId(null);
+    setAttendanceId(null);
   };
 
   useEffect(() => {
