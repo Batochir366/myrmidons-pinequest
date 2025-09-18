@@ -33,7 +33,7 @@ const sampleAttendanceData: AttendanceRecord[] = [
   {
     id: 1,
     lectureName: "Financial Accounting",
-    date: "2025-01-20",
+    date: "2025-09-16",
     startTime: "08:50",
     endTime: "09:30",
     qrStartTime: "08:50",
@@ -150,46 +150,41 @@ export function AttendanceHistory() {
   return (
     <TooltipProvider>
       <div className="w-full max-w-[1600px] mx-auto">
-        {showReport && selectedLecture ? (
-          <ViewReport
-            lecture={selectedLecture} 
-            onBack={() => setShowReport(false)} 
-          />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-5 xl:grid-cols-3 gap-6">
-            {/* Calendar Section */}
-            <div className="lg:col-span-2 xl:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5" />
-                    Ирцийн календарь
-                  </CardTitle>
-                  <CardDescription>Ирцийн бүртгэлийг харахын тулд огноо сонгоно уу</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    className="rounded-md border w-full"
-                    modifiers={{
-                      hasLecture: getLectureDays(),
-                      hasExam: [], // Can be extended for exams
-                      holiday: [], // Can be extended for holidays
-                    }}
-                    modifiersClassNames={{
-                      hasLecture: "bg-slate-700 text-white rounded-full font-bold hover:bg-slate-800",
-                      hasExam: "bg-red-500 text-white rounded-full font-bold hover:bg-red-600",
-                      holiday: "bg-gray-400 text-white rounded-full hover:bg-gray-500",
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Lectures Section */}
-            <div className="lg:col-span-3 xl:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Calendar Section */}
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5" />
+                  Ирцийн календарь
+                </CardTitle>
+                <CardDescription>Ирцийн бүртгэлийг харахын тулд огноо сонгоно уу</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="rounded-md w-full"
+                  modifiers={{
+                    hasLecture: getLectureDays(),
+                  }}
+                  modifiersClassNames={{
+                    hasLecture: "bg-slate-700 text-white rounded-md font-bold hover:bg-slate-800",
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </div>
+          {showReport && selectedLecture ? (
+            <ViewReport
+              lecture={selectedLecture}
+              onBack={() => setShowReport(false)}
+            />
+          ) : (
+            <div>
+              {/* Lectures Section */}
               <Card>
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -225,7 +220,7 @@ export function AttendanceHistory() {
                             </div>
                           </div>
                           <div className="flex items-center gap-3 w-full sm:w-auto">
-                            <div className="text-right flex-1 sm:flex-initial">
+                            <div className="text-right sm:flex-initial">
                               <p className="text-xs text-muted-foreground mt-1">{lecture.totalStudents} сурагч</p>
                             </div>
                             <Button
@@ -249,9 +244,9 @@ export function AttendanceHistory() {
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </div>
-        )}
+            </div>)}
+        </div>
+
       </div>
     </TooltipProvider>
   )
