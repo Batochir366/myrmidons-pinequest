@@ -53,10 +53,6 @@ export const getClassroomsByTeacherId = async (req, res) => {
 
     const classrooms = await ClassroomModel.find({ teacher: teacherId });
 
-    if (!classrooms || classrooms.length === 0) {
-      return res.status(404).json({ message: "Classrooms not found" });
-    }
-
     return res.status(200).json({ classrooms });
   } catch (error) {
     console.error("❌ getClassroomsByTeacherId error:", error);
