@@ -57,11 +57,11 @@ export const ClassroomsView = () => {
         <h2 className="text-xl font-semibold">Ангийн жагсаалт</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>Ангий үүсгэх</Button>
+            <Button>Анги үүсгэх</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md sm:max-w-lg">
+          <DialogContent className="w-full max-w-[340px] sm:max-w-[340px]">
             <DialogHeader>
-              <DialogTitle>Шинэ Анги үүсгэх</DialogTitle>
+              <DialogTitle className="w-full flex justify-center">Шинэ анги үүсгэх</DialogTitle>
             </DialogHeader>
             <CreateClassroomForm onSuccess={handleClassroomCreated} />
             <DialogClose asChild>
@@ -69,7 +69,6 @@ export const ClassroomsView = () => {
                 className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 aria-label="Close"
               >
-                ✕
               </button>
             </DialogClose>
           </DialogContent>
@@ -97,7 +96,7 @@ export const ClassroomsView = () => {
                   rel="noopener noreferrer"
                   className="text-blue-600 underline"
                 >
-                  Холбоос орох
+                  Орох холбоос
                 </a>
               </div>
             </div>
