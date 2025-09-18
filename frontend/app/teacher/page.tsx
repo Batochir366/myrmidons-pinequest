@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { QRControlCenter } from "@/components/QrControlCenter";
+// import { AttendanceHistory } from "@/components/Lecture-report";
 
 import { AttendanceHistory } from "@/components/AttendanceHistory";
 import { ClassroomsView } from "@/components/ClassroomsView";
