@@ -84,19 +84,19 @@ export function ViewReport({ lecture, onBack }: ViewReportProps) {
             </thead>
             <tbody>
               ${lecture.students
-                .sort((a, b) => {
-                  return a.name.localeCompare(b.name)
-                })
-                .map(
-                  (student) => `
+        .sort((a, b) => {
+          return a.name.localeCompare(b.name)
+        })
+        .map(
+          (student) => `
                   <tr>
                     <td>${student.name}</td>
                     <td>${student.code}</td>
                     <td>${student.timestamp || "-"}</td>
                   </tr>
                 `,
-                )
-                .join("")}
+        )
+        .join("")}
             </tbody>
           </table>
         </body>
@@ -138,7 +138,7 @@ export function ViewReport({ lecture, onBack }: ViewReportProps) {
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Хичээлийн нэр:</span>
-                  <span className="font-medium">{lecture.lectureName}</span>
+                  <span className="font-medium text-right">{lecture.lectureName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Огноо:</span>

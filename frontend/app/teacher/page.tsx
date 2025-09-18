@@ -87,11 +87,10 @@ export default function AttendanceDashboard() {
                 key={item.id}
                 onClick={() => setActiveView(item.id)}
                 variant={activeView === item.id ? "default" : "ghost"}
-                className={`w-full justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${
-                  activeView === item.id
-                    ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
-                    : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
-                }`}
+                className={`w-full justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${activeView === item.id
+                  ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
+                  : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
+                  }`}
               >
                 <item.icon className="w-5 h-5" />
                 {item.label}
@@ -105,7 +104,7 @@ export default function AttendanceDashboard() {
 
   const IconOnlySidebar = () => (
     <div className="hidden sm:flex md:hidden flex-col w-16 bg-white dark:bg-gray-900 border-r border-border">
-      <div className="p-3 bg-gray-50 dark:bg-gray-800 border-b border-border">
+      <div className="p-3 h-[85px] bg-gray-50 dark:bg-gray-800 border-b border-border">
         <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
           <QrCode className="w-5 h-5 text-white" />
         </div>
@@ -118,11 +117,10 @@ export default function AttendanceDashboard() {
               onClick={() => setActiveView(item.id)}
               variant="ghost"
               size="icon"
-              className={`w-12 h-12 rounded-xl transition-all duration-200 ${
-                activeView === item.id
-                  ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
-                  : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
-              }`}
+              className={`w-12 h-12 rounded-xl transition-all duration-200 ${activeView === item.id
+                ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
+                : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
+                }`}
               title={item.label}
             >
               <item.icon className="w-5 h-5" />
@@ -265,7 +263,7 @@ export default function AttendanceDashboard() {
       <div className="flex min-h-screen bg-background w-full">
         {/* Desktop Sidebar */}
         <Sidebar className="hidden md:flex border-r border-border bg-white dark:bg-gray-900">
-          <SidebarHeader className="p-6 bg-gray-50 dark:bg-gray-800 border-b border-border">
+          <SidebarHeader className="h-[85px] p-6 border-b border-border bg-white">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
                 <QrCode className="w-5 h-5 text-white" />
@@ -285,19 +283,18 @@ export default function AttendanceDashboard() {
                 <SidebarMenuItem key={item.id}>
                   <button
                     onClick={() => setActiveView(item.id)}
-                    className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer border-0 ${
-                      activeView === item.id
-                        ? "!bg-slate-700 !text-white shadow-lg transform scale-105"
-                        : "bg-transparent hover:bg-slate-100 hover:text-slate-700 hover:shadow-md hover:transform hover:scale-102 text-slate-600"
-                    }`}
+                    className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer border-0 ${activeView === item.id
+                      ? "!bg-slate-700 !text-white shadow-lg transform scale-105"
+                      : "bg-transparent hover:bg-slate-100 hover:text-slate-700 hover:shadow-md hover:transform hover:scale-102 text-slate-600"
+                      }`}
                     style={
                       activeView === item.id
                         ? {
-                            backgroundColor: "rgb(51, 65, 85) !important",
-                            color: "white !important",
-                            background:
-                              "linear-gradient(to right, rgb(51, 65, 85), rgb(30, 41, 59)) !important",
-                          }
+                          backgroundColor: "rgb(51, 65, 85) !important",
+                          color: "white !important",
+                          background:
+                            "linear-gradient(to right, rgb(51, 65, 85), rgb(30, 41, 59)) !important",
+                        }
                         : {}
                     }
                   >
