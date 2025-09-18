@@ -2,13 +2,13 @@ import {
   createAttendance,
   createClassroom,
   endAttendance,
-  getTeacherWithClasses,
+  getClassroomsByTeacherId,
 } from "../controllers/teacher.js";
 
 const teacherRouter = Router();
 
 teacherRouter
-  .get("/get/:teacherId", getTeacherWithClasses)
+  .get("/:teacherId/classes", getClassroomsByTeacherId)
   .put("/end-classroom", endAttendance) 
   .post("/create-classroom", createClassroom)
   .post("/create-attendance", createAttendance);
