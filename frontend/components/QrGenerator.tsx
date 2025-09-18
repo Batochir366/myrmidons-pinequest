@@ -50,8 +50,8 @@ export default function QrGenerator() {
       timerRef.current = null;
     }
     setRunning(false);
-    setQrData(null); // QR код устгах
-    setQrImage(null); // Зураг устгах
+    setQrData(null);
+    setQrImage(null);
   };
 
   useEffect(() => {
