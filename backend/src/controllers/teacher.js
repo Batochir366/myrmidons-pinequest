@@ -1,61 +1,132 @@
 import { AttendanceModel } from "../models/attendance.model.js";
+import { ClassroomModel } from "../models/classroom.model.js";
 import { TeacherModel } from "../models/teacher.model.js";
+
+
 
 export const createClassroom = async (req, res) => {
   try {
-    const { teacherId, lectureName } = req.body;
+    const { lectureName, teacherId } = req.body;
 
-    // 1. Create a new classroom (attendance record)
-    const newClassroom = await AttendanceModel.create({
-      teacher: teacherId,
+    if (!lectureName || !teacherId) {
+      return res.status(400).json({ message: "lectureName болон teacherId шаардлагатай" });
+    }
+
+    const teacher = await TeacherModel.findById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({ message: "Багш олдсонгүй" });
+    }
+
+    const newClassroom = new ClassroomModel({
       lectureName,
-
-      attendingStudents: [],
+      teacher: teacherId,
+      ClassroomStudents: [],
+      attendanceHistory: []
     });
 
-    // 2. Push the new classroom's ID into the teacher's attendanceHistory
-    await TeacherModel.findByIdAndUpdate(
-      teacherId,
-      { $push: { attendanceHistory: newClassroom._id } },
-      { new: true } // returns updated teacher if you need it
-    );
+    const savedClassroom = await newClassroom.save();
 
-    res.status(201).json(newClassroom);
+    await TeacherModel.findByIdAndUpdate(teacherId, {
+      $addToSet: { Classrooms: savedClassroom._id }
+    });
+
+    // Generate join link (customize the frontend URL as needed)
+    const joinLink = `https://myrmidons-pinequest-frontend.vercel.app/classroom/join/${savedClassroom._id}`;
+
+    return res.status(201).json({
+      message: "Ангийг амжилттай үүсгэлээ",
+      classroom: savedClassroom,
+      joinLink
+    });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.error("❌ createClassroom error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-export const getTeacherWithClasses = async (req, res) => {
-  const { teacherId } = req.params;
-  const teacher = await TeacherModel.findById(teacherId).populate({
-    path: "attendanceHistory",
-    populate: { path: "attendingStudents" },
-  });
-  return teacher;
-};
 
-export const endClassroom = async (req, res) => {
+export const createAttendance = async (req, res) => {
   try {
     const { classroomId } = req.body;
 
     if (!classroomId) {
+      return res.status(400).json({ message: "classroomId is required" });
+    }
+
+    // Check classroom exists (optional but recommended)
+    const classroom = await ClassroomModel.findById(classroomId);
+    if (!classroom) {
+      return res.status(404).json({ message: "Classroom not found" });
+    }
+
+    // Create new attendance linked to this classroom
+    const newAttendance = await AttendanceModel.create({
+      classroom: classroomId,
+      attendingStudents: [],
+      endedAt: null,
+    });
+
+    // Update Classroom attendanceHistory array
+    await ClassroomModel.findByIdAndUpdate(classroomId, {
+      $push: { attendanceHistory: newAttendance._id },
+    });
+
+    res.status(201).json(newAttendance);
+  } catch (error) {
+    console.error("❌ createAttendance error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+export const getTeacherWithClasses = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const teacher = await TeacherModel.findById(teacherId)
+      .populate({
+        path: "Classrooms",
+        populate: {
+          path: "ClassroomStudents", // populate students in classrooms
+        },
+      })
+      .populate({
+        path: "attendanceHistory",
+        populate: { path: "attendingStudents" },
+      });
+
+    if (!teacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    return res.status(200).json(teacher);
+  } catch (error) {
+    console.error("❌ getTeacherWithClasses error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const endAttendance = async (req, res) => {
+  try {
+    const { attendanceId } = req.body;
+
+    if (!attendanceId) {
       return res.status(400).json({ message: "Classroom ID is required" });
     }
 
-    const updatedClassroom = await AttendanceModel.findByIdAndUpdate(
-      classroomId,
+    const updatedAttendance = await AttendanceModel.findByIdAndUpdate(
+      attendanceId,
       { endedAt: new Date() },
       { new: true }
     );
 
-    if (!updatedClassroom) {
+    if (!updatedAttendance) {
       return res.status(404).json({ message: "Classroom not found" });
     }
 
     return res
       .status(200)
-      .json({ message: "Classroom ended", classroom: updatedClassroom });
+      .json({ message: "Classroom ended", classroom: updatedAttendance });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error", error });
