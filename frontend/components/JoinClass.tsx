@@ -1,15 +1,17 @@
 "use client";
 export const dynamic = "force-dynamic";
 
-import React, {
-  useState,
-  useEffect,
-  ReactNode,
-  MouseEventHandler,
-} from "react";
-import { GraduationCap, Users, Calendar } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { GraduationCap, Users, Calendar, Check } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
+import {
+  captureAndVerify,
+  simulateRecognition,
+  startCamera,
+  stopCamera,
+} from "@/utils/attendanceUtils";
+import { Toaster, toast } from "sonner";
 
 interface TokenPayload {
   classroomId: string;
@@ -19,78 +21,22 @@ interface TokenPayload {
   exp?: number;
 }
 
-interface CardProps {
-  children: ReactNode;
-  className?: string;
-}
-
-const Card = ({ children, className = "" }: CardProps) => (
-  <div className={`bg-white rounded-lg border shadow-sm ${className}`}>
-    {children}
-  </div>
-);
-
-const CardHeader = ({ children, className = "" }: CardProps) => (
-  <div className={`p-6 pb-0 ${className}`}>{children}</div>
-);
-
-const CardTitle = ({ children, className = "" }: CardProps) => (
-  <h3
-    className={`text-2xl font-semibold leading-none tracking-tight ${className}`}
-  >
-    {children}
-  </h3>
-);
-
-const CardDescription = ({ children, className = "" }: CardProps) => (
-  <p className={`text-sm text-gray-600 ${className}`}>{children}</p>
-);
-
-const CardContent = ({ children, className = "" }: CardProps) => (
-  <div className={`p-6 pt-0 ${className}`}>{children}</div>
-);
-
-interface ButtonProps {
-  children: ReactNode;
-  onClick?: MouseEventHandler<HTMLButtonElement>;
-  variant?: "default" | "outline" | "secondary";
-  className?: string;
-  disabled?: boolean;
-}
-
-const Button = ({
-  children,
-  onClick,
-  variant = "default",
-  className = "",
-  disabled = false,
-}: ButtonProps) => {
-  const baseClasses =
-    "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
-  const variantClasses: Record<string, string> = {
-    default: "bg-blue-600 text-white hover:bg-blue-700",
-    outline: "border border-gray-300 bg-white hover:bg-gray-50 text-gray-900",
-    secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200",
-  };
-
-  return (
-    <button
-      className={`${baseClasses} ${variantClasses[variant]} px-4 py-2 ${className}`}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-};
-
-export default function JoinClassPage() {
+const JoinClassPage = () => {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [isLoading, setIsLoading] = useState(false);
   const [lectureName, setLectureName] = useState("...");
   const [teacherName, setTeacherName] = useState("...");
+  const [classroomId, setClassroomId] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [message, setMessage] = useState("");
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
+  const [isFaceVerified, setIsFaceVerified] = useState(false);
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [recognitionProgress, setRecognitionProgress] = useState(0);
   useEffect(() => {
     if (!token) {
       setLectureName("Токен олдсонгүй");
@@ -102,6 +48,7 @@ export default function JoinClassPage() {
       const decoded = jwtDecode<TokenPayload>(token);
       setLectureName(decoded.lectureName || "Хичээлийн нэр олдсонгүй");
       setTeacherName(decoded.teacherName || "Багшийн нэр олдсонгүй");
+      setClassroomId(decoded.classroomId);
     } catch (error) {
       setLectureName("Токен буруу байна");
       setTeacherName("Токен буруу байна");
@@ -109,24 +56,90 @@ export default function JoinClassPage() {
     }
   }, [token]);
 
-  const handleJoinClass = () => {
+  const handleVerifyFace = async () => {
+    if (!studentId.trim()) {
+      setMessage("Оюутны ID шаардлагатай.");
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    setMessage("");
+
+    await startCamera(videoRef, setMessage, streamRef);
+
+    const onVerificationComplete = async () => {
+      const verified = await captureAndVerify(
+        videoRef,
+        canvasRef,
+        studentId,
+        setMessage,
+        setIsRecognizing,
+        setRecognitionProgress
+      );
+
+      if (verified) {
+        setMessage("🎉 Царай амжилттай танигдлаа.");
+        setIsFaceVerified(true);
+      }
+
+      stopCamera(streamRef);
       setIsLoading(false);
-      alert("Хичээлд амжилттай нэгдлээ!");
-    }, 1500);
+    };
+
+    simulateRecognition(
+      setIsRecognizing,
+      setRecognitionProgress,
+      onVerificationComplete
+    );
+  };
+
+  const handleJoinClass = async () => {
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      const res = await fetch(
+        `https://myrmidons-pinequest-backend.vercel.app/student/join/${classroomId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.custom(() => (
+          <div className="w-[400px] p-4 rounded-xl shadow-lg bg-[#18181b] text-white flex items-center gap-4 transition-all">
+            <Check className="size-4 text-white" />
+            <span className="text-[16px] font-medium text-[#FAFAFA]">
+              Хичээлд амжилттай нэгдлээ!
+            </span>
+          </div>
+        ));
+      } else {
+        setMessage(data.message || "Алдаа гарлаа.");
+      }
+    } catch (error) {
+      console.error("❌ Error joining classroom:", error);
+      setMessage("Сүлжээний алдаа. Дахин оролдоно уу.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="max-w-md mx-auto p-4">
-      <Card className="w-full">
-        <CardHeader className="space-y-4 text-center">
-          <CardTitle className="text-xl">Хичээлд нэгдэх</CardTitle>
-          <CardDescription>
-            Доорх хичээлд нэгдэхийн тулд товчийг дарна уу
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <div className="bg-white rounded-lg border shadow-sm w-full">
+        <div className="p-6 pb-0 text-center space-y-4">
+          <h3 className="text-2xl font-semibold">Хичээлд нэгдэх</h3>
+          <p className="text-sm text-gray-600">
+            Доорх хичээлд нэгдэхийн тулд ID-гаа оруулж, товчийг дарна уу.
+          </p>
+        </div>
+
+        <div className="p-6 pt-0 space-y-6">
           {/* Teacher Info */}
           <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg">
             <GraduationCap className="h-8 w-8 text-blue-600" />
@@ -145,33 +158,78 @@ export default function JoinClassPage() {
             </div>
           </div>
 
-          {/* Join Button */}
-          <Button
-            onClick={handleJoinClass}
-            className="w-full h-12 text-lg font-medium"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Нэгдэж байна...</span>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5" />
-                <span>Хичээлд нэгдэх</span>
-              </div>
-            )}
-          </Button>
+          {/* Student ID Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Оюутны ID
+            </label>
+            <input
+              type="text"
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+              placeholder="24LP0000"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
+            />
+          </div>
+
+          {/* Step 1: Face Verification */}
+          {!isFaceVerified && (
+            <button
+              onClick={handleVerifyFace}
+              disabled={isLoading || !studentId.trim()}
+              className="w-full h-12 text-lg font-medium inline-flex items-center justify-center rounded-md text-white bg-green-600 hover:bg-green-700 transition disabled:opacity-50"
+            >
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Таних...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Царайгаар баталгаажуулах</span>
+                </div>
+              )}
+            </button>
+          )}
+
+          {/* Step 2: Join Class */}
+          {isFaceVerified && (
+            <button
+              onClick={handleJoinClass}
+              disabled={isLoading}
+              className="w-full h-12 text-lg font-medium inline-flex items-center justify-center rounded-md text-white bg-blue-600 hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Нэгдэж байна...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Хичээлд нэгдэх</span>
+                </div>
+              )}
+            </button>
+          )}
+          <Toaster position="bottom-right" />
+
+          {/* Error Message */}
+          {message && (
+            <p className="text-sm text-red-600 text-center">{message}</p>
+          )}
 
           <div className="text-center">
             <p className="text-xs text-gray-500">
               Хичээлд нэгдсний дараа та бүх материал болон гэрийн даалгаварт
-              хандах боломжтой болно
+              хандах боломжтой болно.
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default JoinClassPage;
