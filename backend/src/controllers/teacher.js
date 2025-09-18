@@ -1,8 +1,10 @@
 import { AttendanceModel } from "../models/attendance.model.js";
 import { ClassroomModel } from "../models/classroom.model.js";
 import { TeacherModel } from "../models/teacher.model.js";
+import jwt from "jsonwebtoken";
 
-//Classroom controllers
+const SECRET_KEY = "pinequest-secret";
+
 export const createClassroom = async (req, res) => {
   try {
     const { lectureName, teacherId } = req.body;
@@ -27,7 +29,15 @@ export const createClassroom = async (req, res) => {
 
     const savedClassroom = await newClassroom.save();
 
-    const joinLink = `https://myrmidons-pinequest-frontend.vercel.app/classroom/join/${savedClassroom._id}`;
+    const tokenPayload = {
+      classroomId: savedClassroom._id,
+      lectureName,
+      teacherName: teacher.name,
+    };
+
+    const token = jwt.sign(tokenPayload, SECRET_KEY, { expiresIn: "30d" });
+
+    const joinLink = `https://myrmidons-pinequest-frontend.vercel.app/join?token=${token}`;
 
     savedClassroom.joinLink = joinLink;
     await savedClassroom.save();
@@ -48,6 +58,7 @@ export const createClassroom = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
+
 export const getClassroomsByTeacherId = async (req, res) => {
   try {
     const { teacherId } = req.params;
