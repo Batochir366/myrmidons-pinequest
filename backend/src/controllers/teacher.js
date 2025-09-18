@@ -3,7 +3,7 @@ import { ClassroomModel } from "../models/classroom.model.js";
 import { TeacherModel } from "../models/teacher.model.js";
 
 
-
+//Classroom controllers
 export const createClassroom = async (req, res) => {
   try {
     const { lectureName, teacherId } = req.body;
@@ -43,7 +43,31 @@ export const createClassroom = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+export const getClassroomsByTeacherId = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
 
+    if (!teacherId) {
+      return res.status(400).json({ message: "teacherId is required" });
+    }
+
+    const classrooms = await ClassroomModel.find({ teacher: teacherId });
+
+    if (!classrooms || classrooms.length === 0) {
+      return res.status(404).json({ message: "Classrooms not found" });
+    }
+
+    return res.status(200).json({ classrooms });
+  } catch (error) {
+    console.error("❌ getClassroomsByTeacherId error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
+//Attendance controllers
 
 export const createAttendance = async (req, res) => {
   try {
@@ -74,34 +98,6 @@ export const createAttendance = async (req, res) => {
     res.status(201).json(newAttendance);
   } catch (error) {
     console.error("❌ createAttendance error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-
-export const getTeacherWithClasses = async (req, res) => {
-  try {
-    const { teacherId } = req.params;
-
-    const teacher = await TeacherModel.findById(teacherId)
-      .populate({
-        path: "Classrooms",
-        populate: {
-          path: "ClassroomStudents", // populate students in classrooms
-        },
-      })
-      .populate({
-        path: "attendanceHistory",
-        populate: { path: "attendingStudents" },
-      });
-
-    if (!teacher) {
-      return res.status(404).json({ message: "Teacher not found" });
-    }
-
-    return res.status(200).json(teacher);
-  } catch (error) {
-    console.error("❌ getTeacherWithClasses error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

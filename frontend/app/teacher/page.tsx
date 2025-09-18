@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Users, QrCode, History, Menu } from "lucide-react";
+import {
+  Calendar,
+  Users,
+  QrCode,
+  History,
+  Menu,
+  PlusCircle,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +32,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { QRControlCenter } from "@/components/QrControlCenter";
 
 import { AttendanceHistory } from "@/components/AttendanceHistory";
+import { ClassroomsView } from "@/components/ClassroomsView";
 
 export default function AttendanceDashboard() {
   const sampleStudents = [] as any;
@@ -44,25 +52,8 @@ export default function AttendanceDashboard() {
   const menuItems = [
     { id: "attendance", label: "Ирц бүртгэх", icon: QrCode },
     { id: "history", label: "Ирцийн түүх", icon: History },
+    { id: "classrooms", label: "Ангийн жагсаалт", icon: Users },
   ];
-  async function verifyQRCode(token: string, expiresAt: number) {
-    try {
-      const res = await fetch(
-        `/api/scanQR?token=${token}&expiresAt=${expiresAt}`
-      );
-      const data = await res.json();
-
-      if (data.ok) {
-        // QR valid, proceed with your logic
-        console.log("QR valid:", data.message);
-      } else {
-        // QR invalid or expired
-        console.error("QR invalid:", data.message);
-      }
-    } catch (error) {
-      console.error("Network or server error:", error);
-    }
-  }
 
   const MobileSidebar = () => (
     <Sheet>
@@ -145,9 +136,10 @@ export default function AttendanceDashboard() {
     switch (activeView) {
       case "attendance":
         return <QRControlCenter />;
-
       case "history":
         return <AttendanceHistory />;
+      case "classrooms":
+        return <ClassroomsView />;
       case "dashboard":
       default:
         return (
