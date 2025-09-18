@@ -39,7 +39,6 @@ const AttendanceSystem: React.FC = () => {
   }
 
   const steps = [
-    { id: 1, label: "QR код", icon: QrCode },
     { id: 2, label: "Оюутны ID", icon: User },
     { id: 3, label: "Царай таних", icon: Camera },
     { id: 4, label: "Амжилттай", icon: CheckCircle },
