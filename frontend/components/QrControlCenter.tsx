@@ -18,7 +18,6 @@ import axios from "axios";
 
 export function QRControlCenter() {
   const [lectureName, setLectureName] = useState("");
-  const [lectureDate, setLectureDate] = useState("");
   const [qrData, setQrData] = useState<string | null>(null);
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(5);
@@ -46,7 +45,7 @@ const [classroomId, setClassroomId] = useState<string | null>(null);
   const start = async () => {
     if (running) return;
 
-    if (!lectureName || !lectureDate) return;
+    if (!lectureName) return;
 
     try {
       setLoading(true);
@@ -56,7 +55,6 @@ const [classroomId, setClassroomId] = useState<string | null>(null);
     const { data: classroom } = await axios.post("https://myrmidons-pinequest-backend.vercel.app/teacher/create", {
   teacherId,
   lectureName,
-  lectureDate,
 });
 
 setClassroomId(classroom._id);
@@ -140,25 +138,16 @@ const stop = async () => {
                 onChange={(e) => setLectureName(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="lectureDate">Хичээлийн огноо</Label>
-              <Input
-                id="lectureDate"
-                type="date"
-                value={lectureDate}
-                onChange={(e) => setLectureDate(e.target.value)}
-              />
-            </div>
           </div>
 
           <div className="flex gap-3">
             <Button
               onClick={start}
-              disabled={!lectureName || !lectureDate || loading}
+              disabled={!lectureName || loading}
               className="flex items-center gap-2 bg-slate-700 hover:bg-slate-800 text-white"
             >
               <Play className="w-4 h-4" />
-              {loading ? "Болно..." : "QR үүсгэх"}
+              {loading ? "Хүлээнэ үү..." : "QR үүсгэх"}
             </Button>
             <Button
               disabled={!running}
@@ -174,7 +163,7 @@ const stop = async () => {
       </Card>
 
       {/* QR Display Card */}
-      {running && lectureName && lectureDate && qrData && qrImage && (
+      {running && lectureName && qrData && qrImage && (
         <Card className="border-slate-200 bg-slate-50/50">
           <CardContent className="p-8">
             <div className="flex flex-col xl:flex-row items-center gap-8">
@@ -200,7 +189,6 @@ const stop = async () => {
                   <h3 className="text-xl font-semibold text-card-foreground">
                     {lectureName}
                   </h3>
-                  <p className="text-muted-foreground">{lectureDate}</p>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
