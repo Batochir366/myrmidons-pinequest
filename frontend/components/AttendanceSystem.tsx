@@ -34,10 +34,10 @@ const AttendanceSystem: React.FC = () => {
 
   const token = String(searchParams.get("token"));
   const expiresAt = Number(searchParams.get("expiresAt"));
-  const attendanceId = String(searchParams.get("attendanceId")); // Get attendanceId from URL
+  const attendanceId = String(searchParams.get("attendanceId"));
   const now = Date.now();
 
-  if (!token || (!expiresAt && now > expiresAt)) {
+  if (!token || !expiresAt || now > expiresAt) {
     return <QRError />;
   }
 

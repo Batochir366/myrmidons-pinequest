@@ -19,10 +19,7 @@ teacherRouter
   .post("/create-attendance", createAttendance)
   .get("/attendance/:attendanceId/students", getAttendingStudents)
   .get("/classroom/:classroomId/current-attendance", getCurrentAttendance)
-  .get(
-    "/classroom/:classroomId/attendance-history",
-    getClassroomAttendanceHistory
-  )
+  .get("/attendance-history/:classroomId", getClassroomAttendanceHistory)
   .get("/classroom/:classroomId/attendance-stats", getAttendanceStats);
 
 export default teacherRouter;
