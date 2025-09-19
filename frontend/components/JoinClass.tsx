@@ -58,6 +58,7 @@ const JoinClassPage = () => {
       setLectureName(decoded.lectureName || "Хичээлийн нэр олдсонгүй");
       setTeacherName(decoded.teacherName || "Багшийн нэр олдсонгүй");
       setClassroomId(decoded.classroomId);
+      console.log("Decoded token:", decoded);
     } catch (error) {
       setLectureName("Токен буруу байна");
       setTeacherName("Токен буруу байна");

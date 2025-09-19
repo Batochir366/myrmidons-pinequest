@@ -103,7 +103,7 @@ export const joinClassroom = async (req, res) => {
     }
 
     // Find the student by studentId
-    const student = await UserModel.findById(studentId);
+    const student = await UserModel.findOne({ studentId });
     if (!student) {
       return res.status(404).json({ message: "Сурагч олдсонгүй" });
     }

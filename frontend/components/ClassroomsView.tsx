@@ -25,6 +25,7 @@ export const ClassroomsView = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const teacherId = localStorage.getItem("teacherId");
+  console.log(teacherId);
 
   const fetchClassrooms = async () => {
     if (!teacherId) return;
@@ -32,7 +33,7 @@ export const ClassroomsView = () => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `https://myrmidons-pinequest-backend.vercel.app/teacher/${teacherId}/classes`
+        `https://myrmidons-pinequest-backend.vercel.app/teacher/classrooms/${teacherId}`
       );
       setClassrooms(res.data.classrooms);
     } catch (error) {
