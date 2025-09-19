@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Eye,
 } from "lucide-react";
-import { useSearchParams } from "next/navigation";
 import { QRError } from "@/components/QRerror";
 import {
   captureAndVerify,
@@ -30,15 +29,47 @@ const AttendanceSystem: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const searchParams = useSearchParams();
+  const [token, setToken] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [attendanceId, setAttendanceId] = useState<string | null>(null);
+  const [isInvalid, setIsInvalid] = useState(false);
+  const [paramsLoaded, setParamsLoaded] = useState(false);
 
-  const token = String(searchParams.get("token"));
-  const expiresAt = Number(searchParams.get("expiresAt"));
-  const attendanceId = String(searchParams.get("attendanceId"));
-  const now = Date.now();
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-  if (!token || !expiresAt || now > expiresAt) {
+    const sp = new URLSearchParams(window.location.search);
+
+    const tokenValue = sp.get("token");
+    const expiresAtValue = sp.get("expiresAt");
+    const attendanceIdValue = sp.get("attendanceId");
+
+    const now = Date.now();
+
+    if (
+      !tokenValue ||
+      !expiresAtValue ||
+      now > Number(expiresAtValue) ||
+      !attendanceIdValue
+    ) {
+      setIsInvalid(true);
+    } else {
+      setToken(tokenValue);
+      setExpiresAt(Number(expiresAtValue));
+      setAttendanceId(attendanceIdValue);
+    }
+
+    setParamsLoaded(true);
+  }, []);
+  if (isInvalid) {
     return <QRError />;
+  }
+  if (!paramsLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Түр хүлээнэ үү...</p>
+      </div>
+    );
   }
 
   if (!attendanceId) {

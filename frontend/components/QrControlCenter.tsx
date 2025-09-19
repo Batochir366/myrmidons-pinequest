@@ -54,7 +54,7 @@ export function QRControlCenter() {
         if (!teacherId) return;
 
         const res = await axios.get(
-          `https://myrmidons-pinequest-backend.vercel.app/teacher/${teacherId}/classrooms`
+          `https://myrmidons-pinequest-backend.vercel.app/teacher/${teacherId}/classes`
         );
 
         setClassrooms(res.data.classrooms || []);
@@ -69,32 +69,32 @@ export function QRControlCenter() {
     }
   }, [teacherId]);
 
-  // Poll for real-time attendance updates
-  const pollAttendanceData = async (attendanceId: string) => {
-    try {
-      const res = await axios.get(
-        `https://myrmidons-pinequest-backend.vercel.app/teacher/attendance/${attendanceId}/students`
-      );
+  // // Poll for real-time attendance updates
+  // const pollAttendanceData = async (attendanceId: string) => {
+  //   try {
+  //     const res = await axios.get(
+  //       `https://myrmidons-pinequest-backend.vercel.app/teacher/attendance/${attendanceId}/students`
+  //     );
 
-      if (res.data.attendance?.attendingStudents) {
-        const attendingStudents = res.data.attendance.attendingStudents;
+  //     if (res.data.attendance?.attendingStudents) {
+  //       const attendingStudents = res.data.attendance.attendingStudents;
 
-        // Format students with proper timestamps
-        const formattedStudents: Student[] = attendingStudents.map(
-          (student: any) => ({
-            _id: student._id,
-            studentName: student.studentName,
-            studentId: student.studentId,
-            time: new Date().toISOString(), // Use current time as attendance time
-          })
-        );
+  //       // Format students with proper timestamps
+  //       const formattedStudents: Student[] = attendingStudents.map(
+  //         (student: any) => ({
+  //           _id: student._id,
+  //           studentName: student.studentName,
+  //           studentId: student.studentId,
+  //           time: new Date().toISOString(), // Use current time as attendance time
+  //         })
+  //       );
 
-        setStudents(formattedStudents);
-      }
-    } catch (error) {
-      console.error("Error polling attendance data:", error);
-    }
-  };
+  //       setStudents(formattedStudents);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error polling attendance data:", error);
+  //   }
+  // };
 
   const generateJoinLinkQr = (link: string) => {
     QRCode.toDataURL(link, { width: 128 }, (err, dataUrl) => {
@@ -185,10 +185,10 @@ export function QRControlCenter() {
         });
       }, 1000);
 
-      // Start polling for real attendance data every 2 seconds
-      pollRef.current = window.setInterval(() => {
-        pollAttendanceData(_id);
-      }, 2000);
+      // // Start polling for real attendance data every 2 seconds
+      // pollRef.current = window.setInterval(() => {
+      //   pollAttendanceData(_id);
+      // }, 2000);
     } catch (error) {
       console.error("Error creating attendance:", error);
       alert("Ирц үүсгэхэд алдаа гарлаа");

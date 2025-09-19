@@ -1,23 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Calendar,
-  Users,
-  QrCode,
-  History,
-  Menu,
-  PlusCircle,
-} from "lucide-react";
+import { Users, QrCode, History, Menu } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sidebar,
