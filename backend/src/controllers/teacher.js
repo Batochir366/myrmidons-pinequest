@@ -67,7 +67,7 @@ export const getClassroomsByTeacherId = async (req, res) => {
       return res.status(400).json({ message: "teacherId is required" });
     }
 
-    const classrooms = await ClassroomModel.findById(teacherId);
+    const classrooms = await TeacherModel.findById(teacherId);
 
     return res.status(200).json({ classrooms });
   } catch (error) {
