@@ -188,8 +188,8 @@ def health():
 
 @app.route('/student/attend', methods=['POST', 'OPTIONS'])
 def attend_class():
-     if request.method == 'OPTIONS':
-          return '', 204
+    if request.method == 'OPTIONS':
+        return '', 204
     try:
         data = request.get_json()
         studentId = data.get('studentId')
@@ -253,8 +253,8 @@ def attend_class():
 
 @app.route('/student/join', methods=['POST', 'OPTIONS'])
 def join_class():
-     if request.method == 'OPTIONS':
-          return '', 204
+    if request.method == 'OPTIONS':
+        return '', 204
     try:
         data = request.get_json()
         studentId = data.get('studentId')
@@ -342,7 +342,7 @@ def join_class():
 @app.route('/student/register', methods=['POST', 'OPTIONS'])
 def register():
     if request.method == 'OPTIONS':
-          return '', 204
+        return '', 204
     try:
         print("Register endpoint called")
         if not FACE_RECOGNITION_AVAILABLE:
@@ -467,8 +467,8 @@ def register():
     
 @app.route('/teacher/register', methods=['POST','OPTIONS'])
 def register_teacher():
-     if request.method == 'OPTIONS':
-          return '', 204
+    if request.method == 'OPTIONS':
+        return '', 204
     try:
         data = request.get_json(force=True, silent=True)
         teacherName = data.get("teacherName")
@@ -541,10 +541,10 @@ def register_teacher():
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-@app.route('/teacher/login', methods=['POST''OPTIONS'])
+@app.route('/teacher/login', methods=['POST', 'OPTIONS'])
 def login_teacher():
-      if request.method == 'OPTIONS':
-          return '', 204
+    if request.method == 'OPTIONS':
+        return '', 204
     try:
         data = request.get_json()
         teacherName = data.get("teacherName")
@@ -590,6 +590,5 @@ def login_teacher():
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
