@@ -30,26 +30,161 @@ import {
 } from "@/components/ui/sidebar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { QRControlCenter } from "@/components/QrControlCenter";
-// import { AttendanceHistory } from "@/components/Lecture-report";
-
 import { AttendanceHistory } from "@/components/AttendanceHistory";
 import { ClassroomsView } from "@/components/ClassroomsView";
 
+interface Student {
+  _id: string;
+  studentId: string;
+  studentName: string;
+  timestamp?: string;
+}
+
+interface DashboardStats {
+  totalStudents: number;
+  totalClassrooms: number;
+  averageAttendanceRate: number;
+}
+
+interface RecentAttendance {
+  _id: string;
+  attendingStudents: Student[];
+  createdAt: string;
+  classroom: {
+    lectureName: string;
+  };
+}
+
 export default function AttendanceDashboard() {
-  const sampleStudents = [] as any;
+  const [recentStudents, setRecentStudents] = useState<Student[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    totalStudents: 0,
+    totalClassrooms: 0,
+    averageAttendanceRate: 0,
+  });
   const [activeView, setActiveView] = useState("attendance");
   const [teacherName, setTeacherName] = useState("");
   const [teacherImage, setTeacherImage] = useState("");
+  const [teacherId, setTeacherId] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const storedName = localStorage.getItem("teacherName");
     const storedImage = localStorage.getItem("teacherImage");
+    const storedId = localStorage.getItem("teacherId");
 
     if (storedName) {
       setTeacherName(storedName);
       setTeacherImage(storedImage || "");
+      setTeacherId(storedId || "");
     }
   }, []);
+
+  // Fetch dashboard data
+  useEffect(() => {
+    if (teacherId) {
+      fetchDashboardData();
+    }
+  }, [teacherId]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch classrooms for this teacher
+      const classroomsRes = await fetch(
+        `https://myrmidons-pinequest-backend.vercel.app/teacher/${teacherId}/classes`
+      );
+      const classroomsData = await classroomsRes.json();
+      const classrooms = classroomsData.classrooms || [];
+
+      // Calculate total students across all classrooms
+      let totalStudents = 0;
+      let recentAttendanceList: Student[] = [];
+      let totalAttendanceSessions = 0;
+      let totalAttendingStudents = 0;
+
+      // Fetch attendance data for each classroom
+      for (const classroom of classrooms) {
+        totalStudents += classroom.ClassroomStudents?.length || 0;
+
+        // Fetch recent attendance for this classroom
+        try {
+          const attendanceRes = await fetch(
+            `https://myrmidons-pinequest-backend.vercel.app/classroom/${classroom._id}/attendance-history`
+          );
+          const attendanceData = await attendanceRes.json();
+
+          if (attendanceData.classroom?.attendanceHistory) {
+            const sessions = attendanceData.classroom.attendanceHistory;
+            totalAttendanceSessions += sessions.length;
+
+            // Get recent students from latest sessions
+            const recentSessions = sessions
+              .sort(
+                (a: any, b: any) =>
+                  new Date(b.date).getTime() - new Date(a.date).getTime()
+              )
+              .slice(0, 3);
+
+            for (const session of recentSessions) {
+              totalAttendingStudents += session.attendingStudents.length;
+              const studentsWithTimestamp = session.attendingStudents.map(
+                (student: Student) => ({
+                  ...student,
+                  timestamp: new Date(session.date).toLocaleTimeString(
+                    "mn-MN",
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }
+                  ),
+                  lectureName: classroom.lectureName,
+                })
+              );
+              recentAttendanceList.push(...studentsWithTimestamp);
+            }
+          }
+        } catch (error) {
+          console.error(
+            `Error fetching attendance for classroom ${classroom._id}:`,
+            error
+          );
+        }
+      }
+
+      // Calculate average attendance rate
+      const averageAttendanceRate =
+        totalAttendanceSessions > 0
+          ? Math.round(
+              (totalAttendingStudents /
+                (totalStudents * totalAttendanceSessions)) *
+                100
+            )
+          : 0;
+
+      // Remove duplicates and limit to recent 10
+      const uniqueRecentStudents = recentAttendanceList
+        .filter(
+          (student, index, self) =>
+            index === self.findIndex((s) => s.studentId === student.studentId)
+        )
+        .slice(0, 10);
+
+      setDashboardStats({
+        totalStudents,
+        totalClassrooms: classrooms.length,
+        averageAttendanceRate,
+      });
+
+      setRecentStudents(uniqueRecentStudents);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const menuItems = [
     { id: "attendance", label: "Ирц бүртгэх", icon: QrCode },
     { id: "history", label: "Ирцийн түүх", icon: History },
@@ -87,10 +222,11 @@ export default function AttendanceDashboard() {
                 key={item.id}
                 onClick={() => setActiveView(item.id)}
                 variant={activeView === item.id ? "default" : "ghost"}
-                className={`w-full justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${activeView === item.id
-                  ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
-                  : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
-                  }`}
+                className={`w-full justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${
+                  activeView === item.id
+                    ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
+                    : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
+                }`}
               >
                 <item.icon className="w-5 h-5" />
                 {item.label}
@@ -117,10 +253,11 @@ export default function AttendanceDashboard() {
               onClick={() => setActiveView(item.id)}
               variant="ghost"
               size="icon"
-              className={`w-12 h-12 rounded-xl transition-all duration-200 ${activeView === item.id
-                ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
-                : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
-                }`}
+              className={`w-12 h-12 rounded-xl transition-all duration-200 ${
+                activeView === item.id
+                  ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
+                  : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
+              }`}
               title={item.label}
             >
               <item.icon className="w-5 h-5" />
@@ -144,7 +281,7 @@ export default function AttendanceDashboard() {
         return (
           <div className="w-full max-w-none">
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-              {/* Left Column - Timetable */}
+              {/* Left Column - Stats */}
               <div className="xl:col-span-3 space-y-6">
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -156,7 +293,7 @@ export default function AttendanceDashboard() {
                             Нийт сурагчид
                           </p>
                           <p className="text-2xl font-bold text-card-foreground">
-                            143
+                            {loading ? "..." : dashboardStats.totalStudents}
                           </p>
                         </div>
                         <Users className="w-8 h-8 text-slate-600" />
@@ -167,8 +304,11 @@ export default function AttendanceDashboard() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
+                          <p className="text-sm text-muted-foreground">
+                            Нийт ангиуд
+                          </p>
                           <p className="text-2xl font-bold text-card-foreground">
-                            133
+                            {loading ? "..." : dashboardStats.totalClassrooms}
                           </p>
                         </div>
                         <Calendar className="w-8 h-8 text-green-500" />
@@ -179,8 +319,13 @@ export default function AttendanceDashboard() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
+                          <p className="text-sm text-muted-foreground">
+                            Дундаж ирц
+                          </p>
                           <p className="text-2xl font-bold text-card-foreground">
-                            93%
+                            {loading
+                              ? "..."
+                              : `${dashboardStats.averageAttendanceRate}%`}
                           </p>
                         </div>
                         <QrCode className="w-8 h-8 text-slate-600" />
@@ -200,32 +345,41 @@ export default function AttendanceDashboard() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {sampleStudents.map((student: any) => (
-                      <div
-                        key={student.id}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage
-                            src={student.photo || "/placeholder.svg"}
-                          />
-                          <AvatarFallback>{student.name}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-card-foreground truncate">
-                            {student.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {student.code}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">
-                            {student.timestamp}
-                          </p>
-                        </div>
+                    {loading ? (
+                      <div className="text-center text-muted-foreground">
+                        Ачааллаж байна...
                       </div>
-                    ))}
+                    ) : recentStudents.length === 0 ? (
+                      <div className="text-center text-muted-foreground">
+                        Ирцийн мэдээлэл байхгүй
+                      </div>
+                    ) : (
+                      recentStudents.map((student) => (
+                        <div
+                          key={`${student.studentId}-${student.timestamp}`}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <Avatar className="w-10 h-10">
+                            <AvatarFallback>
+                              {student.studentName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-card-foreground truncate">
+                              {student.studentName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {student.studentId}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">
+                              {student.timestamp}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
 
@@ -244,10 +398,19 @@ export default function AttendanceDashboard() {
                     <Button
                       variant="outline"
                       className="w-full justify-start gap-2 bg-transparent"
-                      onClick={() => setActiveView("students")}
+                      onClick={() => setActiveView("classrooms")}
                     >
                       <Users className="w-4 h-4" />
-                      Сурагчдыг удирдах
+                      Ангиудыг удирдах
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2 bg-transparent"
+                      onClick={fetchDashboardData}
+                      disabled={loading}
+                    >
+                      <Calendar className="w-4 h-4" />
+                      Мэдээлэл шинэчлэх
                     </Button>
                   </CardContent>
                 </Card>
@@ -283,18 +446,19 @@ export default function AttendanceDashboard() {
                 <SidebarMenuItem key={item.id}>
                   <button
                     onClick={() => setActiveView(item.id)}
-                    className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer border-0 ${activeView === item.id
-                      ? "!bg-slate-700 !text-white shadow-lg transform scale-105"
-                      : "bg-transparent hover:bg-slate-100 hover:text-slate-700 hover:shadow-md hover:transform hover:scale-102 text-slate-600"
-                      }`}
+                    className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer border-0 ${
+                      activeView === item.id
+                        ? "!bg-slate-700 !text-white shadow-lg transform scale-105"
+                        : "bg-transparent hover:bg-slate-100 hover:text-slate-700 hover:shadow-md hover:transform hover:scale-102 text-slate-600"
+                    }`}
                     style={
                       activeView === item.id
                         ? {
-                          backgroundColor: "rgb(51, 65, 85) !important",
-                          color: "white !important",
-                          background:
-                            "linear-gradient(to right, rgb(51, 65, 85), rgb(30, 41, 59)) !important",
-                        }
+                            backgroundColor: "rgb(51, 65, 85) !important",
+                            color: "white !important",
+                            background:
+                              "linear-gradient(to right, rgb(51, 65, 85), rgb(30, 41, 59)) !important",
+                          }
                         : {}
                     }
                   >
