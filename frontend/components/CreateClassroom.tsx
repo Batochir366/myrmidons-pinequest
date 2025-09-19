@@ -24,7 +24,7 @@ export const CreateClassroomForm = ({ onSuccess }: Props) => {
     setIsLoading(true);
     try {
       const res = await axios.post(
-        "https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/teacher/create-classroom",
+        "https://myrmidons-pinequest-backend.vercel.app/teacher/create-classroom",
         { lectureName, teacherId },
         { headers: { "Content-Type": "application/json" } }
       );

@@ -17,7 +17,7 @@ CORS(app, supports_credentials=True, resources={
         "origins": [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
-            "https://myrmidons-pinequest-pyznrthos-batj2003-3877s-projects.vercel.app",  
+            "https://myrmidons-pinequest-frontend-delta.vercel.app",  
             "https://myrmidons-pinequest-production.up.railway.app"
         ]
     }

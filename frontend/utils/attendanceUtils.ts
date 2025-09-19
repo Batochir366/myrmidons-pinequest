@@ -89,7 +89,7 @@ export const recordAttendance = async (
   try {
     // First check if student is in the classroom
     const checkRes = await fetch(
-      `https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/student/check/${studentId}`,
+      `https://myrmidons-pinequest-backend.vercel.app/student/check/${studentId}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -103,7 +103,7 @@ export const recordAttendance = async (
 
     // Record attendance
     const attendanceRes = await fetch(
-      "https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/attendance",
+      "https://myrmidons-pinequest-backend.vercel.app/attendance",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -1,5 +1,5 @@
-import { AttendanceModel } from "../models/attendance.model";
-import { ClassroomModel } from "../models/classroom.model";
+import { AttendanceModel } from "../models/attendance.model.js";
+import { ClassroomModel } from "../models/classroom.model.js";
 
 export const getAttendanceById = async (req, res) => {
   try {
