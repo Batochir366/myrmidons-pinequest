@@ -70,10 +70,11 @@ import face_recognition
 FACE_RECOGNITION_AVAILABLE = True
 print("✅ Face recognition libraries loaded successfully")
 
-def recognize_face(frame):
+def recognize_face(frame, filter_student_ids=None):
     name = "unknown_person"
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     face_encodings = face_recognition.face_encodings(rgb_frame)
+    
     if not face_encodings:
         return "no_persons_found", None
 
@@ -81,16 +82,21 @@ def recognize_face(frame):
     best_match_user = None
     best_match_distance = 0.45
 
+    users = []
     if users_collection is not None:
         try:
-            users = list(users_collection.find())
+            if filter_student_ids:
+                users = list(users_collection.find({
+                    "studentId": { "$in": filter_student_ids }
+                }))
+            else:
+                users = list(users_collection.find())
         except Exception as e:
             print(f"Database error during user fetch: {e}")
-            users = []
     else:
-        users = []
+        print("User collection not available")
 
-    # Compare with all users in database
+    # Compare input face encoding with each user's stored encoding
     for user in users:
         try:
             stored_encoding = np.array(user['embedding'])
@@ -103,6 +109,9 @@ def recognize_face(frame):
         except Exception as e:
             print(f"Error processing user {user.get('name', 'unknown')}: {e}")
             continue
+
+    if best_match_user is None:
+        return "unknown_person", None
 
     return name, best_match_user
 
@@ -144,6 +153,22 @@ def recognize_teacher_face(frame):
 
     return name, best_match_teacher
 
+def is_spoof(image):
+    """
+    Run the anti-spoofing test on the given image.
+    Returns True if the image is genuine (not spoofed), False otherwise.
+    """
+    try:
+        label = test(
+            image=image,
+            model_dir="Silent_Face_Anti_Spoofing/resources/anti_spoof_models",
+            device_id=0
+        )
+        return label == 1
+    except Exception as e:
+        print("Anti-spoofing test failed:", e)
+        return False
+
 @app.route('/')
 def index():
     return jsonify({
@@ -160,8 +185,71 @@ def health():
         "database": "connected" if mongo_client else "disconnected"
     })
 
-@app.route('/login', methods=['POST'])
-def login():
+@app.route('/student/attend', methods=['POST'])
+def attend_class():
+    try:
+        data = request.get_json()
+        studentId = data.get('studentId')
+        image_base64 = data.get('image_base64')
+        classroom_students = data.get('classroom_students')  # List of studentIds
+
+        if not studentId or not image_base64 or not classroom_students:
+            return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+        if studentId not in classroom_students:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Student is not part of this classroom"
+            }), 403
+
+        # Decode the base64 image
+        try:
+            header, encoded = image_base64.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        except Exception:
+            return jsonify({"success": False, "message": "Invalid image encoding"}), 400
+
+        if frame is None:
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+
+        if not is_spoof(frame):
+            return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
+        # Perform face recognition, filtered to classroom students
+        name, matched_user = recognize_face(frame, filter_student_ids=classroom_students)
+
+        if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Face not recognized"
+            }), 401
+
+        if matched_user['studentId'] != studentId:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Face does not match provided student ID"
+            }), 403
+
+        # Return success
+        return jsonify({
+            "success": True,
+            "verified": True,
+            "studentId": matched_user['studentId'],
+            "name": matched_user['name'],
+            "message": f"Welcome, {matched_user['name']}!"
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
+
+
+@app.route('/student/join', methods=['POST'])
+def join_class():
     try:
         data = request.get_json()
         studentId = data.get('studentId')
@@ -170,113 +258,83 @@ def login():
         if not studentId or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        header, encoded = image_base64.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        # Decode base64 image
+        try:
+            header, encoded = image_base64.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        except Exception:
+            return jsonify({"success": False, "message": "Invalid image encoding"}), 400
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
+        if not is_spoof(frame):
+            return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
+        # Run recognition against all users
         name, matched_user = recognize_face(frame)
+
         if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
             return jsonify({
-                "success": False, 
+                "success": False,
                 "verified": False,
-                "message": "Unknown user or face recognition disabled. Please register or contact administrator."
+                "message": "Face not recognized"
             }), 401
 
         if matched_user['studentId'] != studentId:
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Student ID does not match the recognized face"
+                "message": "Face does not match the provided student ID"
             }), 403
 
-        # Only log if database is available
-        if logs_collection is not None:
+        # Check if student has already joined
+        if logs_collection:
             try:
-                log_entry = {
+                existing = logs_collection.find_one({
+                    "studentId": studentId,
+                    "action": "joined"
+                })
+
+                if existing:
+                    return jsonify({
+                        "success": True,
+                        "alreadyJoined": True,
+                        "studentId": matched_user['studentId'],
+                        "name": matched_user['name'],
+                        "message": f"{matched_user['name']} has already joined the classroom"
+                    })
+                
+                # Log the join action
+                logs_collection.insert_one({
                     "studentId": matched_user['studentId'],
                     "name": matched_user['name'],
                     "timestamp": datetime.datetime.now(),
-                    "action": "in"
-                }
-                logs_collection.insert_one(log_entry)
+                    "action": "joined"
+                })
+
             except Exception as e:
-                print(f"Failed to log entry: {e}")
+                print(f"Error checking or logging join: {e}")
+                return jsonify({
+                    "success": False,
+                    "message": "Database error while processing join"
+                }), 500
 
         return jsonify({
             "success": True,
             "verified": True,
             "studentId": matched_user['studentId'],
             "name": matched_user['name'],
-            "message": f"Welcome back, {matched_user['name']}!"
+            "message": f"{matched_user['name']} has successfully joined the classroom"
         })
 
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-@app.route('/logout', methods=['POST'])
-def logout():
-    try:
-        data = request.get_json()
-        studentId = data.get('studentId')
-        image_base64 = data.get('image_base64')
 
-        if not studentId or not image_base64:
-            return jsonify({"success": False, "message": "Missing required fields"}), 400
-
-        header, encoded = image_base64.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-        if frame is None:
-            return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
-        name, matched_user = recognize_face(frame)
-        if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
-            return jsonify({
-                "success": False, 
-                "verified": False,
-                "message": "Unknown user or face recognition disabled. Please register or contact administrator."
-            }), 401
-
-        if matched_user['studentId'] != studentId:
-            return jsonify({
-                "success": False,
-                "verified": False,
-                "message": "Student ID does not match the recognized face"
-            }), 403
-
-        # Only log if database is available
-        if logs_collection is not None:
-            try:
-                log_entry = {
-                    "studentId": matched_user['studentId'],
-                    "name": matched_user['name'],
-                    "timestamp": datetime.datetime.now(),
-                    "action": "out"
-                }
-                logs_collection.insert_one(log_entry)
-            except Exception as e:
-                print(f"Failed to log entry: {e}")
-
-        return jsonify({
-            "success": True,
-            "verified": True,
-            "studentId": matched_user['studentId'],
-            "name": matched_user['name'],
-            "message": f"Goodbye, {matched_user['name']}!"
-        })
-
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal Server Error"}), 500
-
-@app.route('/register', methods=['POST'])
+@app.route('/student/register', methods=['POST'])
 def register():
     try:
         print("Register endpoint called")
@@ -329,7 +387,9 @@ def register():
             print("Failed to decode image into frame")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Extract face encoding
+        if not is_spoof(frame):
+            return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
+ 
         try:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             face_encodings = face_recognition.face_encodings(rgb_frame)
@@ -422,7 +482,8 @@ def register_teacher():
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
+        if not is_spoof(frame):
+            return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         face_encodings = face_recognition.face_encodings(rgb_frame)
 
@@ -488,7 +549,8 @@ def login_teacher():
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
+        if not is_spoof(frame):
+            return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
         name, matched_teacher = recognize_teacher_face(frame)
 
         if name in ['unknown_teacher', 'no_persons_found']:
