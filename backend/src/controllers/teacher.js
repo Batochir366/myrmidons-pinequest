@@ -37,7 +37,7 @@ export const createClassroom = async (req, res) => {
 
     const token = jwt.sign(tokenPayload, SECRET_KEY, { expiresIn: "30d" });
 
-    const joinLink = `https://myrmidons-pinequest-frontend.vercel.app/join?token=${token}`;
+    const joinLink = `https://myrmidons-pinequest-pyznrthos-batj2003-3877s-projects.vercel.app/join?token=${token}`;
 
     savedClassroom.joinLink = joinLink;
     await savedClassroom.save();

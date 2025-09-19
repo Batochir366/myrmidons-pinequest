@@ -17,7 +17,7 @@ export default function ScanClient() {
 
     async function verify() {
       const res = await fetch(
-        `https://myrmidons-pinequest-backend.vercel.app/scan?token=${token}&expiresAt=${expiresAt}`
+        `https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/scan?token=${token}&expiresAt=${expiresAt}`
       );
       const data = await res.json();
 
