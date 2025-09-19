@@ -58,18 +58,62 @@ export const createClassroom = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
-
 export const getClassroomsByTeacherId = async (req, res) => {
   try {
     const { teacherId } = req.params;
+    const { date } = req.body; // one date only
 
     if (!teacherId) {
       return res.status(400).json({ message: "teacherId is required" });
     }
 
-    const classrooms = await ClassroomModel.find({ teacher: teacherId });
+    // Build query
+    const query = { teacher: teacherId };
 
-    return res.status(200).json({ classrooms });
+    if (date) {
+      const day = new Date(date);
+      const startOfDay = new Date(day.setHours(0, 0, 0, 0));
+      const endOfDay = new Date(day.setHours(23, 59, 59, 999));
+      query.createdAt = { $gte: startOfDay, $lte: endOfDay };
+    }
+
+    const classrooms = await ClassroomModel.find(query)
+      .populate({
+        path: "attendanceHistory",
+        model: "Attendance",
+        populate: {
+          path: "attendingStudents.student", // ✅ populate the student field inside subdocument
+          model: "User",
+          select: "studentId name", // select whatever fields you want
+        },
+      })
+      .populate("ClassroomStudents", "studentId name")
+      .populate("lectureName");
+
+    // Format output
+    const formattedClassrooms = classrooms.map((classroom) => ({
+      _id: classroom._id,
+      lectureName: classroom.lectureName,
+      teacher: classroom.teacher,
+      ClassroomStudents: classroom.ClassroomStudents,
+      joinLink: classroom.joinLink,
+      createdAt: classroom.createdAt,
+      updatedAt: classroom.updatedAt,
+      attendanceHistory: classroom.attendanceHistory.map((attendance) => ({
+        _id: attendance._id,
+        date: attendance.createdAt,
+        endedAt: attendance.endedAt,
+        isActive: !attendance.endedAt,
+        attendingStudents: attendance.attendingStudents.map((s) => ({
+          _id: s._id,
+          attendedAt: s.attendedAt,
+          student: s.student, // this will now include full User info
+        })),
+        totalAttending: attendance.attendingStudents.length,
+      })),
+    }));
+
+    return res.status(200).json({ classrooms: formattedClassrooms });
   } catch (error) {
     console.error("❌ getClassroomsByTeacherId error:", error);
     return res
