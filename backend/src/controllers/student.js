@@ -1,5 +1,6 @@
 import { AttendanceModel } from "../models/attendance.model.js";
 import { ClassroomModel } from "../models/classroom.model.js";
+import { UserModel } from "../models/user.model.js";
 
 export const addStudentToAttendance = async (req, res) => {
   try {
@@ -29,17 +30,21 @@ export const addStudentToAttendance = async (req, res) => {
 };
 export const joinClassroom = async (req, res) => {
   try {
-    const { classroomId } = req.params; 
-    const { studentId } = req.body;     
+    const { classroomId } = req.params;
+    const { studentId } = req.body;
 
     if (!classroomId || !studentId) {
-      return res.status(400).json({ message: "classroomId болон studentId шаардлагатай" });
+      return res
+        .status(400)
+        .json({ message: "classroomId болон studentId шаардлагатай" });
     }
-
-    // Add studentId to ClassroomStudents array if not already there
+    const student = await UserModel.findOne({ studentId: studentId });
+    if (!student) {
+      return res.status(404).json({ message: "Сурагч олдсонгүй" });
+    }
     const updatedClassroom = await ClassroomModel.findByIdAndUpdate(
       classroomId,
-      { $addToSet: { ClassroomStudents: studentId } }, // $addToSet prevents duplicates
+      { $addToSet: { ClassroomStudents: student._id } },
       { new: true }
     );
 
@@ -49,10 +54,12 @@ export const joinClassroom = async (req, res) => {
 
     return res.status(200).json({
       message: "Сурагч ангид амжилттай нэгдлээ",
-      classroom: updatedClassroom
+      classroom: updatedClassroom,
     });
   } catch (error) {
     console.error("❌ joinClassroom error:", error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
