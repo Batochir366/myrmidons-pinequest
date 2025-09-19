@@ -1,65 +1,77 @@
 "use client";
+export const dynamic = "force-dynamic";
+
 import React, { useState, useEffect, useRef } from "react";
-import { GraduationCap, Users, Calendar, Check, Camera } from "lucide-react";
+import { GraduationCap, Calendar, Check, Camera } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import {
-  startCamera,
-  stopCamera,
   captureAndVerify,
   simulateRecognition,
+  startCamera,
+  stopCamera,
 } from "@/utils/attendanceUtils";
-import { useSearchParams } from "next/navigation";
 import { Toaster, toast } from "sonner";
-import { CheckCircle, ArrowRight, Users } from "lucide-react";
+
+interface TokenPayload {
+  classroomId: string;
+  lectureName: string;
+  teacherName: string;
+  iat?: number;
+  exp?: number;
+}
 
 const JoinClassPage = () => {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  const [studentId, setStudentId] = useState("");
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [classroomId, setClassroomId] = useState("");
-  const [lectureName, setLectureName] = useState("");
-  const [teacherName, setTeacherName] = useState("");
-  const [message, setMessage] = useState("");
-  const [recognitionProgress, setRecognitionProgress] = useState(0);
-  const [isRecognizing, setIsRecognizing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [lectureName, setLectureName] = useState("...");
+  const [teacherName, setTeacherName] = useState("...");
+  const [classroomId, setClassroomId] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [message, setMessage] = useState("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
   const [step, setStep] = useState<1 | 2>(1);
+  const [isFaceVerified, setIsFaceVerified] = useState(false);
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [recognitionProgress, setRecognitionProgress] = useState(0);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setLectureName("Токен олдсонгүй");
+      setTeacherName("Токен олдсонгүй");
+      return;
+    }
 
     try {
-      const decoded = jwtDecode<{
-        classroomId: string;
-        lectureName: string;
-        teacherName: string;
-      }>(token);
-
+      const decoded = jwtDecode<TokenPayload>(token);
+      setLectureName(decoded.lectureName || "Хичээлийн нэр олдсонгүй");
+      setTeacherName(decoded.teacherName || "Багшийн нэр олдсонгүй");
       setClassroomId(decoded.classroomId);
-      setLectureName(decoded.lectureName);
-      setTeacherName(decoded.teacherName);
-    } catch (err) {
-      setMessage("Токен алдаатай байна.");
+    } catch (error) {
+      setLectureName("Токен буруу байна");
+      setTeacherName("Токен буруу байна");
+      console.error("JWT decode error:", error);
     }
   }, [token]);
 
-  useEffect(() => {
-    if (step === 2) {
-      startCamera(videoRef, setMessage, streamRef);
-    } else {
-      stopCamera(streamRef);
+  const handleVerifyFace = async () => {
+    if (!studentId.trim()) {
+      setMessage("Оюутны ID шаардлагатай.");
+      return;
     }
-  }, [step]);
 
-  const handleFaceRecognition = async () => {
-    simulateRecognition(setIsRecognizing, setRecognitionProgress, async () => {
+    setIsLoading(true);
+    setMessage("");
+
+    await startCamera(videoRef, setMessage, streamRef);
+
+    const onVerificationComplete = async () => {
       const verified = await captureAndVerify(
         videoRef,
         canvasRef,
@@ -70,15 +82,25 @@ const JoinClassPage = () => {
       );
 
       if (verified) {
-        setStep(3);
-      } else {
-        setMessage("Царай танигдсангүй.");
+        setMessage("🎉 Царай амжилттай танигдлаа.");
+        setIsFaceVerified(true);
       }
-    });
+
+      stopCamera(streamRef);
+      setIsLoading(false);
+    };
+
+    simulateRecognition(
+      setIsRecognizing,
+      setRecognitionProgress,
+      onVerificationComplete
+    );
   };
 
   const handleJoinClass = async () => {
     setIsLoading(true);
+    setMessage("");
+
     try {
       const res = await fetch(
         `https://myrmidons-pinequest-backend.vercel.app/student/join/${classroomId}`,
@@ -90,13 +112,22 @@ const JoinClassPage = () => {
       );
 
       const data = await res.json();
+
       if (res.ok) {
-        toast.success("Хичээлд амжилттай нэгдлээ!");
+        toast.custom(() => (
+          <div className="w-[400px] p-4 rounded-xl shadow-lg bg-[#18181b] text-white flex items-center gap-4 transition-all">
+            <Check className="size-4 text-white" />
+            <span className="text-[16px] font-medium text-[#FAFAFA]">
+              Хичээлд амжилттай нэгдлээ!
+            </span>
+          </div>
+        ));
       } else {
         setMessage(data.message || "Алдаа гарлаа.");
       }
     } catch (error) {
-      setMessage("Сүлжээний алдаа.");
+      console.error("❌ Error joining classroom:", error);
+      setMessage("Сүлжээний алдаа. Дахин оролдоно уу.");
     } finally {
       setIsLoading(false);
     }
