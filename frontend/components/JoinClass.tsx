@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 
 import React, { useState, useEffect, useRef } from "react";
-import { GraduationCap, Calendar, Check, Camera } from "lucide-react";
+import { User, Camera, CheckCircle, ArrowRight, Eye } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import {
@@ -41,6 +41,11 @@ const JoinClassPage = () => {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [recognitionProgress, setRecognitionProgress] = useState(0);
 
+  const steps = [
+    { id: 1, label: "Оюутны ID", icon: User },
+    { id: 2, label: "Царай таних", icon: Camera },
+  ];
+
   useEffect(() => {
     if (!token) {
       setLectureName("Токен олдсонгүй");
@@ -60,41 +65,40 @@ const JoinClassPage = () => {
     }
   }, [token]);
 
-  const handleVerifyFace = async () => {
-    if (!studentId.trim()) {
-      setMessage("Оюутны ID шаардлагатай.");
-      return;
+  useEffect(() => {
+    if (step === 2) {
+      startCamera(videoRef, setMessage, streamRef);
     }
 
-    setIsLoading(true);
-    setMessage("");
-
-    await startCamera(videoRef, setMessage, streamRef);
-
-    const onVerificationComplete = async () => {
-      const verified = await captureAndVerify(
-        videoRef,
-        canvasRef,
-        studentId,
-        setMessage,
-        setIsRecognizing,
-        setRecognitionProgress
-      );
-
-      if (verified) {
-        setMessage("🎉 Царай амжилттай танигдлаа.");
-        setIsFaceVerified(true);
-      }
-
+    return () => {
       stopCamera(streamRef);
-      setIsLoading(false);
+    };
+  }, [step]);
+
+  const handleRecognitionComplete = async () => {
+    const onSuccess = (name?: string) => {
+      setMessage(
+        `🎉 Сайн байна уу, ${name || "Оюутан"}! Царай амжилттай танигдлаа.`
+      );
+      setIsFaceVerified(true);
+      stopCamera(streamRef);
     };
 
-    simulateRecognition(
+    const verified = await captureAndVerify(
+      videoRef,
+      canvasRef,
+      studentId,
+      setMessage,
       setIsRecognizing,
       setRecognitionProgress,
-      onVerificationComplete
+      onSuccess
     );
+
+    if (!verified) {
+      // Reset recognition state if verification failed
+      setIsRecognizing(false);
+      setRecognitionProgress(0);
+    }
   };
 
   const handleJoinClass = async () => {
@@ -116,7 +120,7 @@ const JoinClassPage = () => {
       if (res.ok) {
         toast.custom(() => (
           <div className="w-[400px] p-4 rounded-xl shadow-lg bg-[#18181b] text-white flex items-center gap-4 transition-all">
-            <Check className="size-4 text-white" />
+            <CheckCircle className="size-4 text-white" />
             <span className="text-[16px] font-medium text-[#FAFAFA]">
               Хичээлд амжилттай нэгдлээ!
             </span>
@@ -134,131 +138,204 @@ const JoinClassPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-6">
-      {/* Progress Bar */}
-      <div className="flex space-x-6 mb-8">
-        {[1, 2].map((num) => (
-          <div key={num} className="flex flex-col items-center">
-            <div
-              className={`w-12 h-12 flex items-center justify-center rounded-full text-white font-bold ${
-                step === num ? "bg-blue-600" : "bg-gray-300"
-              }`}
-            >
-              {num}
-            </div>
-            <span className="text-sm mt-2 text-gray-700">
-              {num === 1 ? "Хичээл мэдээлэл" : "Нэвтрэх"}
-            </span>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Progress Indicator */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-2xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between mb-4">
+            {steps.map((stepItem) => {
+              const Icon = stepItem.icon;
+              const isActive = step === stepItem.id;
+              const isCompleted = step > stepItem.id;
+
+              return (
+                <div key={stepItem.id} className="flex flex-col items-center">
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${
+                      isActive || isCompleted
+                        ? "bg-slate-700 text-white"
+                        : "bg-gray-200 text-gray-400"
+                    }`}
+                  >
+                    <Icon size={20} />
+                  </div>
+                  <span
+                    className={`text-sm font-medium ${
+                      isActive || isCompleted
+                        ? "text-slate-700"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {stepItem.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-        ))}
+
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-slate-700 h-2 rounded-full transition-all duration-500"
+              style={{
+                width: step === 1 ? "50%" : "100%",
+              }}
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Step 1: Show teacher & lecture info */}
-      {step === 1 && (
-        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md space-y-6">
-          <h2 className="text-2xl font-semibold text-center">Хичээлд нэгдэх</h2>
-
-          <div className="flex items-center space-x-4">
-            <GraduationCap className="text-blue-600" size={32} />
-            <div>
-              <p className="text-gray-600 text-sm">Багш</p>
-              <p className="font-medium text-lg">
-                {teacherName || "Олдсонгүй"}
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        {/* Step 1: Student ID Entry + Class Info */}
+        {step === 1 && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Хичээлд нэгдэх
+              </h2>
+              <p className="text-gray-600">
+                Хичээлийн мэдээлэл болон оюутны ID-г оруулна уу
               </p>
             </div>
-          </div>
 
-          <div className="flex items-center space-x-4">
-            <Calendar className="text-green-600" size={32} />
-            <div>
-              <p className="text-gray-600 text-sm">Хичээлийн нэр</p>
-              <p className="font-medium text-lg">
-                {lectureName || "Олдсонгүй"}
-              </p>
+            {/* Class Information */}
+            <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                <span className="text-gray-600 font-medium">Багш:</span>
+                <span className="font-medium text-gray-900">{teacherName}</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-600 font-medium">Хичээл:</span>
+                <span className="font-medium text-gray-900">{lectureName}</span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Оюутны ID
+                </label>
+                <input
+                  type="text"
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  placeholder="24LP0000"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
+
+              <button
+                onClick={() => studentId.trim() && setStep(2)}
+                disabled={!studentId.trim()}
+                className="w-full bg-slate-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                Царай таних руу үргэлжлүүлэх
+                <ArrowRight size={18} />
+              </button>
             </div>
           </div>
+        )}
 
-          <button
-            className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
-            onClick={() => setStep(2)}
-          >
-            Үргэлжлүүлэх
-          </button>
-        </div>
-      )}
+        {/* Step 2: Face Recognition */}
+        {step === 2 && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Царай таних
+              </h2>
+              <p className="text-gray-600">Камерт шууд харна уу</p>
+            </div>
 
-      {/* Step 2: Student ID input + Face recognition */}
-      {step === 2 && (
-        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md space-y-6">
-          <h2 className="text-2xl font-semibold text-center mb-4">Нэвтрэх</h2>
+            {/* Camera Viewfinder */}
+            <div className="relative mb-6">
+              <div className="w-64 h-64 mx-auto relative">
+                <div className="absolute inset-0 rounded-full border-2 border-gray-200"></div>
+                <div className="absolute inset-2 rounded-full border border-gray-300"></div>
+                <div className="absolute inset-4 rounded-full border border-gray-400"></div>
 
-          <label className="block mb-1 font-medium text-gray-700">
-            Оюутны ID
-          </label>
-          <input
-            type="text"
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
-            placeholder="24LP0000"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition"
-          />
+                <div className="absolute inset-6 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                  {!streamRef.current && (
+                    <Camera size={48} className="text-gray-400" />
+                  )}
+                </div>
+              </div>
+            </div>
 
-          {/* Camera + face recognition */}
-          <div className="relative w-64 h-64 mx-auto rounded-full overflow-hidden border-4 border-gray-300">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
-            {!streamRef.current && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                <Camera size={48} className="text-gray-400" />
+            <canvas ref={canvasRef} className="hidden" />
+
+            {isRecognizing && (
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    Таних явц
+                  </span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {recognitionProgress}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-slate-700 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${recognitionProgress}%` }}
+                  />
+                </div>
               </div>
             )}
+
+            {isFaceVerified && (
+              <div className="flex items-center justify-center gap-2 text-green-600 mb-4">
+                <Eye size={18} />
+                <span className="font-medium">Таних амжилттай боллоо!</span>
+              </div>
+            )}
+
+            {message && (
+              <p
+                className={`text-sm text-center mb-4 ${
+                  message.startsWith("🎉") ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {message}
+              </p>
+            )}
+
+            {/* Action Buttons */}
+            {!isFaceVerified ? (
+              !isRecognizing && recognitionProgress === 0 ? (
+                <button
+                  onClick={() =>
+                    simulateRecognition(
+                      setIsRecognizing,
+                      setRecognitionProgress,
+                      handleRecognitionComplete
+                    )
+                  }
+                  className="w-full bg-slate-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-800 transition-colors"
+                >
+                  Царай таних
+                </button>
+              ) : null
+            ) : (
+              <button
+                onClick={handleJoinClass}
+                disabled={isLoading}
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {isLoading ? "Нэгдэж байна..." : "Хичээлд нэгдэх"}
+                {!isLoading && <CheckCircle size={18} />}
+              </button>
+            )}
           </div>
-
-          {/* Recognition progress */}
-          {isRecognizing && (
-            <div className="mt-2 w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-blue-600 h-3 rounded-full transition-all"
-                style={{ width: `${recognitionProgress}%` }}
-              />
-            </div>
-          )}
-
-          {message && (
-            <p
-              className={`text-center mt-2 ${
-                message.startsWith("🎉") ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              {message}
-            </p>
-          )}
-
-          {/* Face recognition button or join button */}
-          {!isFaceVerified ? (
-            <button
-              className="w-full py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition disabled:opacity-50"
-              disabled={!studentId.trim() || isRecognizing || isLoading}
-              onClick={handleVerifyFace}
-            >
-              {isRecognizing ? "Таних..." : "Царайгаар баталгаажуулах"}
-            </button>
-          ) : (
-            <button
-              className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50"
-              disabled={isLoading}
-              onClick={handleJoinClass}
-            >
-              {isLoading ? "Нэгдэж байна..." : "Хичээлд нэгдэх"}
-            </button>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       <Toaster position="bottom-right" />
     </div>
