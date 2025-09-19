@@ -164,7 +164,7 @@ export default function LoginPage() {
 
                 {submissionMessage && (
                   <p
-                    className={`text-sm ${
+                    className={`text-sm  ${
                       submissionSuccess === false
                         ? "text-red-500"
                         : submissionSuccess === true
