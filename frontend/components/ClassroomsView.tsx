@@ -37,7 +37,7 @@ export const ClassroomsView = () => {
       );
       setClassrooms(res.data.classrooms);
     } catch (error) {
-      alert("Ангийн жагсаалт авахад алдаа гарлаа");
+      // alert("Ангийн жагсаалт авахад алдаа гарлаа");
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ export const ClassroomsView = () => {
         </Dialog>
       </div>
 
-      {loading ? (
+      {!loading ? (
         <p>Түр хүлээнэ үү...</p>
       ) : classrooms.length === 0 ? (
         <div className="text-center py-10">
@@ -91,9 +91,9 @@ export const ClassroomsView = () => {
               className="p-4 border rounded-md flex justify-between items-center"
             >
               <div>
-                <p className="font-semibold">{classroom.lectureName}</p>
+                <p className="font-semibold">{"classroom.lectureName"}</p>
                 <a
-                  href={classroom.joinLink}
+                  href={"classroom.joinLink"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 underline"
@@ -105,6 +105,19 @@ export const ClassroomsView = () => {
           ))}
         </div>
       )}
+      <div className="p-4 border rounded-md flex justify-between items-center">
+        <div>
+          <p className="font-semibold">{"classroom.lectureName"}</p>
+          <a
+            href={"classroom.joinLink"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline"
+          >
+            Орох холбоос
+          </a>
+        </div>
+      </div>
       <Toaster position="bottom-right" />
     </div>
   );
