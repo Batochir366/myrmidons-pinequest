@@ -7,12 +7,12 @@ const SECRET_KEY = "pinequest-secret";
 
 export const createClassroom = async (req, res) => {
   try {
-    const { lectureName, teacherId } = req.body;
+    const { lectureName, teacherId, lectureDate } = req.body;
 
-    if (!lectureName || !teacherId) {
+    if (!lectureName || !lectureDate || !teacherId) {
       return res
         .status(400)
-        .json({ message: "lectureName болон teacherId шаардлагатай" });
+        .json({ message: "lectureName, lectureDate болон teacherId шаардлагатай" });
     }
 
     const teacher = await TeacherModel.findById(teacherId);
@@ -22,6 +22,7 @@ export const createClassroom = async (req, res) => {
 
     const newClassroom = new ClassroomModel({
       lectureName,
+      lectureDate,
       teacher: teacherId,
       ClassroomStudents: [],
       attendanceHistory: [],
@@ -32,6 +33,7 @@ export const createClassroom = async (req, res) => {
     const tokenPayload = {
       classroomId: savedClassroom._id,
       lectureName,
+      lectureDate,
       teacherName: teacher.teacherName,
     };
 
@@ -70,7 +72,7 @@ export const getOnlyClassroomsByTeacherId = async (req, res) => {
     // зөвхөн _id, lectureName авах
     const classrooms = await ClassroomModel.find(
       { teacher: teacherId },
-      "_id lectureName"
+      "_id lectureName lectureDate"
     );
 
     return res.status(200).json({ classrooms });
@@ -81,7 +83,6 @@ export const getOnlyClassroomsByTeacherId = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
-
 
 export const getClassroomsByTeacherId = async (req, res) => {
   try {
@@ -119,6 +120,7 @@ export const getClassroomsByTeacherId = async (req, res) => {
     const formattedClassrooms = classrooms.map((classroom) => ({
       _id: classroom._id,
       lectureName: classroom.lectureName,
+      lectureDate: classroom.lectureDate,
       teacher: classroom.teacher,
       ClassroomStudents: classroom.ClassroomStudents,
       joinLink: classroom.joinLink,

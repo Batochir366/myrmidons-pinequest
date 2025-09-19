@@ -84,6 +84,7 @@ export const getClassroomAttendanceHistoryById = async (req, res) => {
       classroom: {
         _id: classroom._id,
         lectureName: classroom.lectureName,
+        lectureDate: classroom.lectureDate,
         attendanceHistory,
       },
     });

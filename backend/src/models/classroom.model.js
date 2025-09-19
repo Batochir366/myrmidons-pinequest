@@ -7,7 +7,10 @@ export const ClassroomSchema = new Schema(
       required: true,
       trim: true,
     },
-
+    lectureDate: {
+      type: String,
+      required: true,
+    },
     teacher: {
       type: Schema.Types.ObjectId,
       ref: "Teacher",
@@ -25,7 +28,7 @@ export const ClassroomSchema = new Schema(
         ref: "Attendance",
       },
     ],
-      joinLink: { type: String }, 
+    joinLink: { type: String },
   },
   {
     timestamps: true,
