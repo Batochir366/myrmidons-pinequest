@@ -3,6 +3,7 @@ import cors from "cors";
 import teacherRouter from "./src/routes/teacher.js";
 import { connectToDB } from "./src/config/connect-to-db.js";
 import studentRouter from "./src/routes/student.js";
+import { attendanceRouter } from "./src/routes/attendance.js";
 
 connectToDB();
 
@@ -15,6 +16,7 @@ app.use(cors());
 
 app.use("/teacher", teacherRouter);
 app.use("/student", studentRouter);
+app.use("/attendance", attendanceRouter);
 app.get("/", (req, res) => {
   res.send("welcome to Pinequest backend");
 });

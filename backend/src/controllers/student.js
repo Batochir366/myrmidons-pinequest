@@ -47,14 +47,16 @@ export const addStudentToAttendance = async (req, res) => {
         .json({ message: "attendanceId болон studentId хэрэгтэй" });
     }
 
+    // Attendance шалгах
     const attendance = await AttendanceModel.findById(attendanceId);
     if (!attendance) {
       return res.status(404).json({ message: "Attendance олдсонгүй" });
     }
 
+    // Classroom шалгах (user classroom-д бүртгэлтэй эсэх)
     const classroom = await ClassroomModel.findOne({
-      _id: attendance.classroomId,
-      students: studentId,
+      _id: attendance.classroom,
+      ClassroomStudents: studentId, // students биш ClassroomStudents
     });
 
     if (!classroom) {
@@ -63,25 +65,29 @@ export const addStudentToAttendance = async (req, res) => {
       });
     }
 
+    // Ирц давхардах шалгалт
     if (attendance.attendingStudents.includes(studentId)) {
       return res.status(400).json({
         message: "Та аль хэдийн ирц бүртгэгдсэн байна.",
       });
     }
 
+    // Ирц нэмэх
     const updatedAttendance = await AttendanceModel.findByIdAndUpdate(
       attendanceId,
-      { $addToSet: { attendingStudents: studentId } },
+      { $addToSet: { attendingStudents: studentId } }, // давхардахгүй нэмэх
       { new: true }
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Ирц амжилттай бүртгэгдлээ",
       attendance: updatedAttendance,
     });
   } catch (error) {
     console.error("❌ addStudentToAttendance error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -97,7 +103,7 @@ export const joinClassroom = async (req, res) => {
     }
 
     // Find the student by studentId
-    const student = await UserModel.findOne({ studentId: studentId });
+    const student = await UserModel.findById(studentId);
     if (!student) {
       return res.status(404).json({ message: "Сурагч олдсонгүй" });
     }
