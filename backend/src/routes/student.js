@@ -12,7 +12,7 @@ studentRouter.post("/attendance/add", addStudentToAttendance);
 
 // Route for a student to join a classroom
 studentRouter.put("/join/:classroomId", joinClassroom);
-studentRouter.get("/check/:studentId ", checkStudentInClassroom);
-studentRouter.get("/attendance ", addStudentToAttendance);
+studentRouter.get("/check/:studentId", checkStudentInClassroom);
+studentRouter.get("/attendance", addStudentToAttendance);
 
 export default studentRouter;
