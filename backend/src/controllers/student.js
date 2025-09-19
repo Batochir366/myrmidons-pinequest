@@ -2,6 +2,41 @@ import { AttendanceModel } from "../models/attendance.model.js";
 import { ClassroomModel } from "../models/classroom.model.js";
 import { UserModel } from "../models/user.model.js";
 
+// Add these endpoints to your backend
+
+// Check if student is in any classroom (for attendance verification)
+export const checkStudentInClassroom = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    if (!studentId) {
+      return res.status(400).json({ message: "studentId шаардлагатай" });
+    }
+
+    // Check if student exists in any classroom
+    const classroom = await ClassroomModel.findOne({
+      students: studentId,
+    });
+
+    if (!classroom) {
+      return res.status(404).json({
+        message:
+          "Та ямар ч хичээлд нэгдээгүй байна. Эхлээд хичээлд нэгдэнэ үү.",
+      });
+    }
+
+    res.status(200).json({
+      message: "Оюутан хичээлд нэгдсэн байна",
+      classroomId: classroom._id,
+      classroomName: classroom.name,
+    });
+  } catch (error) {
+    console.error("❌ checkStudentInClassroom error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Updated addStudentToAttendance with classroom verification
 export const addStudentToAttendance = async (req, res) => {
   try {
     const { attendanceId, studentId } = req.body;
@@ -12,22 +47,51 @@ export const addStudentToAttendance = async (req, res) => {
         .json({ message: "attendanceId болон studentId хэрэгтэй" });
     }
 
+    // First, get the attendance record to find the classroom
+    const attendance = await AttendanceModel.findById(attendanceId);
+    if (!attendance) {
+      return res.status(404).json({ message: "Attendance олдсонгүй" });
+    }
+
+    // Check if student is in the classroom
+    const classroom = await ClassroomModel.findOne({
+      _id: attendance.classroomId,
+      students: studentId,
+    });
+
+    if (!classroom) {
+      return res.status(403).json({
+        message: "Та энэ хичээлд нэгдээгүй байна. Эхлээд хичээлд нэгдэнэ үү.",
+      });
+    }
+
+    // Check if student is already in attendance
+    if (attendance.attendingStudents.includes(studentId)) {
+      return res.status(400).json({
+        message: "Та аль хэдийн ирц бүртгэгдсэн байна.",
+      });
+    }
+
+    // Add student to attendance
     const updatedAttendance = await AttendanceModel.findByIdAndUpdate(
       attendanceId,
       { $addToSet: { attendingStudents: studentId } },
       { new: true }
     );
 
-    if (!updatedAttendance) {
-      return res.status(404).json({ message: "Attendance олдсонгүй" });
-    }
-
-    res.status(200).json(updatedAttendance);
+    res.status(200).json({
+      message: "Ирц амжилттай бүртгэгдлээ",
+      attendance: updatedAttendance,
+    });
   } catch (error) {
     console.error("❌ addStudentToAttendance error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// Routes to add to your router:
+// GET /student/check/:studentId - checkStudentInClassroom
+// POST /attendance/add-student - addStudentToAttendance
 export const joinClassroom = async (req, res) => {
   try {
     const { classroomId } = req.params;

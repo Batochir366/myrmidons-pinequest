@@ -1,5 +1,4 @@
 // utils/attendanceUtils.ts
-
 export const startCamera = async (
   videoRef: React.RefObject<HTMLVideoElement | null>,
   setMessage: (msg: string) => void,
@@ -77,6 +76,52 @@ export const captureAndVerify = async (
     setMessage("Сүлжээний алдаа, дахин оролдоно уу.");
     setIsRecognizing(false);
     setRecognitionProgress(0);
+    return false;
+  }
+};
+
+// New function to record attendance after face verification
+export const recordAttendance = async (
+  attendanceId: string,
+  studentId: string,
+  setMessage: (msg: string) => void
+): Promise<boolean> => {
+  try {
+    // First check if student is in the classroom
+    const checkRes = await fetch(
+      `https://myrmidons-pinequest-backend.vercel.app/student/check/${studentId}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!checkRes.ok) {
+      setMessage("Та эхлээд хичээлд нэгдэнэ үү.");
+      return false;
+    }
+
+    // Record attendance
+    const attendanceRes = await fetch(
+      "https://myrmidons-pinequest-backend.vercel.app/attendance",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attendanceId, studentId }),
+      }
+    );
+
+    const attendanceData = await attendanceRes.json();
+
+    if (attendanceRes.ok) {
+      return true;
+    } else {
+      setMessage(attendanceData.message || "Ирц бүртгэхэд алдаа гарлаа.");
+      return false;
+    }
+  } catch (error) {
+    console.error("❌ Error recording attendance:", error);
+    setMessage("Сүлжээний алдаа. Дахин оролдоно уу.");
     return false;
   }
 };

@@ -17,6 +17,7 @@ import {
   simulateRecognition,
   startCamera,
   stopCamera,
+  recordAttendance,
 } from "@/utils/attendanceUtils";
 
 const AttendanceSystem: React.FC = () => {
@@ -25,6 +26,7 @@ const AttendanceSystem: React.FC = () => {
   const [message, setMessage] = useState("");
   const [recognitionProgress, setRecognitionProgress] = useState(0);
   const [isRecognizing, setIsRecognizing] = useState(false);
+  const [isRecordingAttendance, setIsRecordingAttendance] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -32,16 +34,28 @@ const AttendanceSystem: React.FC = () => {
 
   const token = String(searchParams.get("token"));
   const expiresAt = Number(searchParams.get("expiresAt"));
+  const attendanceId = String(searchParams.get("attendanceId")); // Get attendanceId from URL
   const now = Date.now();
 
   if (!token || (!expiresAt && now > expiresAt)) {
     return <QRError />;
   }
 
+  if (!attendanceId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Алдаа</h2>
+          <p className="text-gray-600">Ирцийн ID олдсонгүй.</p>
+        </div>
+      </div>
+    );
+  }
+
   const steps = [
-    { id: 2, label: "Оюутны ID", icon: User },
-    { id: 3, label: "Царай таних", icon: Camera },
-    { id: 4, label: "Амжилттай", icon: CheckCircle },
+    { id: 1, label: "Оюутны ID", icon: User },
+    { id: 2, label: "Царай таних", icon: Camera },
+    { id: 3, label: "Амжилттай", icon: CheckCircle },
   ];
 
   useEffect(() => {
@@ -55,19 +69,46 @@ const AttendanceSystem: React.FC = () => {
   }, [step]);
 
   const handleRecognitionComplete = async () => {
+    const onSuccess = async (name?: string) => {
+      setMessage(
+        `Сайн байна уу, ${name || "Оюутан"}! Царай амжилттай танигдлаа.`
+      );
+
+      // Record attendance after successful face verification
+      setIsRecordingAttendance(true);
+      const attendanceRecorded = await recordAttendance(
+        attendanceId,
+        studentId,
+        setMessage
+      );
+
+      setIsRecordingAttendance(false);
+
+      if (attendanceRecorded) {
+        setMessage(
+          `Сайн байна уу, ${name || "Оюутан"}! Ирц амжилттай бүртгэгдлээ.`
+        );
+        stopCamera(streamRef);
+        setStep(3);
+      }
+    };
+
     const verified = await captureAndVerify(
       videoRef,
       canvasRef,
       studentId,
       setMessage,
       setIsRecognizing,
-      setRecognitionProgress
+      setRecognitionProgress,
+      onSuccess
     );
-    if (verified) {
-      stopCamera(streamRef);
-      setStep(3);
+
+    if (!verified) {
+      setIsRecognizing(false);
+      setRecognitionProgress(0);
     }
   };
+
   const getCurrentTime = () => {
     return new Date().toLocaleTimeString("mn-MN", {
       hour: "2-digit",
@@ -92,9 +133,9 @@ const AttendanceSystem: React.FC = () => {
             {steps.map((stepItem) => {
               const Icon = stepItem.icon;
               const isActive =
-                step === stepItem.id || (step === 3 && stepItem.id === 4);
+                step === stepItem.id || (step === 3 && stepItem.id === 3);
               const isCompleted =
-                step > stepItem.id || (step === 3 && stepItem.id <= 4);
+                step > stepItem.id || (step === 3 && stepItem.id <= 3);
 
               return (
                 <div key={stepItem.id} className="flex flex-col items-center">
@@ -126,7 +167,7 @@ const AttendanceSystem: React.FC = () => {
             <div
               className="bg-slate-700 h-2 rounded-full transition-all duration-500"
               style={{
-                width: step === 1 ? "25%" : step === 2 ? "75%" : "100%",
+                width: step === 1 ? "33%" : step === 2 ? "66%" : "100%",
               }}
             />
           </div>
@@ -195,6 +236,7 @@ const AttendanceSystem: React.FC = () => {
                     ref={videoRef}
                     autoPlay
                     playsInline
+                    muted
                     className="w-full h-full object-cover"
                   />
                   {!streamRef.current && (
@@ -206,49 +248,68 @@ const AttendanceSystem: React.FC = () => {
 
             <canvas ref={canvasRef} className="hidden" />
 
-            {isRecognizing && (
+            {(isRecognizing || isRecordingAttendance) && (
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-gray-700">
-                    Таних явц
+                    {isRecordingAttendance ? "Ирц бүртгэж байна" : "Таних явц"}
                   </span>
                   <span className="text-sm font-medium text-gray-900">
-                    {recognitionProgress}%
+                    {isRecordingAttendance ? "..." : `${recognitionProgress}%`}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className="bg-slate-700 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${recognitionProgress}%` }}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      isRecordingAttendance
+                        ? "bg-blue-600 animate-pulse"
+                        : "bg-slate-700"
+                    }`}
+                    style={{
+                      width: isRecordingAttendance
+                        ? "100%"
+                        : `${recognitionProgress}%`,
+                    }}
                   />
                 </div>
               </div>
             )}
 
-            {recognitionProgress === 100 && (
+            {recognitionProgress === 100 && !isRecordingAttendance && (
               <div className="flex items-center justify-center gap-2 text-green-600 mb-4">
                 <Eye size={18} />
                 <span className="font-medium">Таних амжилттай боллоо!</span>
               </div>
             )}
 
-            {!isRecognizing && recognitionProgress === 0 && (
-              <button
-                onClick={() =>
-                  simulateRecognition(
-                    setIsRecognizing,
-                    setRecognitionProgress,
-                    handleRecognitionComplete
-                  )
-                }
-                className="w-full bg-slate-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-800 transition-colors"
-              >
-                Царай таних
-              </button>
-            )}
+            {!isRecognizing &&
+              !isRecordingAttendance &&
+              recognitionProgress === 0 && (
+                <button
+                  onClick={() =>
+                    simulateRecognition(
+                      setIsRecognizing,
+                      setRecognitionProgress,
+                      handleRecognitionComplete
+                    )
+                  }
+                  className="w-full bg-slate-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-800 transition-colors"
+                >
+                  Царай таних
+                </button>
+              )}
 
             {message && (
-              <p className="mt-4 text-sm text-red-600 text-center">{message}</p>
+              <p
+                className={`mt-4 text-sm text-center ${
+                  message.includes("амжилттай") ||
+                  message.includes("Сайн байна уу")
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {message}
+              </p>
             )}
           </div>
         )}
