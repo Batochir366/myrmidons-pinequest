@@ -54,7 +54,7 @@ export function QRControlCenter() {
         if (!teacherId) return;
 
         const res = await axios.get(
-          `https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/teacher/${teacherId}/classes`
+          `https://myrmidons-pinequest-backend.vercel.app/teacher/classrooms/${teacherId}`
         );
 
         setClassrooms(res.data.classrooms || []);
