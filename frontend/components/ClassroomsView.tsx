@@ -32,7 +32,7 @@ export const ClassroomsView = () => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/teacher/${teacherId}/classes`
+        `https://myrmidons-pinequest-backend.vercel.app/teacher/${teacherId}/classes`
       );
       setClassrooms(res.data.classrooms);
     } catch (error) {

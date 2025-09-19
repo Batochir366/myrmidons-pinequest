@@ -73,7 +73,7 @@ export function QRControlCenter() {
   const pollAttendanceData = async (attendanceId: string) => {
     try {
       const res = await axios.get(
-        `https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/teacher/attendance/${attendanceId}/students`
+        `https://myrmidons-pinequest-backend.vercel.app/teacher/attendance/${attendanceId}/students`
       );
 
       if (res.data.attendance?.attendingStudents) {
@@ -111,7 +111,7 @@ export function QRControlCenter() {
     const token = uuidv4();
     const expiresAt = Date.now() + 5000;
 
-    const url = `https://myrmidons-pinequest-pyznrthos-batj2003-3877s-projects.vercel.app/student?token=${token}&expiresAt=${expiresAt}&attendanceId=${attendanceId}`;
+    const url = `https://myrmidons-pinequest-frontend-delta.vercel.app/student?token=${token}&expiresAt=${expiresAt}&attendanceId=${attendanceId}`;
 
     setQrData(url);
 
@@ -155,7 +155,7 @@ export function QRControlCenter() {
 
       // Create real attendance session
       const res = await axios.post(
-        `https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/teacher/create-attendance`,
+        `https://myrmidons-pinequest-backend.vercel.app/teacher/create-attendance`,
         {
           classroomId: selectedClassroomId,
         }
@@ -203,7 +203,7 @@ export function QRControlCenter() {
     try {
       // End the attendance session
       await axios.put(
-        "https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/teacher/end-classroom",
+        "https://myrmidons-pinequest-backend.vercel.app/teacher/end-classroom",
         {
           attendanceId: attendanceId,
         }

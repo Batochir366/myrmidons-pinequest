@@ -107,7 +107,7 @@ const JoinClassPage = () => {
 
     try {
       const res = await fetch(
-        `https://myrmidons-pinequest-6i42-ol5tsqycr-batj2003-3877s-projects.vercel.app/student/join/${classroomId}`,
+        `https://myrmidons-pinequest-backend.vercel.app/student/join/${classroomId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
