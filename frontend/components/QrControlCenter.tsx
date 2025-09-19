@@ -345,35 +345,22 @@ export function QRControlCenter() {
               </div>
             )}
 
-            {/* PiP button */}
-            <Button
-              onClick={openPiP}
-              className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              PiP QR нээх
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 items-center mt-6">
+              <Button
+                onClick={openPiP}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                PiP QR нээх
+              </Button>
 
-            <div className="w-full mt-6">
-              <div className="text-xs break-all bg-gray-50 border p-3 rounded-lg shadow-inner text-center">
-                <a
-                  href={qrData}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 font-medium hover:underline"
-                >
-                  {qrData}
-                </a>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full mt-6 gap-3">
-              <h3 className="text-2xl font-bold text-gray-900">
-                {selectedLectureName}
-              </h3>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Clock className="w-4 h-4 text-slate-500" />
-                <span>{new Date().toLocaleTimeString()} -д эхэлсэн</span>
-              </div>
+              <Button
+                onClick={() =>
+                  qrData && window.open(qrData, "_blank", "noopener,noreferrer")
+                }
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                QR линк нээх
+              </Button>
             </div>
           </div>
 
