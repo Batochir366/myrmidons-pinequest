@@ -67,11 +67,6 @@ export const getClassroomsByTeacherId = async (req, res) => {
       return res.status(400).json({ message: "teacherId is required" });
     }
 
-<<<<<<< Updated upstream
-    const classrooms = await ClassroomModel.find({ teacher: teacherId });
-
-    return res.status(200).json({ classrooms });
-=======
     // Build query
     const query = { teacher: teacherId };
 
@@ -119,7 +114,6 @@ export const getClassroomsByTeacherId = async (req, res) => {
     }));
 
     return res.status(200).json({ classrooms: formattedClassrooms });
->>>>>>> Stashed changes
   } catch (error) {
     console.error("❌ getClassroomsByTeacherId error:", error);
     return res
