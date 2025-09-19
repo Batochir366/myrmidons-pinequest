@@ -38,10 +38,14 @@ export const joinClassroom = async (req, res) => {
         .status(400)
         .json({ message: "classroomId болон studentId шаардлагатай" });
     }
+
+    // Find the student by studentId
     const student = await UserModel.findOne({ studentId: studentId });
     if (!student) {
       return res.status(404).json({ message: "Сурагч олдсонгүй" });
     }
+
+    // Add student to classroom's ClassroomStudents array (avoid duplicates with $addToSet)
     const updatedClassroom = await ClassroomModel.findByIdAndUpdate(
       classroomId,
       { $addToSet: { ClassroomStudents: student._id } },
@@ -52,9 +56,17 @@ export const joinClassroom = async (req, res) => {
       return res.status(404).json({ message: "Classroom олдсонгүй" });
     }
 
+    // Update the student's Classrooms array to include this classroom (also avoid duplicates)
+    const updatedStudent = await UserModel.findByIdAndUpdate(
+      student._id,
+      { $addToSet: { Classrooms: classroomId } },
+      { new: true }
+    );
+
     return res.status(200).json({
       message: "Сурагч ангид амжилттай нэгдлээ",
       classroom: updatedClassroom,
+      student: updatedStudent,
     });
   } catch (error) {
     console.error("❌ joinClassroom error:", error);
