@@ -54,6 +54,7 @@ export const captureAndVerify = async (
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({
         ...body,
         image_base64: imageBase64,

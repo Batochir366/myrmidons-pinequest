@@ -19,10 +19,11 @@ CORS(app, supports_credentials=True, resources={
             "http://127.0.0.1:3000",
             "https://myrmidons-pinequest-frontend-delta.vercel.app",  
             "https://myrmidons-pinequest-production.up.railway.app"
-        ]
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
     }
 })
-
 # Use environment variable for MongoDB connection with SSL configuration
 mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest").strip()
 
@@ -185,8 +186,10 @@ def health():
         "database": "connected" if mongo_client else "disconnected"
     })
 
-@app.route('/student/attend', methods=['POST'])
+@app.route('/student/attend', methods=['POST', 'OPTIONS'])
 def attend_class():
+     if request.method == 'OPTIONS':
+          return '', 204
     try:
         data = request.get_json()
         studentId = data.get('studentId')
@@ -248,8 +251,10 @@ def attend_class():
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
 
-@app.route('/student/join', methods=['POST'])
+@app.route('/student/join', methods=['POST', 'OPTIONS'])
 def join_class():
+     if request.method == 'OPTIONS':
+          return '', 204
     try:
         data = request.get_json()
         studentId = data.get('studentId')
@@ -334,8 +339,10 @@ def join_class():
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
 
-@app.route('/student/register', methods=['POST'])
+@app.route('/student/register', methods=['POST', 'OPTIONS'])
 def register():
+    if request.method == 'OPTIONS':
+          return '', 204
     try:
         print("Register endpoint called")
         if not FACE_RECOGNITION_AVAILABLE:
@@ -458,8 +465,10 @@ def register():
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
     
-@app.route('/teacher/register', methods=['POST'])
+@app.route('/teacher/register', methods=['POST','OPTIONS'])
 def register_teacher():
+     if request.method == 'OPTIONS':
+          return '', 204
     try:
         data = request.get_json(force=True, silent=True)
         teacherName = data.get("teacherName")
@@ -532,8 +541,10 @@ def register_teacher():
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-@app.route('/teacher/login', methods=['POST'])
+@app.route('/teacher/login', methods=['POST''OPTIONS'])
 def login_teacher():
+      if request.method == 'OPTIONS':
+          return '', 204
     try:
         data = request.get_json()
         teacherName = data.get("teacherName")
