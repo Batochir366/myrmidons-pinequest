@@ -58,6 +58,31 @@ export const createClassroom = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
+
+export const getOnlyClassroomsByTeacherId = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    if (!teacherId) {
+      return res.status(400).json({ message: "teacherId is required" });
+    }
+
+    // зөвхөн _id, lectureName авах
+    const classrooms = await ClassroomModel.find(
+      { teacher: teacherId },
+      "_id lectureName"
+    );
+
+    return res.status(200).json({ classrooms });
+  } catch (error) {
+    console.error("❌ getOnlyClassroomsByTeacherId error:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+};
+
+
 export const getClassroomsByTeacherId = async (req, res) => {
   try {
     const { teacherId } = req.params;
