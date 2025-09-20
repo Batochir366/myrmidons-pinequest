@@ -47,25 +47,34 @@ export const addStudentToAttendance = async (req, res) => {
         .json({ message: "attendanceId болон studentId хэрэгтэй" });
     }
 
+    // Сурагчийн ID шалгах
+    const student = await UserModel.findOne({ studentId: studentId });
+    if (!student) {
+      return res.status(404).json({ message: "Сурагч олдсонгүй" });
+    }
+
+    // Attendance авах
     const attendance = await AttendanceModel.findById(attendanceId);
     if (!attendance) {
       return res.status(404).json({ message: "Attendance олдсонгүй" });
     }
 
+    // Сурагч тухайн ангидаа байгаа эсэхийг шалгах
     const classroom = await ClassroomModel.findOne({
       _id: attendance.classroom,
-      ClassroomStudents: studentId,
+      ClassroomStudents: student._id,
     });
 
     if (!classroom) {
       return res.status(403).json({
-        message: "Та энэ хичээлд нэгдээгүй байна. Эхлээд хичээлд нэгдэнэ үү.",
+        message:
+          "Та энэ хичээлд нэгдээгүй байна. Эхлээд хичээлд нэгдэнэ үү.",
       });
     }
 
     // Давхардах шалгалт
     const alreadyAttended = attendance.attendingStudents.some(
-      (s) => s.student.toString() === studentId
+      (s) => s.student.toString() === student._id.toString()
     );
 
     if (alreadyAttended) {
@@ -76,7 +85,7 @@ export const addStudentToAttendance = async (req, res) => {
 
     // Ирц нэмэх
     attendance.attendingStudents.push({
-      student: studentId,
+      student: student._id,
       attendedAt: new Date(),
     });
 
