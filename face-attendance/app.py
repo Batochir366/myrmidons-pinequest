@@ -245,6 +245,16 @@ def attend_class():
         # Check for required fields
         if not all([studentId, image_base64, latitude, longitude]) or not classroom_students:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
+
+        # Check if student is part of the classroom
+        student_ids = [student.get('studentId') for student in classroom_students if isinstance(student, dict)]
+        if studentId not in student_ids:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Student is not part of this classroom"
+            }), 403
+
         # Check location (Haversine distance)
         teacher_lat = 47.91417544200054  # Hardcoded teacher location (can be dynamic if needed)
         teacher_lon = 106.91655931106844  # Same here
