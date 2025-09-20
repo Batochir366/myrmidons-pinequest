@@ -124,7 +124,7 @@ export const joinClassroom = async (req, res) => {
     // Add student to classroom's ClassroomStudents array (avoid duplicates)
     const updatedClassroom = await ClassroomModel.findByIdAndUpdate(
       classroomId,
-      { $addToSet: { ClassroomStudents: classroomStudent } },
+      { $addToSet: { ClassroomStudents: classroomStudent } }, // Add student with detailed info to ClassroomStudents
       { new: true }
     );
 
@@ -132,7 +132,6 @@ export const joinClassroom = async (req, res) => {
       return res.status(404).json({ message: "Classroom олдсонгүй" });
     }
 
-    // Update the student's Classrooms array to include this classroom (also avoid duplicates)
     const updatedStudent = await UserModel.findByIdAndUpdate(
       student._id,
       { $addToSet: { Classrooms: classroomId } },
