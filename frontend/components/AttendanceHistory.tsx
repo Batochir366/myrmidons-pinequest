@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { CalendarIcon, History, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ViewReport } from "./VIewReport"
+import { axiosInstance } from "@/lib/utils"
 
 interface AttendanceRecord {
   id: number
@@ -146,9 +147,11 @@ export function AttendanceHistory() {
   const getLectureDays = () => {
     return sampleAttendanceData.map((record) => new Date(record.date))
   }
+  useEffect(() => { axiosInstance.get('attendance/classroom/68ce4c789f3a21f8452ed86b').then(res => console.log(res.data)) }, [])
 
   return (
     <TooltipProvider>
+
       <div className="w-full max-w-[1600px] mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Calendar Section */}
