@@ -10,4 +10,4 @@ export const attendanceRouter = Router();
 attendanceRouter
   .get("/:attendanceId", getAttendanceById)
   .get("/classroom/:classroomId", getClassroomAttendanceHistoryById)
-  .get("/:classroomId", getClassroomById);
+  .get("/only/:classroomId", getClassroomById);
