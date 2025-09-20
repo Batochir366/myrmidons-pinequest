@@ -9,7 +9,7 @@ import traceback
 from datetime import datetime
 from math import radians, cos, sin, sqrt, atan2
 import os
-
+from test import test
 
 
 app = Flask(__name__)
@@ -168,9 +168,14 @@ def is_spoof(frame) -> bool:
             model_dir = os.path.join(BASE_DIR, "Silent_Face_Anti_Spoofing", "resources", "anti_spoof_models"),
             device_id=0,
         )
-        return label == 1
+        if label == 1:
+            print("✅ Live face detected")
+            return True
+        else:
+            print("❌ Spoof detected")
+            return False
     except Exception as e:
-        print("Error in spoof detection:", e)
+        print("⚠️ Error in spoof detection:", e)
         return False
 
 

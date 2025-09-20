@@ -44,16 +44,11 @@ def test(image, model_dir, device_id):
     try:
         model_test = AntiSpoofPredict(device_id)
         image_cropper = CropImage()
-        
-        # Check if image is valid
-        if image is None:
-            print("Invalid image provided")
-            return 0
-            
+        image = cv2.resize(image, (int(image.shape[0]*3/4), image.shape[0]))
         result = check_image(image)
         if result is False:
             print("Image aspect ratio is not 3:4")
-            return 0
+            return 
             
         image_bbox = model_test.get_bbox(image)
         prediction = np.zeros((1, 3))

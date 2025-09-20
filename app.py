@@ -8,6 +8,9 @@ from flask_cors import CORS
 import traceback
 from datetime import datetime
 from math import radians, cos, sin, sqrt, atan2
+import os
+from test import test
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
@@ -156,9 +159,25 @@ def recognize_teacher_face(frame):
 
     return name, best_match_teacher
 
-def is_spoof(image):
-    """Temporarily disabled for testing"""
-    return True
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def is_spoof(frame) -> bool:
+    try:
+        label = test(
+            frame,
+            model_dir = os.path.join(BASE_DIR, "Silent_Face_Anti_Spoofing", "resources", "anti_spoof_models"),
+            device_id=0,
+        )
+        if label == 1:
+            print("✅ Live face detected")
+            return True
+        else:
+            print("❌ Spoof detected")
+            return False
+    except Exception as e:
+        print("⚠️ Error in spoof detection:", e)
+        return False
+
 
 @app.route('/')
 def index():
