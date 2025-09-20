@@ -14,7 +14,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { QRControlCenter } from "@/components/QrControlCenter";
 import { AttendanceHistory } from "@/components/AttendanceHistory";
 import { ClassroomsView } from "@/components/ClassroomsView";
@@ -52,6 +57,7 @@ export default function AttendanceDashboard() {
         side="left"
         className="w-64 p-0 bg-white dark:bg-gray-900 border-r border-border"
       >
+        <SheetTitle className="sr-only">Mobile Sidebar Navigation</SheetTitle>
         <div className="p-6 bg-gray-50 dark:bg-gray-800 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">

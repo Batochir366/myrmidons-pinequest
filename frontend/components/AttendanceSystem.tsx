@@ -27,30 +27,37 @@ const AttendanceSystem: React.FC = () => {
   const [isInvalid, setIsInvalid] = useState(false);
   const [paramsLoaded, setParamsLoaded] = useState(false);
 
-  // Load query parameters from URL
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const sp = new URLSearchParams(window.location.search);
-    const tokenValue = sp.get("token");
-    const expiresAtValue = sp.get("expiresAt");
-    const attendanceIdValue = sp.get("attendanceId");
-    const now = Date.now();
+    const handleParams = () => {
+      const sp = new URLSearchParams(window.location.search);
+      const tokenValue = sp.get("token");
+      const expiresAtValue = sp.get("expiresAt");
+      const attendanceIdValue = sp.get("attendanceId");
+      const expiresAtNum = expiresAtValue ? Number(expiresAtValue) : 0;
+      const now = Date.now();
 
-    if (
-      !tokenValue ||
-      !expiresAtValue ||
-      now > Number(expiresAtValue) ||
-      !attendanceIdValue
-    ) {
-      setIsInvalid(true);
-    } else {
-      setToken(tokenValue);
-      setExpiresAt(Number(expiresAtValue));
-      setAttendanceId(attendanceIdValue);
-    }
+      if (
+        !tokenValue ||
+        !expiresAtValue ||
+        now > expiresAtNum ||
+        !attendanceIdValue
+      ) {
+        setIsInvalid(true);
+      } else {
+        setToken(tokenValue);
+        setExpiresAt(expiresAtNum);
+        setAttendanceId(attendanceIdValue);
+        setIsInvalid(false);
+      }
 
-    setParamsLoaded(true);
+      setParamsLoaded(true);
+    };
+
+    handleParams();
+    window.addEventListener("popstate", handleParams);
+    return () => window.removeEventListener("popstate", handleParams);
   }, []);
 
   useEffect(() => {

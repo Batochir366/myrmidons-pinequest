@@ -25,7 +25,7 @@ CORS(app, supports_credentials=True, resources={
     }
 })
 # Use environment variable for MongoDB connection with SSL configuration
-mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://gbataa366_db_user:sXM3AMhScmviCN7c@kidsaving.dtylnys.mongodb.net/PineQuest").strip()
+mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://tinderpinecone:FFpZdNZp1ifDSumn@tindermongodb.ukfwlma.mongodb.net/face_verification_db").strip()
 
 # Configure MongoDB client with SSL settings for Railway
 try:
