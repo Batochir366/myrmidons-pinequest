@@ -110,7 +110,8 @@ function Calendar({
         range_middle: cn("rounded-none", defaultClassNames.range_middle),
         range_end: cn("rounded-r-md bg-accent", defaultClassNames.range_end),
         today: cn(
-          "bg-accent text-accent-foreground rounded-md data-[selected=true]:rounded-none",
+          "",
+          //"bg-accent text-accent-foreground rounded-full data-[selected=true]:rounded-full",
           defaultClassNames.today
         ),
         outside: cn(
@@ -179,11 +180,17 @@ function CalendarDayButton({
   ...props
 }: React.ComponentProps<typeof DayButton>) {
   const defaultClassNames = getDefaultClassNames()
-
   const ref = React.useRef<HTMLButtonElement>(null)
+
   React.useEffect(() => {
     if (modifiers.focused) ref.current?.focus()
   }, [modifiers.focused])
+
+  const isSingleSelected =
+    modifiers.selected &&
+    !modifiers.range_start &&
+    !modifiers.range_end &&
+    !modifiers.range_middle
 
   return (
     <Button
@@ -191,23 +198,37 @@ function CalendarDayButton({
       variant="ghost"
       size="icon"
       data-day={day.date.toLocaleDateString()}
-      data-selected-single={
-        modifiers.selected &&
-        !modifiers.range_start &&
-        !modifiers.range_end &&
-        !modifiers.range_middle
-      }
+      data-selected-single={isSingleSelected}
       data-range-start={modifiers.range_start}
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70",
+        // base style for all days
+        "flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal [&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
+
+        // Only selected single day styling
+        isSingleSelected && "bg-accent text-accent-foreground rounded-full border-0 shadow-none",
+
+        // Range styles
+        modifiers.range_start && "bg-primary text-primary-foreground rounded-l-md border-0 shadow-none",
+        modifiers.range_middle && "bg-accent text-accent-foreground rounded-none border-0 shadow-none",
+        modifiers.range_end && "bg-primary text-primary-foreground rounded-r-md border-0 shadow-none",
+
+        // Focused styling
+        modifiers.focused && "relative z-10 ring-[3px] ring-ring",
+
+        // Remove any default Button borders/shadows
+        "border-0 shadow-none focus:outline-none focus:ring-0",
+
         className
       )}
       {...props}
     />
   )
 }
+
+
+
 
 export { Calendar, CalendarDayButton }

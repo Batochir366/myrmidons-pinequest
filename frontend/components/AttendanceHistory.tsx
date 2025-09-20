@@ -117,7 +117,7 @@ const sampleAttendanceData: AttendanceRecord[] = [
   {
     id: 3,
     lectureName: "Physics 301",
-    date: "2025-09-13",
+    date: "2025-09-15",
     startTime: "12:00",
     endTime: "13:30",
     qrStartTime: "12:00",
@@ -169,15 +169,27 @@ export function AttendanceHistory() {
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
-                  className="rounded-md w-full"
+                  className="
+      rounded-md border w-full [&_.rdp-day]:p-0
+    [&_.rdp-day_selected]:bg-slate-800
+    [&_.rdp-day_selected]:text-white
+    [&_.rdp-day_selected]:rounded-full !important
+    [&_.rdp-day_selected]:border-0
+    [&_.rdp-day_selected]:outline-none
+    [&_.rdp-day_selected]:shadow-none
+    [&_.rdp-day:hover]:rounded-full
+  "
                   modifiers={{
                     hasLecture: getLectureDays(),
                   }}
                   modifiersClassNames={{
-                    hasLecture: "bg-slate-700 text-white rounded-md font-bold hover:bg-slate-800",
+                    hasLecture:
+                      'bg-slate-700 text-white rounded-full font-bold hover:bg-slate-800',
                   }}
                 />
               </CardContent>
+
+
             </Card>
           </div>
           {showReport && selectedLecture ? (
