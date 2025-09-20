@@ -12,8 +12,14 @@ const app = express();
 const PORT = 5000;
 
 app.use(express.json());
-app.use(cors());
-
+app.use(
+  cors({
+    origin: "https://myrmidons-pinequest-frontend-delta.vercel.app",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 app.use("/teacher", teacherRouter);
 app.use("/student", studentRouter);
 app.use("/attendance", attendanceRouter);
