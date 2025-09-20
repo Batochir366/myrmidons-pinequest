@@ -90,15 +90,32 @@ export const captureAndVerify = async (
 export const recordAttendance = async (
   attendanceId: string,
   studentId: string,
-  setMessage: (msg: string) => void
+  setMessage: (msg: string) => void,
+  latitude?: number,
+  longitude?: number
 ): Promise<boolean> => {
   try {
+    const bodyPayload: {
+      attendanceId: string;
+      studentId: string;
+      latitude?: number;
+      longitude?: number;
+    } = {
+      attendanceId,
+      studentId,
+    };
+
+    if (latitude !== undefined && longitude !== undefined) {
+      bodyPayload.latitude = latitude;
+      bodyPayload.longitude = longitude;
+    }
+
     const res = await fetch(
       "https://myrmidons-pinequest-backend.vercel.app/student/add",
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ attendanceId, studentId }),
+        body: JSON.stringify(bodyPayload),
       }
     );
 

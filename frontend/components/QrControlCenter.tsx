@@ -8,6 +8,7 @@ import { ChevronDown, Clock, Play, QrCode, Square, Users } from "lucide-react";
 import QRCode from "qrcode";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
+import { getLocation } from "@/utils/getLocation";
 
 interface Classroom {
   _id: string;
@@ -159,11 +160,14 @@ export function QRControlCenter() {
     try {
       setLoading(true);
 
-      // Create real attendance session
+      const { latitude, longitude } = await getLocation();
+
       const res = await axios.post(
         `https://myrmidons-pinequest-backend.vercel.app/teacher/create-attendance`,
         {
           classroomId: selectedClassroomId,
+          latitude,
+          longitude,
         }
       );
 

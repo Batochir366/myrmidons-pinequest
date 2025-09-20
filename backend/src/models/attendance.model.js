@@ -13,6 +13,14 @@ const AttendanceSchema = new Schema(
         attendedAt: { type: Date, default: Date.now },
       },
     ],
+    latitude: {
+      type: Number,
+      required: true,
+    },
+    longitude: {
+      type: Number,
+      required: true,
+    },
     endedAt: { type: Date, default: null },
   },
   { timestamps: true }
