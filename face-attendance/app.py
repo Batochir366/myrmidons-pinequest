@@ -181,8 +181,9 @@ def attend_class():
         longitude = data.get('longitude')  # student's longitude
         attendanceId = data.get('attendanceId')
 
-        if not all([studentId, image_base64, classroom_students, attendanceId, latitude, longitude]):
+        if not all([studentId, image_base64, attendanceId, latitude, longitude]) or classroom_students is None:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
+
 
         if studentId not in classroom_students:
             return jsonify({
