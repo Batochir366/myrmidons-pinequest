@@ -303,36 +303,76 @@ def attend_class():
         return jsonify({"success": False, "message": f"Internal Server Error: {str(e)}"}), 500
 
 
-@app.route('/student/join', methods=['POST'])
+@app.route('/student/join', methods=['POST', 'OPTIONS'])
 def student_join():
-    data = request.json
-    studentId = data.get('studentId')
-
-    if not studentId:
-        return jsonify({
-            "success": False,
-            "message": "Missing studentId"
-        }), 400
-
+    if request.method == 'OPTIONS':
+        return '', 204
+        
     try:
-        existing = users_collection.find_one({
-            "studentId": studentId
-        })
+        data = request.json
+        studentId = data.get('studentId')
+        image_base64 = data.get('image_base64')
 
+        if not studentId:
+            return jsonify({
+                "success": False,
+                "message": "Missing studentId"
+            }), 400
+            
+        if not image_base64:
+            return jsonify({
+                "success": False,
+                "message": "Missing face image for verification"
+            }), 400
+
+        # Check if student exists in database
+        existing = users_collection.find_one({"studentId": studentId})
         if not existing:
             return jsonify({
                 "success": False,
                 "verified": False,
                 "message": "User not found in the database"
             }), 404
+
+        # Decode the face image
+        try:
+            header, encoded = image_base64.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        except Exception as e:
+            print(f"Image decoding error: {e}")
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+
+        if frame is None:
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+
+        # Verify the face matches the student
+        name, matched_user = recognize_face(frame, filter_student_ids=[studentId])
+        
+        if name in ['unknown_person', 'no_persons_found']:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Face not recognized"
+            }), 401
+
+        if not matched_user or matched_user.get('studentId') != studentId:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "Face does not match the provided student ID"
+            }), 403
+
         return jsonify({
             "success": True,
             "verified": True,
-            "message": f"Student {studentId} joined successfully"
+            "message": f"Student {studentId} verified and joined successfully",
+            "name": matched_user.get('name', name)
         })
 
     except Exception as e:
-        print(f"❌ Database error: {e}")
+        print(f"Database error: {e}")
         return jsonify({
             "success": False,
             "message": "Database error while checking student ID"
@@ -342,7 +382,6 @@ def student_join():
 
 @app.route('/student/register', methods=['POST', 'OPTIONS'])
 def register():
-    # Add OPTIONS handling for CORS preflight
     if request.method == 'OPTIONS':
         return '', 204
         
@@ -453,7 +492,7 @@ def register():
             print(f"No database connection, user {studentName} not saved")
             return jsonify({"success": False, "message": "Database not connected"}), 500
 
-        print(f"✅ User {studentName} registered successfully")
+        print(f"User {studentName} registered successfully")
         return jsonify({
             "success": True,
             "message": f"User {studentName} registered successfully!"
