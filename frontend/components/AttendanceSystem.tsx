@@ -138,6 +138,7 @@ const AttendanceSystem: React.FC = () => {
       }
     };
     const location = await getLocation();
+    console.log(students);
 
     const verified = await captureAndVerify(
       videoRef,
