@@ -152,7 +152,11 @@ def recognize_teacher_face(frame):
 
     return name, best_match_teacher
 
-def face_verify(frame, classroom_id):
+def recognize_classroom_face(frame, classroom_students):
+    """
+    Recognize face against ONLY the provided classroom students
+    No database queries - uses the student data directly from frontend
+    """
     name = "unknown_person"
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     face_encodings = face_recognition.face_encodings(rgb_frame)
@@ -162,56 +166,29 @@ def face_verify(frame, classroom_id):
 
     encoding = face_encodings[0]
     best_match_user = None
-    best_match_distance = 0.45  # This threshold can be adjusted
+    best_match_distance = 0.45
 
-    # Check if the classroom exists in the database
-    if classrooms_collection is not None:
+    # Work directly with the classroom students data (no database query)
+    for student in classroom_students:
         try:
-            classroom = classrooms_collection.find_one({"classroomId": classroom_id})
-            if not classroom:
-                print(f"❌ Classroom with ID {classroom_id} not found.")
-                return "unknown_classroom", None
-        except Exception as e:
-            print(f"❌ Database error while fetching classroom: {e}")
-            return "unknown_classroom", None
-
-    # Retrieve the list of student IDs for the classroom
-    classroom_students = classroom.get("students", [])
-    
-    if not classroom_students:
-        print("❌ No students found in the classroom")
-        return "no_students_in_classroom", None
-
-    # Fetch user data for the students in the classroom
-    users = []
-    if users_collection is not None:
-        try:
-            users = list(users_collection.find({
-                "studentId": { "$in": classroom_students }
-            }))
-        except Exception as e:
-            print(f"❌ Error fetching users for the classroom: {e}")
-            return "error_fetching_users", None
-
-    # Compare the input face encoding with the embeddings of students in the classroom
-    for user in users:
-        try:
-            stored_encoding = np.array(user['embedding'])
+            if not isinstance(student, dict) or 'embedding' not in student:
+                continue
+                
+            stored_encoding = np.array(student['embedding'])
             distance = face_recognition.face_distance([stored_encoding], encoding)[0]
-
+            
             if distance < best_match_distance:
                 best_match_distance = distance
-                best_match_user = user
-                name = user['name']
+                best_match_user = student
+                name = student.get('name', student.get('studentId', 'unknown'))
         except Exception as e:
-            print(f"❌ Error processing user {user.get('name', 'unknown')}: {e}")
+            print(f"Error processing student {student.get('studentId', 'unknown')}: {e}")
             continue
 
     if best_match_user is None:
         return "unknown_person", None
 
     return name, best_match_user
-
 @app.route('/')
 def index():
     return jsonify({
@@ -228,6 +205,7 @@ def health():
         "database": "connected" if mongo_client else "disconnected"
     })
 
+
 @app.route('/student/attend', methods=['POST', 'OPTIONS'])
 def attend_class():
     if request.method == 'OPTIONS':
@@ -237,54 +215,51 @@ def attend_class():
         data = request.get_json()
         studentId = data.get('studentId')
         image_base64 = data.get('image_base64')
-        classroom_students = data.get('classroom_students')  # List of studentIds
+        classroom_students = data.get('classroom_students')  # Array of student objects with embeddings
         
-        longitude = data.get('longitude')  # student's longitude
-        latitude = data.get('latitude')  # student's latitude
+        longitude = data.get('longitude')
+        latitude = data.get('latitude')
 
         # Check for required fields
         if not all([studentId, image_base64, latitude, longitude]) or not classroom_students:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Check if student is part of the classroom
+        # Extract student IDs for membership check
         student_ids = [student.get('studentId') for student in classroom_students if isinstance(student, dict)]
+        
+        # Check if student is part of the classroom
         if studentId not in student_ids:
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Student is not part of this classroom"
+                "message": f"Student {studentId} not in classroom. Available: {student_ids}"
             }), 403
 
-        # Check location (Haversine distance)
-        teacher_lat = 47.91417544200054  # Hardcoded teacher location (can be dynamic if needed)
-        teacher_lon = 106.91655931106844  # Same here
+        # Location check
+        teacher_lat = 47.91417544200054
+        teacher_lon = 106.91655931106844
 
         def haversine(lat1, lon1, lat2, lon2):
-            from math import radians, sin, cos, sqrt, atan2
-            R = 6371000  # radius of Earth in meters
+            R = 6371000
             try:
                 phi1, phi2 = radians(lat1), radians(lat2)
                 delta_phi = radians(lat2 - lat1)
                 delta_lambda = radians(lon2 - lon1)
-
                 a = sin(delta_phi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(delta_lambda / 2) ** 2
                 c = 2 * atan2(sqrt(a), sqrt(1 - a))
                 return R * c
-            except Exception as e:
-                print(f"Error calculating distance: {e}")
+            except Exception:
                 return float('inf')
 
         distance = haversine(teacher_lat, teacher_lon, latitude, longitude)
-        max_distance_meters = 100  # Max distance in meters (adjust as needed)
-
-        if distance > max_distance_meters:
+        if distance > 100:
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": f"Your location is too far from the classroom ({distance:.1f} meters)."
+                "message": f"Location too far ({distance:.1f}m)"
             }), 403
 
-        # Decode the base64 image
+        # Decode image
         try:
             header, encoded = image_base64.split(",", 1)
             image_bytes = base64.b64decode(encoded)
@@ -294,37 +269,38 @@ def attend_class():
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
         if frame is None:
-            return jsonify({"success": False, "message": "Failed to decode image properly"}), 400
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Perform face recognition
-        name, matched_user = face_verify(frame, filter_student_ids=classroom_students)
+        # Use the new function that works ONLY with classroom students
+        name, matched_user = recognize_classroom_face(frame, classroom_students)
 
         if name in ['unknown_person', 'no_persons_found']:
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Face not recognized"
+                "message": "Face not recognized among classroom students"
             }), 401
 
-        if matched_user['studentId'] != studentId:
+        if not matched_user or matched_user.get('studentId') != studentId:
+            recognized_id = matched_user.get('studentId') if matched_user else 'None'
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Face does not match provided student ID"
+                "message": f"Face mismatch. Recognized: {recognized_id}, Expected: {studentId}"
             }), 403
 
         return jsonify({
             "success": True,
             "verified": True,
-            "message": "Student verified, location and face match",
+            "message": "Student verified successfully",
             "studentId": studentId,
-            "name": matched_user['name'],
+            "name": matched_user.get('name', name),
         }), 200
 
-    except Exception:
+    except Exception as e:
+        import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal Server Error"}), 500
-
+        return jsonify({"success": False, "message": f"Internal Server Error: {str(e)}"}), 500
 
 
 @app.route('/student/join', methods=['POST'])
