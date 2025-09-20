@@ -10,11 +10,9 @@ export const createClassroom = async (req, res) => {
     const { lectureName, teacherId, lectureDate } = req.body;
 
     if (!lectureName || !lectureDate || !teacherId) {
-      return res
-        .status(400)
-        .json({
-          message: "lectureName, lectureDate болон teacherId шаардлагатай",
-        });
+      return res.status(400).json({
+        message: "lectureName, lectureDate болон teacherId шаардлагатай",
+      });
     }
 
     const teacher = await TeacherModel.findById(teacherId);
@@ -74,7 +72,7 @@ export const getOnlyClassroomsByTeacherId = async (req, res) => {
     // зөвхөн _id, lectureName авах
     const classrooms = await ClassroomModel.find(
       { teacher: teacherId },
-      "_id lectureName lectureDate"
+      "_id lectureName lectureDate joinLink"
     );
 
     return res.status(200).json({ classrooms });
