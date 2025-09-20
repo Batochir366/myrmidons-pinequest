@@ -2,40 +2,40 @@ import { AttendanceModel } from "../models/attendance.model.js";
 import { ClassroomModel } from "../models/classroom.model.js";
 import { UserModel } from "../models/user.model.js";
 
-export const checkStudentInClassroom = async (req, res) => {
-  try {
-    const { studentId } = req.params;
+// export const checkStudentInClassroom = async (req, res) => {
+//   try {
+//     const { studentId } = req.params;
 
-    if (!studentId) {
-      return res.status(400).json({ message: "studentId шаардлагатай" });
-    }
+//     if (!studentId) {
+//       return res.status(400).json({ message: "studentId шаардлагатай" });
+//     }
 
-    const student = await UserModel.findOne({ studentId: studentId });
-    if (!student) {
-      return res.status(404).json({ message: "Сурагч олдсонгүй" });
-    }
+//     const student = await UserModel.findOne({ studentId: studentId });
+//     if (!student) {
+//       return res.status(404).json({ message: "Сурагч олдсонгүй" });
+//     }
 
-    const classroom = await ClassroomModel.findOne({
-      ClassroomStudents: student._id,
-    });
+//     const classroom = await ClassroomModel.findOne({
+//       ClassroomStudents: student._id,
+//     });
 
-    if (!classroom) {
-      return res.status(404).json({
-        message:
-          "Та ямар ч хичээлд нэгдээгүй байна. Эхлээд хичээлд нэгдэнэ үү.",
-      });
-    }
+//     if (!classroom) {
+//       return res.status(404).json({
+//         message:
+//           "Та ямар ч хичээлд нэгдээгүй байна. Эхлээд хичээлд нэгдэнэ үү.",
+//       });
+//     }
 
-    res.status(200).json({
-      message: "Оюутан хичээлд нэгдсэн байна",
-      classroomId: classroom._id,
-      classroomName: classroom.name,
-    });
-  } catch (error) {
-    console.error("❌ checkStudentInClassroom error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
+//     res.status(200).json({
+//       message: "Оюутан хичээлд нэгдсэн байна",
+//       classroomId: classroom._id,
+//       classroomName: classroom.name,
+//     });
+//   } catch (error) {
+//     console.error("❌ checkStudentInClassroom error:", error);
+//     res.status(500).json({ message: "Server error", error: error.message });
+//   }
+// };
 
 export const addStudentToAttendance = async (req, res) => {
   try {
