@@ -8,14 +8,6 @@ from flask_cors import CORS
 import traceback
 from datetime import datetime
 from math import radians, cos, sin, sqrt, atan2
-import os
-from test import test
-import sys
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEST_PATH = os.path.join(BASE_DIR, "face-attendance", "Silent_Face_Anti_Spoofing")
-sys.path.append(TEST_PATH)
-
-from test import test
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
@@ -164,43 +156,6 @@ def recognize_teacher_face(frame):
 
     return name, best_match_teacher
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-def is_spoof(frame) -> bool:
-    try:
-        print("🔍 Starting FIXED spoof detection...")
-        
-        # Force the image to 3:4 aspect ratio
-        height, width = frame.shape[:2]
-        target_width = int(height * 3/4)
-        target_height = int(width / (3/4))
-        
-        if width/height > 3/4:
-            # Too wide - crop width
-            new_width = int(height * 3/4)
-            start_x = (width - new_width) // 2
-            frame = frame[:, start_x:start_x + new_width]
-        else:
-            # Too tall - crop height  
-            new_height = int(width / (3/4))
-            start_y = (height - new_height) // 2
-            frame = frame[start_y:start_y + new_height, :]
-        
-        print(f"🔍 Adjusted frame shape: {frame.shape}")
-        
-        label = test(
-            frame,
-            model_dir=os.path.join(BASE_DIR, "Silent_Face_Anti_Spoofing", "resources", "anti_spoof_models"),
-            device_id=0,
-        )
-        
-        return label == 1
-        
-    except Exception as e:
-        print(f"⚠️ Error in spoof detection: {e}")
-        return True  # Allow login on error
-
-
 @app.route('/')
 def index():
     return jsonify({
@@ -276,9 +231,6 @@ def attend_class():
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        if not is_spoof(frame):
-            return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
-
         name, matched_user = recognize_face(frame, filter_student_ids=classroom_students)
 
         if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
@@ -335,8 +287,6 @@ def join_class():
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        if not is_spoof(frame):
-            return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
         # Run recognition against all users
         name, matched_user = recognize_face(frame)
 
@@ -550,8 +500,7 @@ def register_teacher():
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-        if not is_spoof(frame):
-            return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
+
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         face_encodings = face_recognition.face_encodings(rgb_frame)
 
@@ -626,15 +575,6 @@ def login_teacher():
         if frame is None:
             print("❌ Frame is None after decoding")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
-        # Spoof detection
-        print("🔍 Running spoof detection...")
-        spoof_result = is_spoof(frame)
-        print(f"🔍 Spoof detection result: {spoof_result}")
-        
-        if not spoof_result:
-            print("❌ Spoof detected - returning 403")
-            return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
 
         # Face recognition
         print("👤 Running face recognition...")
