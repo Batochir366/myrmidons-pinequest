@@ -23,6 +23,7 @@ import {
 import { QRControlCenter } from "@/components/QrControlCenter";
 import { AttendanceHistory } from "@/components/AttendanceHistory";
 import { ClassroomsView } from "@/components/ClassroomsView";
+import { RequireAuth } from "@/components/RequireAuth";
 
 export default function AttendanceDashboard() {
   const [activeView, setActiveView] = useState("attendance");
@@ -138,107 +139,109 @@ export default function AttendanceDashboard() {
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen bg-background w-full">
-        {/* Desktop Sidebar */}
-        <Sidebar className="hidden md:flex border-r border-border bg-white dark:bg-gray-900">
-          <SidebarHeader className="h-[85px] p-6 border-b border-border bg-white">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
-                <QrCode className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-lg text-foreground">A+</h2>
-                <p className="text-xs text-muted-foreground font-medium">
-                  Ирц хянах систем
-                </p>
-              </div>
-            </div>
-          </SidebarHeader>
-
-          <SidebarContent className="px-4 py-6 bg-white dark:bg-gray-900">
-            <SidebarMenu className="space-y-2">
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
-                  <button
-                    onClick={() => setActiveView(item.id)}
-                    className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer border-0 ${
-                      activeView === item.id
-                        ? "!bg-slate-700 !text-white shadow-lg transform scale-105"
-                        : "bg-transparent hover:bg-slate-100 hover:text-slate-700 hover:shadow-md hover:transform hover:scale-102 text-slate-600"
-                    }`}
-                    style={
-                      activeView === item.id
-                        ? {
-                            backgroundColor: "rgb(51, 65, 85) !important",
-                            color: "white !important",
-                            background:
-                              "linear-gradient(to right, rgb(51, 65, 85), rgb(30, 41, 59)) !important",
-                          }
-                        : {}
-                    }
-                  >
-                    <item.icon
-                      className="w-5 h-5"
-                      style={
-                        activeView === item.id
-                          ? { color: "white !important" }
-                          : {}
-                      }
-                    />
-                    <span
-                      style={
-                        activeView === item.id
-                          ? { color: "white !important" }
-                          : {}
-                      }
-                    >
-                      {item.label}
-                    </span>
-                  </button>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarContent>
-        </Sidebar>
-
-        {/* Icon-only Sidebar for Tablet */}
-        <IconOnlySidebar />
-
-        <div className="flex-1 flex flex-col min-w-0 w-full">
-          {/* Header */}
-          <header className="border-b border-border bg-card px-4 sm:px-6 py-4 w-full">
-            <div className="flex items-center justify-between max-w-none">
-              <div className="flex items-center gap-4">
-                {/* Mobile Menu */}
-                <MobileSidebar />
-                <SidebarTrigger className="hidden md:flex" />
-                <div className="min-w-0">
-                  <h1 className="text-xl sm:text-2xl font-semibold text-card-foreground truncate">
-                    Сайн байна уу, Багш {teacherName}
-                  </h1>
-                  <p className="text-sm text-muted-foreground hidden sm:block">
-                    Ирцийн хяналтын самбарт тавтай морилно уу
+    <RequireAuth>
+      <SidebarProvider>
+        <div className="flex min-h-screen bg-background w-full">
+          {/* Desktop Sidebar */}
+          <Sidebar className="hidden md:flex border-r border-border bg-white dark:bg-gray-900">
+            <SidebarHeader className="h-[85px] p-6 border-b border-border bg-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
+                  <QrCode className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-lg text-foreground">A+</h2>
+                  <p className="text-xs text-muted-foreground font-medium">
+                    Ирц хянах систем
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Avatar className="w-8 h-8 sm:w-10 sm:h-10">
-                  <AvatarImage src={teacherImage} />
-                  <AvatarFallback>PS</AvatarFallback>
-                </Avatar>
-              </div>
-            </div>
-          </header>
+            </SidebarHeader>
 
-          {/* Main Content */}
-          <main className="flex-1 p-4 sm:p-6 overflow-auto w-full">
-            <div className="w-full max-w-[1600px] mx-auto">
-              {renderContent()}
-            </div>
-          </main>
+            <SidebarContent className="px-4 py-6 bg-white dark:bg-gray-900">
+              <SidebarMenu className="space-y-2">
+                {menuItems.map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <button
+                      onClick={() => setActiveView(item.id)}
+                      className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer border-0 ${
+                        activeView === item.id
+                          ? "!bg-slate-700 !text-white shadow-lg transform scale-105"
+                          : "bg-transparent hover:bg-slate-100 hover:text-slate-700 hover:shadow-md hover:transform hover:scale-102 text-slate-600"
+                      }`}
+                      style={
+                        activeView === item.id
+                          ? {
+                              backgroundColor: "rgb(51, 65, 85) !important",
+                              color: "white !important",
+                              background:
+                                "linear-gradient(to right, rgb(51, 65, 85), rgb(30, 41, 59)) !important",
+                            }
+                          : {}
+                      }
+                    >
+                      <item.icon
+                        className="w-5 h-5"
+                        style={
+                          activeView === item.id
+                            ? { color: "white !important" }
+                            : {}
+                        }
+                      />
+                      <span
+                        style={
+                          activeView === item.id
+                            ? { color: "white !important" }
+                            : {}
+                        }
+                      >
+                        {item.label}
+                      </span>
+                    </button>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarContent>
+          </Sidebar>
+
+          {/* Icon-only Sidebar for Tablet */}
+          <IconOnlySidebar />
+
+          <div className="flex-1 flex flex-col min-w-0 w-full">
+            {/* Header */}
+            <header className="border-b border-border bg-card px-4 sm:px-6 py-4 w-full">
+              <div className="flex items-center justify-between max-w-none">
+                <div className="flex items-center gap-4">
+                  {/* Mobile Menu */}
+                  <MobileSidebar />
+                  <SidebarTrigger className="hidden md:flex" />
+                  <div className="min-w-0">
+                    <h1 className="text-xl sm:text-2xl font-semibold text-card-foreground truncate">
+                      Сайн байна уу, Багш {teacherName}
+                    </h1>
+                    <p className="text-sm text-muted-foreground hidden sm:block">
+                      Ирцийн хяналтын самбарт тавтай морилно уу
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-8 h-8 sm:w-10 sm:h-10">
+                    <AvatarImage src={teacherImage} />
+                    <AvatarFallback>PS</AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
+            </header>
+
+            {/* Main Content */}
+            <main className="flex-1 p-4 sm:p-6 overflow-auto w-full">
+              <div className="w-full max-w-[1600px] mx-auto">
+                {renderContent()}
+              </div>
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </RequireAuth>
   );
 }
