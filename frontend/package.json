@@ -40,6 +40,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/jwt-encode": "^1.0.3",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
