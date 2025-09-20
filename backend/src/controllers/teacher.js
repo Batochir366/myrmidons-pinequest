@@ -12,7 +12,9 @@ export const createClassroom = async (req, res) => {
     if (!lectureName || !lectureDate || !teacherId) {
       return res
         .status(400)
-        .json({ message: "lectureName, lectureDate болон teacherId шаардлагатай" });
+        .json({
+          message: "lectureName, lectureDate болон teacherId шаардлагатай",
+        });
     }
 
     const teacher = await TeacherModel.findById(teacherId);
@@ -151,10 +153,12 @@ export const getClassroomsByTeacherId = async (req, res) => {
 
 export const createAttendance = async (req, res) => {
   try {
-    const { classroomId } = req.body;
+    const { classroomId, latitude, longitude } = req.body;
 
-    if (!classroomId) {
-      return res.status(400).json({ message: "classroomId is required" });
+    if (!classroomId || latitude === undefined || longitude === undefined) {
+      return res
+        .status(400)
+        .json({ message: "classroomId, latitude and longitude are required" });
     }
 
     // Check classroom exists (optional but recommended)
@@ -163,11 +167,13 @@ export const createAttendance = async (req, res) => {
       return res.status(404).json({ message: "Classroom not found" });
     }
 
-    // Create new attendance linked to this classroom
+    // Create new attendance linked to this classroom with location data
     const newAttendance = await AttendanceModel.create({
       classroom: classroomId,
       attendingStudents: [],
       endedAt: null,
+      latitude,
+      longitude,
     });
 
     // Update Classroom attendanceHistory array

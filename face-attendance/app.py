@@ -6,6 +6,11 @@ import numpy as np
 import base64
 from flask_cors import CORS
 import traceback
+from datetime import datetime
+from math import radians, cos, sin, sqrt, atan2
+import os
+
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
@@ -154,9 +159,20 @@ def recognize_teacher_face(frame):
 
     return name, best_match_teacher
 
-def is_spoof(image):
-    """Temporarily disabled for testing"""
-    return True
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def is_spoof(frame) -> bool:
+    try:
+        label = test(
+            frame,
+            model_dir = os.path.join(BASE_DIR, "Silent_Face_Anti_Spoofing", "resources", "anti_spoof_models"),
+            device_id=0,
+        )
+        return label == 1
+    except Exception as e:
+        print("Error in spoof detection:", e)
+        return False
+
 
 @app.route('/')
 def index():
@@ -183,8 +199,11 @@ def attend_class():
         studentId = data.get('studentId')
         image_base64 = data.get('image_base64')
         classroom_students = data.get('classroom_students')  # List of studentIds
+        latitude = data.get('latitude')    # student's latitude
+        longitude = data.get('longitude')  # student's longitude
+        attendanceId = data.get('attendanceId')
 
-        if not studentId or not image_base64 or not classroom_students:
+        if not all([studentId, image_base64, classroom_students, attendanceId, latitude, longitude]):
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
         if studentId not in classroom_students:
@@ -194,21 +213,45 @@ def attend_class():
                 "message": "Student is not part of this classroom"
             }), 403
 
+        attendance = AttendanceModel.objects(id=attendanceId).first()
+        if not attendance:
+            return jsonify({"success": False, "message": "Attendance session not found"}), 404
+        teacher_lat = attendance.latitude
+        teacher_lon = attendance.longitude
+
+        # Haversine function to calculate distance
+        def haversine(lat1, lon1, lat2, lon2):
+            R = 6371000  # radius of Earth in meters
+            phi1, phi2 = radians(lat1), radians(lat2)
+            delta_phi = radians(lat2 - lat1)
+            delta_lambda = radians(lon2 - lon1)
+
+            a = sin(delta_phi / 2) ** 2 + cos(phi1) * cos(phi2) * sin(delta_lambda / 2) ** 2
+            c = 2 * atan2(sqrt(a), sqrt(1 - a))
+            return R * c
+
+        distance = haversine(teacher_lat, teacher_lon, latitude, longitude)
+        max_distance_meters = 100  # adjust as needed
+
+        if distance > max_distance_meters:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": f"Your location is too far from the classroom ({distance:.1f} meters)."
+            }), 403
+
         # Decode the base64 image
-        try:
-            header, encoded = image_base64.split(",", 1)
-            image_bytes = base64.b64decode(encoded)
-            np_arr = np.frombuffer(image_bytes, np.uint8)
-            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        except Exception:
-            return jsonify({"success": False, "message": "Invalid image encoding"}), 400
+        header, encoded = image_base64.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
         if not is_spoof(frame):
             return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
-        # Perform face recognition, filtered to classroom students
+
         name, matched_user = recognize_face(frame, filter_student_ids=classroom_students)
 
         if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
@@ -225,14 +268,16 @@ def attend_class():
                 "message": "Face does not match provided student ID"
             }), 403
 
-        # Return success
-        return jsonify({
-            "success": True,
-            "verified": True,
-            "studentId": matched_user['studentId'],
-            "name": matched_user['name'],
-            "message": f"Welcome, {matched_user['name']}!"
-        })
+        # Check if attendance already recorded
+        existing = next((s for s in attendance.attendingStudents if str(s.student) == studentId), None)
+        if existing:
+            return jsonify({
+                "success": True,
+                "verified": True,
+                "message": "Attendance already recorded",
+                "studentId": studentId,
+                "name": matched_user['name'],
+            })
 
     except Exception as e:
         traceback.print_exc()

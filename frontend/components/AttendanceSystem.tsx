@@ -10,6 +10,7 @@ import {
   stopCamera,
   recordAttendance,
 } from "@/utils/attendanceUtils";
+import { getLocation } from "@/utils/getLocation";
 
 const AttendanceSystem: React.FC = () => {
   const [studentId, setStudentId] = useState("");
@@ -75,21 +76,31 @@ const AttendanceSystem: React.FC = () => {
       setMessage(
         `Сайн байна уу, ${name || "Оюутан"}! Царай амжилттай танигдлаа.`
       );
-
       setIsRecordingAttendance(true);
-      const attendanceRecorded = await recordAttendance(
-        attendanceId!,
-        studentId,
-        setMessage
-      );
-      setIsRecordingAttendance(false);
-
-      if (attendanceRecorded) {
-        setMessage(
-          `Сайн байна уу, ${name || "Оюутан"}! Ирц амжилттай бүртгэгдлээ.`
+      try {
+        const location = await getLocation();
+        const attendanceRecorded = await recordAttendance(
+          attendanceId!,
+          studentId,
+          setMessage,
+          location.latitude,
+          location.longitude
         );
-        stopCamera(streamRef);
-        setStep(3);
+
+        setIsRecordingAttendance(false);
+
+        if (attendanceRecorded) {
+          setMessage(
+            `Сайн байна уу, ${name || "Оюутан"}! Ирц амжилттай бүртгэгдлээ.`
+          );
+          stopCamera(streamRef);
+          setStep(3);
+        }
+      } catch (error) {
+        setIsRecordingAttendance(false);
+        setMessage(
+          "Байршлын мэдээллийг авах боломжгүй байна. Байршлын зөвшөөрөл өгнө үү."
+        );
       }
     };
 
@@ -97,9 +108,7 @@ const AttendanceSystem: React.FC = () => {
       videoRef,
       canvasRef,
       "https://myrmidons-pinequest-backend.vercel.app/student/attend",
-      {
-        studentId,
-      },
+      { studentId },
       setMessage,
       setIsRecognizing,
       setRecognitionProgress,
