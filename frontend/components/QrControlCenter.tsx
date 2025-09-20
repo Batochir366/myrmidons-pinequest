@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ChevronDown, Clock, Play, QrCode, Square, Users } from "lucide-react";
 import QRCode from "qrcode";
-import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import { getLocation } from "@/utils/getLocation";
+import jwt from "jsonwebtoken";
 
 interface Classroom {
   _id: string;
@@ -116,10 +116,17 @@ export function QRControlCenter() {
   };
 
   const generateQr = (attendanceId: string) => {
-    const token = uuidv4();
     const expiresAt = Date.now() + 5000;
 
-    const url = `https://myrmidons-pinequest-frontend-delta.vercel.app/student?token=${token}&expiresAt=${expiresAt}&attendanceId=${attendanceId}`;
+    const payload = {
+      attendanceId,
+      classroomId: selectedClassroomId,
+      exp: expiresAt,
+    };
+
+    const token = jwt.sign(payload, "FACE");
+
+    const url = `https://myrmidons-pinequest-frontend-delta.vercel.app/student?token=${token}`;
 
     setQrData(url);
 
@@ -131,7 +138,6 @@ export function QRControlCenter() {
       }
     });
   };
-
   const onClassroomChange = (selectedId: string) => {
     if (running) {
       stopTimer();

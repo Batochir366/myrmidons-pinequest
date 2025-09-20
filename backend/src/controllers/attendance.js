@@ -95,3 +95,33 @@ export const getClassroomAttendanceHistoryById = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
+
+export const getClassroomById = async (req, res) => {
+  try {
+    const { classroomId } = req.params;
+
+    if (!classroomId) {
+      return res.status(400).json({ message: "classroomId шаардлагатай" });
+    }
+
+    const classroom = await ClassroomModel.findById(classroomId).populate({
+      path: "ClassroomStudents",
+      model: "User",
+      select: "studentId name",
+    });
+    if (!classroom) {
+      return res.status(404).json({ message: "Classroom олдсонгүй" });
+    }
+
+    return res.status(200).json({
+      message: "Classroom амжилттай олдлоо",
+      classroom,
+    });
+  } catch (error) {
+    console.error("❌ getClassroomByIdFull error:", error);
+    return res.status(500).json({
+      message: "Серверийн алдаа",
+      error: error.message,
+    });
+  }
+};
