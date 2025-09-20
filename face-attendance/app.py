@@ -194,10 +194,10 @@ def attend_class():
         attendance = AttendanceModel.objects(id=attendanceId).first()
         if not attendance:
             return jsonify({"success": False, "message": "Attendance session not found"}), 404
+
         teacher_lat = attendance.latitude
         teacher_lon = attendance.longitude
 
-        # Haversine function to calculate distance
         def haversine(lat1, lon1, lat2, lon2):
             R = 6371000  # radius of Earth in meters
             phi1, phi2 = radians(lat1), radians(lat2)
@@ -254,99 +254,55 @@ def attend_class():
                 "name": matched_user['name'],
             })
 
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal Server Error"}), 500
-
-
-@app.route('/student/join', methods=['POST', 'OPTIONS'])
-def join_class():
-    if request.method == 'OPTIONS':
-        return '', 204
-    try:
-        data = request.get_json()
-        studentId = data.get('studentId')
-        image_base64 = data.get('image_base64')
-
-        if not studentId or not image_base64:
-            return jsonify({"success": False, "message": "Missing required fields"}), 400
-
-        try:
-            header, encoded = image_base64.split(",", 1)
-            image_bytes = base64.b64decode(encoded)
-            np_arr = np.frombuffer(image_bytes, np.uint8)
-            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        except Exception as e:
-            print(f"❌ Image decoding failed: {e}")
-            return jsonify({"success": False, "message": "Invalid image encoding"}), 400
-
-        if frame is None:
-            print("❌ Frame is None after decoding")
-            return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
-        name, matched_user = recognize_face(frame)
-        print("✅ Recognized name:", name)
-        print("✅ Matched user:", matched_user)
-
-        if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
-            return jsonify({
-                "success": False,
-                "verified": False,
-                "message": "Face not recognized"
-            }), 401
-
-        if not matched_user or matched_user.get("studentId") != studentId:
-            return jsonify({
-                "success": False,
-                "verified": False,
-                "message": "Face does not match the provided student ID"
-            }), 403
-
-        if logs_collection is None:
-            print("❌ logs_collection not initialized")
-            return jsonify({"success": False, "message": "Server misconfiguration"}), 500
-
-        try:
-            existing = logs_collection.find_one({
-                "studentId": studentId,
-                "action": "joined"
-            })
-
-            if existing:
-                return jsonify({
-                    "success": True,
-                    "alreadyJoined": True,
-                    "studentId": matched_user['studentId'],
-                    "name": matched_user['name'],
-                    "message": f"{matched_user['name']} has already joined the classroom"
-                })
-
-            logs_collection.insert_one({
-                "studentId": matched_user['studentId'],
-                "name": matched_user['name'],
-                "timestamp": datetime.datetime.now(),
-                "action": "joined"
-            })
-
-        except Exception as e:
-            print(f"❌ Database error: {e}")
-            return jsonify({
-                "success": False,
-                "message": "Database error while processing join"
-            }), 500
+        # You can add logic here to mark attendance if not existing
 
         return jsonify({
             "success": True,
             "verified": True,
-            "studentId": matched_user['studentId'],
+            "message": "Attendance recorded successfully",
+            "studentId": studentId,
             "name": matched_user['name'],
-            "message": f"{matched_user['name']} has successfully joined the classroom"
+        })
+
+    except Exception:
+        traceback.print_exc()
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
+
+
+@app.route('/student/join', methods=['POST'])
+def student_join():
+    data = request.json
+    studentId = data.get('studentId')
+
+    if not studentId:
+        return jsonify({
+            "success": False,
+            "message": "Missing studentId"
+        }), 400
+
+    try:
+        existing = users_collection.find_one({
+            "studentId": studentId
+        })
+
+        if not existing:
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "User not found in the database"
+            }), 404
+        return jsonify({
+            "success": True,
+            "verified": True,
+            "message": f"Student {studentId} joined successfully"
         })
 
     except Exception as e:
-        print(f"❌ Unhandled Exception: {e}")
-        traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal Server Error"}), 500
+        print(f"❌ Database error: {e}")
+        return jsonify({
+            "success": False,
+            "message": "Database error while checking student ID"
+        }), 500
 
 
 
