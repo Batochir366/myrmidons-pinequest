@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, BookOpen, Plus, Link, Undo } from "lucide-react";
@@ -12,9 +13,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-import { useState } from "react";
-
 import {
   Form,
   FormControl,
@@ -27,49 +25,27 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { axiosInstance } from "@/lib/utils";
 import { ClassRoomDetail } from "./ClassRoomDeatial";
-import { se } from "date-fns/locale";
-interface Classroom {
-  id: string;
+import { toast, Toaster } from "sonner";
+
+// ---------- Types ----------
+interface Student {
   name: string;
-  subject: string;
-  studentCount: number;
+  studentId: string;
+  avatar?: string;
 }
 
-const mockClassrooms: Classroom[] = [
-  {
-    id: "1",
-    name: "Дээд математик",
-    subject: "12:00 - 13:00 ",
-    studentCount: 28,
-  },
-  {
-    id: "2",
-    name: "Физикийн лаборатори",
-    subject: "12:00 - 13:00",
-    studentCount: 24,
-  },
-  { id: "3", name: "Дэлхийн түүх", subject: "12:00 - 13:00", studentCount: 32 },
-  {
-    id: "4",
-    name: "Бүтээлч бичлэг",
-    subject: "12:00 - 13:00",
-    studentCount: 20,
-  },
-  {
-    id: "5",
-    name: "Биологийн үндэс",
-    subject: "12:00 - 13:00",
-    studentCount: 26,
-  },
-  {
-    id: "6",
-    name: "Компьютерийн шинжлэх ухаан 101",
-    subject: "12:00 - 13:00",
-    studentCount: 15,
-  },
-];
+interface Classroom {
+  _id: string;
+  lectureName: string;
+  lectureDate: string;
+  teacher: string;
+  joinLink: string;
+  ClassroomStudents: Student[];
+}
 
+// ---------- Form ----------
 const classroomSchema = z.object({
   name: z.string().min(2, "Нэр хамгийн багадаа 2 тэмдэгт байх ёстой"),
   startTime: z.string().nonempty("Эхлэх цаг шаардлагатай"),
@@ -79,33 +55,79 @@ const classroomSchema = z.object({
 type ClassroomForm = z.infer<typeof classroomSchema>;
 
 export const ClassroomsView = () => {
+  const [data, setData] = useState<Classroom[]>([]);
   const [open, setOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showClassroom, setShowClassroom] = useState(false);
-  const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(
+  const [selectedClassroom, setSelectedClassroom] = useState<Student[] | null>(
     null
   );
-  const handleCopy = async (classroomId: string) => {
-    const joinLink = ` https://youtube.com/${classroomId}`;
+  const [loading, setLoading] = useState(false);
+
+  // ---------- Fetch classrooms ----------
+  const fetchClassrooms = async () => {
+    try {
+      const res = await axiosInstance.get(
+        "teacher/classrooms-and-students/68ce474c004b100ccdb45adc"
+      );
+      setData(res.data.classrooms);
+    } catch (error) {
+      console.error("Error fetching classrooms:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchClassrooms();
+  }, []);
+
+  // ---------- Create classroom ----------
+  const createClassroom = async (values: ClassroomForm) => {
+    const formattedStartTime = values.startTime + " - " + values.endTime;
 
     try {
+      setLoading(true);
+      await axiosInstance.post("teacher/create-classroom", {
+        lectureName: values.name,
+        lectureDate: formattedStartTime,
+        teacherId: "68ce474c004b100ccdb45adc",
+      });
+
+      toast.success("Анги амжилттай үүсгэлээ!");
+      fetchClassrooms(); // update list
+      setOpen(false); // close dialog
+      form.reset();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "❌ Алдаа гарлаа");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmit = (values: ClassroomForm) => {
+    createClassroom(values);
+  };
+
+  // ---------- Copy link ----------
+  const handleCopy = async (link: string) => {
+    try {
       if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(joinLink);
+        await navigator.clipboard.writeText(link);
       } else {
         const textarea = document.createElement("textarea");
-        textarea.value = joinLink;
+        textarea.value = link;
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand("copy");
         document.body.removeChild(textarea);
       }
-
-      setCopiedId(classroomId);
-      setTimeout(() => setCopiedId(null), 2000); // 2s дараа reset
+      setCopiedId(link);
+      setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       console.error("Copy failed:", err);
     }
   };
+
+  // ---------- Form hook ----------
   const form = useForm<ClassroomForm>({
     resolver: zodResolver(classroomSchema),
     defaultValues: {
@@ -115,24 +137,16 @@ export const ClassroomsView = () => {
     },
   });
 
-  const onSubmit = (values: ClassroomForm) => {
-    const formattedStartTime = values.startTime + " - " + values.endTime;
-    values.startTime = formattedStartTime;
-    console.log("✅ Creating classroom:", values);
-    setOpen(false);
-    form.reset();
-  };
-
+  // ---------- Render ----------
   return (
-    <div className="space-y-6">
-      {!showClassroom ? (
+    <div className="space-y-6 w-full">
+      <Toaster position="bottom-right" />
+      {/* Create Classroom Button */}
+      {!showClassroom && (
         <div className="flex justify-end">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button
-                type="submit"
-                className="w-fit px-4 py-2 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-semibold rounded-md shadow hover:scale-105 transition-all duration-200"
-              >
+              <Button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-semibold rounded-md shadow hover:scale-105 transition-all duration-200">
                 Анги үүсгэх
                 <Plus className="w-4 h-4" />
               </Button>
@@ -149,7 +163,7 @@ export const ClassroomsView = () => {
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-4 py-4 "
+                  className="space-y-4 py-4"
                 >
                   <FormField
                     control={form.control}
@@ -168,7 +182,7 @@ export const ClassroomsView = () => {
                     )}
                   />
 
-                  <div className="grid grid-cols-2 gap-4 flex items-start">
+                  <div className="grid grid-cols-2 gap-4 items-start">
                     <FormField
                       control={form.control}
                       name="startTime"
@@ -178,11 +192,10 @@ export const ClassroomsView = () => {
                           <FormControl>
                             <Input type="time" {...field} />
                           </FormControl>
-                          <FormMessage className="text-center" />{" "}
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
-
                     <FormField
                       control={form.control}
                       name="endTime"
@@ -192,7 +205,7 @@ export const ClassroomsView = () => {
                           <FormControl>
                             <Input type="time" {...field} />
                           </FormControl>
-                          <FormMessage className="text-center" />{" "}
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -201,9 +214,10 @@ export const ClassroomsView = () => {
                   <DialogFooter>
                     <Button
                       type="submit"
-                      className="w-full px-4 py-2 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-semibold rounded-md shadow hover:scale-105 transition-all duration-200"
+                      disabled={loading}
+                      className="w-full px-4 py-2 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-semibold rounded-md shadow hover:scale-105 transition-all duration-200 disabled:opacity-60"
                     >
-                      Үүсгэх
+                      {loading ? "⏳ Үүсгэж байна..." : "Үүсгэх"}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -211,70 +225,81 @@ export const ClassroomsView = () => {
             </DialogContent>
           </Dialog>
         </div>
-      ) : (
+      )}
+
+      {/* Back Button */}
+      {showClassroom && (
         <Button
           onClick={() => setShowClassroom(false)}
-          type="button"
           className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 shadow-sm"
         >
-          <Undo className="w-4 h-4" />
-          Буцах
+          <Undo className="w-4 h-4" /> Буцах
         </Button>
       )}
 
-      {selectedClassroom && showClassroom ? (
-        <ClassRoomDetail />
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {mockClassrooms.map((classroom) => (
-            <Card key={classroom.id}>
+      {/* Classrooms Grid */}
+      <div className="flex flex-wrap gap-6 mt-4">
+        {!showClassroom &&
+          data.map((classroom) => (
+            <Card
+              key={classroom._id}
+              className="flex-1 min-w-[250px] max-w-[300px] w-full "
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div>
                   <CardTitle className="text-lg font-semibold">
-                    {classroom.name}
+                    {classroom.lectureName}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    {classroom.subject}
+                    {classroom.lectureDate}
                   </p>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2 text-sm mb-4">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{classroom.studentCount}</span>
+                  <span className="font-medium">
+                    {classroom.ClassroomStudents?.length}
+                  </span>
                   <span className="text-muted-foreground">сурагч</span>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="flex-1 text-xs"
-                    onClick={() => {
-                      setSelectedClassroom(classroom);
-                      setShowClassroom(true);
-                    }}
-                  >
-                    Ангийн дэлгэрэнгүй
-                  </Button>
+                <div className="flex gap-2 flex-col h-fit">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 text-xs underline cursor-pointer"
-                    onClick={() => handleCopy(classroom.id)}
+                    className="flex-1 text-xs underline cursor-pointer py-1"
+                    onClick={() => handleCopy(classroom.joinLink)}
                   >
-                    {copiedId === classroom.id
+                    {copiedId === classroom.joinLink
                       ? "Амжилттай хууллаа!"
                       : "Xолбоос хуулах"}
                     <Link className="h-4 w-4 text-muted-foreground ml-1" />
+                  </Button>
+                  <Button
+                    disabled={classroom.ClassroomStudents.length === 0}
+                    size="sm"
+                    variant="secondary"
+                    className="flex-1 text-xs py-1"
+                    onClick={() => {
+                      setSelectedClassroom(classroom.ClassroomStudents);
+                      setShowClassroom(true);
+                    }}
+                  >
+                    {classroom.ClassroomStudents.length === 0
+                      ? "Оюутан байхгүй"
+                      : "Ангийн дэлгэрэнгүй"}
                   </Button>
                 </div>
               </CardContent>
             </Card>
           ))}
-        </div>
-      )}
 
-      {mockClassrooms.length === 0 && (
+        {/* ClassRoomDetail */}
+        {showClassroom && <ClassRoomDetail classroom={selectedClassroom} />}
+      </div>
+
+      {/* Empty State */}
+      {data.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
