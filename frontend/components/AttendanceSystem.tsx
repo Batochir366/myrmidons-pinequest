@@ -15,6 +15,8 @@ import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 type Student = {
   studentId: string;
+  embedding: number[];
+  _id: string;
 };
 const AttendanceSystem: React.FC = () => {
   const [studentId, setStudentId] = useState("");
@@ -146,7 +148,7 @@ const AttendanceSystem: React.FC = () => {
       "https://myrmidons-pinequest-production.up.railway.app/student/attend",
       {
         studentId,
-        classroom_students: students.map((s) => s.studentId),
+        classroom_students: students,
         latitude: location.latitude,
         longitude: location.longitude,
       },
