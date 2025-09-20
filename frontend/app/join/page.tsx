@@ -3,7 +3,9 @@ import React, { Suspense } from "react";
 
 export default function JoinPage() {
   return (
-    <Suspense fallback={<div className="text-center p-10">Уншиж байна...</div>}>
+    <Suspense
+      fallback={<div className="text-center  p-10">Уншиж байна...</div>}
+    >
       <JoinClassPage />
     </Suspense>
   );
