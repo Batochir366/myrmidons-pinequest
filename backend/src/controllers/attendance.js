@@ -104,11 +104,8 @@ export const getClassroomById = async (req, res) => {
       return res.status(400).json({ message: "classroomId шаардлагатай" });
     }
 
-    const classroom = await ClassroomModel.findById(classroomId).populate({
-      path: "ClassroomStudents",
-      model: "User",
-      select: "studentId name",
-    });
+    const classroom = await ClassroomModel.findById(classroomId);
+
     if (!classroom) {
       return res.status(404).json({ message: "Classroom олдсонгүй" });
     }

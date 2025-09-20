@@ -111,10 +111,20 @@ export const joinClassroom = async (req, res) => {
       return res.status(404).json({ message: "Сурагч олдсонгүй" });
     }
 
-    // Add student to classroom's ClassroomStudents array (avoid duplicates with $addToSet)
+    // Retrieve the student's existing embedding
+    const embedding = student.embedding; // Existing embedding
+
+    // Create the student object with required fields for ClassroomStudents array
+    const classroomStudent = {
+      studentId: student.studentId,
+      name: student.name,
+      embedding: embedding,
+    };
+
+    // Add student to classroom's ClassroomStudents array (avoid duplicates)
     const updatedClassroom = await ClassroomModel.findByIdAndUpdate(
       classroomId,
-      { $addToSet: { ClassroomStudents: student._id } },
+      { $addToSet: { ClassroomStudents: classroomStudent } },
       { new: true }
     );
 
