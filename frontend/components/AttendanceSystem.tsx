@@ -11,7 +11,12 @@ import {
   recordAttendance,
 } from "@/utils/attendanceUtils";
 import { getLocation } from "@/utils/getLocation";
-
+import { jwtDecode } from "jwt-decode";
+import axios from "axios";
+import { ca } from "date-fns/locale";
+type Student = {
+  studentId: string;
+};
 const AttendanceSystem: React.FC = () => {
   const [studentId, setStudentId] = useState("");
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -27,6 +32,25 @@ const AttendanceSystem: React.FC = () => {
   const [attendanceId, setAttendanceId] = useState<string | null>(null);
   const [isInvalid, setIsInvalid] = useState(false);
   const [paramsLoaded, setParamsLoaded] = useState(false);
+  const [classroomId, setClassroomId] = useState<string | null>(null);
+  const [students, setStudents] = React.useState<Student[]>([]);
+
+  useEffect(() => {
+    if (!classroomId) return;
+
+    const fetchStudents = async () => {
+      try {
+        const response = await axios.get(
+          `https://myrmidons-pinequest-backend.vercel.app/attendance/${classroomId}`
+        );
+        setStudents(response.data.classroom.ClassroomStudents || []);
+      } catch (error) {
+        console.error("Failed to fetch students:", error);
+      }
+    };
+
+    fetchStudents();
+  }, [classroomId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -34,23 +58,34 @@ const AttendanceSystem: React.FC = () => {
     const handleParams = () => {
       const sp = new URLSearchParams(window.location.search);
       const tokenValue = sp.get("token");
-      const expiresAtValue = sp.get("expiresAt");
-      const attendanceIdValue = sp.get("attendanceId");
-      const expiresAtNum = expiresAtValue ? Number(expiresAtValue) : 0;
-      const now = Date.now();
 
-      if (
-        !tokenValue ||
-        !expiresAtValue ||
-        now > expiresAtNum ||
-        !attendanceIdValue
-      ) {
+      if (!tokenValue) {
         setIsInvalid(true);
-      } else {
+        return;
+      }
+
+      try {
+        const decoded: {
+          attendanceId: string;
+          classroomId: string;
+          exp: number;
+        } = jwtDecode(tokenValue);
+
+        const nowInSeconds = Math.floor(Date.now() / 1000);
+
+        if (decoded.exp < nowInSeconds) {
+          setIsInvalid(true);
+          return;
+        }
+
         setToken(tokenValue);
-        setExpiresAt(expiresAtNum);
-        setAttendanceId(attendanceIdValue);
+        setClassroomId(decoded.classroomId);
+        setAttendanceId(decoded.attendanceId);
+        setExpiresAt(decoded.exp * 1000);
         setIsInvalid(false);
+      } catch (err) {
+        console.error("Invalid token:", err);
+        setIsInvalid(true);
       }
 
       setParamsLoaded(true);
@@ -103,12 +138,19 @@ const AttendanceSystem: React.FC = () => {
         );
       }
     };
+    const location = await getLocation();
 
     const verified = await captureAndVerify(
       videoRef,
       canvasRef,
       "https://myrmidons-pinequest-production.up.railway.app/student/attend",
-      { studentId },
+      {
+        studentId,
+        classroom_students: students.map((s) => s.studentId),
+        attendanceId,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      },
       setMessage,
       setIsRecognizing,
       setRecognitionProgress,
