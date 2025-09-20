@@ -36,23 +36,6 @@ const AttendanceSystem: React.FC = () => {
   const [students, setStudents] = React.useState<Student[]>([]);
 
   useEffect(() => {
-    if (!classroomId) return;
-
-    const fetchStudents = async () => {
-      try {
-        const response = await axios.get(
-          `https://myrmidons-pinequest-backend.vercel.app/attendance/${classroomId}`
-        );
-        setStudents(response.data.classroom.ClassroomStudents || []);
-      } catch (error) {
-        console.error("Failed to fetch students:", error);
-      }
-    };
-
-    fetchStudents();
-  }, [classroomId]);
-
-  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handleParams = () => {
@@ -95,7 +78,22 @@ const AttendanceSystem: React.FC = () => {
     window.addEventListener("popstate", handleParams);
     return () => window.removeEventListener("popstate", handleParams);
   }, []);
+  useEffect(() => {
+    if (!classroomId) return;
 
+    const fetchStudents = async () => {
+      try {
+        const response = await axios.get(
+          `https://myrmidons-pinequest-backend.vercel.app/attendance/${classroomId}`
+        );
+        setStudents(response.data.classroom.ClassroomStudents || []);
+      } catch (error) {
+        console.error("Failed to fetch students:", error);
+      }
+    };
+
+    fetchStudents();
+  }, [classroomId]);
   useEffect(() => {
     if (step === 2) {
       startCamera(videoRef, setMessage, streamRef);
