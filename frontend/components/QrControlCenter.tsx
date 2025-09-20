@@ -8,7 +8,7 @@ import { ChevronDown, Clock, Play, QrCode, Square, Users } from "lucide-react";
 import QRCode from "qrcode";
 import axios from "axios";
 import { getLocation } from "@/utils/getLocation";
-import jwt from "jsonwebtoken";
+import jwtEncode from "jwt-encode";
 
 interface Classroom {
   _id: string;
@@ -124,7 +124,8 @@ export function QRControlCenter() {
       exp: expiresAt,
     };
 
-    const token = jwt.sign(payload, "FACE");
+    const secret = "FACE"; // Warning: secret exposed in frontend
+    const token = jwtEncode(payload, secret);
 
     const url = `https://myrmidons-pinequest-frontend-delta.vercel.app/student?token=${token}`;
 
@@ -202,10 +203,10 @@ export function QRControlCenter() {
         });
       }, 1000);
 
-      // Start polling for real attendance data every 2 seconds
-      pollRef.current = window.setInterval(() => {
-        pollAttendanceData(_id);
-      }, 2000);
+      // // Start polling for real attendance data every 2 seconds
+      // pollRef.current = window.setInterval(() => {
+      //   pollAttendanceData(_id);
+      // }, 2000);
     } catch (error) {
       console.error("Error creating attendance:", error);
       alert("Ирц үүсгэхэд алдаа гарлаа");
