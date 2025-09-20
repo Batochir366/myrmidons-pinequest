@@ -130,6 +130,7 @@ const sampleAttendanceData: AttendanceRecord[] = [
 ]
 
 export function AttendanceHistory() {
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]) // ⬅️ эхэнд зарлана
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedLecture, setSelectedLecture] = useState<AttendanceRecord | null>(null)
   const [showReport, setShowReport] = useState(false)
@@ -139,15 +140,66 @@ export function AttendanceHistory() {
     const month = String(date.getMonth() + 1).padStart(2, "0")
     const day = String(date.getDate()).padStart(2, "0")
     const dateString = `${year}-${month}-${day}`
-    return sampleAttendanceData.filter((record) => record.date === dateString)
+    return attendanceData.filter((record) => record.date === dateString)
   }
 
   const selectedDateAttendance = selectedDate ? getAttendanceForDate(selectedDate) : []
 
   const getLectureDays = () => {
-    return sampleAttendanceData.map((record) => new Date(record.date))
+    return attendanceData.map((record) => new Date(record.date))
   }
-  useEffect(() => { axiosInstance.get('attendance/classroom/68ce4c789f3a21f8452ed86b').then(res => console.log(res.data)) }, [])
+
+
+
+  const transformApiData = (classrooms: any[]): AttendanceRecord[] => {
+    return classrooms.flatMap((classroom) => {
+      return classroom.attendanceHistory.map((history: any) => {
+        const dateObj = new Date(history.date)
+        const year = dateObj.getFullYear()
+        const month = String(dateObj.getMonth() + 1).padStart(2, "0")
+        const day = String(dateObj.getDate()).padStart(2, "0")
+
+        return {
+          id: history._id,
+          lectureName: classroom.lectureName,
+          date: `${year}-${month}-${day}`,
+          startTime: classroom.lectureDate.split(" ")[0],
+          endTime: classroom.lectureDate.split(" ")[1],
+          qrStartTime: classroom.lectureDate.split(" ")[0],
+          qrEndTime: classroom.lectureDate.split(" ")[1],
+          totalStudents: classroom.ClassroomStudents.length,
+          presentStudents: history.totalAttending ?? history.attendingStudents.length,
+          attendanceRate: classroom.ClassroomStudents.length
+            ? Math.round(
+              ((history.totalAttending ?? history.attendingStudents.length) /
+                classroom.ClassroomStudents.length) * 100
+            )
+            : 0,
+          students: history.attendingStudents.map((att: any) => ({
+            id: att.student._id,
+            name: att.student.name,
+            code: att.student.studentId,
+            photo: "/diverse-students.png", // backend-д зураг байхгүй тул түр placeholder
+            timestamp: new Date(att.attendedAt).toLocaleTimeString(),
+          })),
+        }
+      })
+    })
+  }
+
+  useEffect(() => {
+    const teacherId = localStorage.getItem("teacherId")
+    if (!teacherId) return
+
+    axiosInstance
+      .get(`teacher/classrooms/${teacherId}`)
+      .then((res) => {
+        const transformed = transformApiData(res.data.classrooms)
+        setAttendanceData(transformed)
+      })
+      .catch((err) => console.error("Error fetching data:", err))
+  }, [])
+
 
   return (
     <TooltipProvider>
