@@ -87,7 +87,7 @@ export const getOnlyClassroomsByTeacherId = async (req, res) => {
 export const getClassroomsByTeacherId = async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const { date } = req.body; // one date only
+    // const { date } = req.body; // one date only
 
     if (!teacherId) {
       return res.status(400).json({ message: "teacherId is required" });
@@ -96,12 +96,12 @@ export const getClassroomsByTeacherId = async (req, res) => {
     // Build query
     const query = { teacher: teacherId };
 
-    if (date) {
-      const day = new Date(date);
-      const startOfDay = new Date(day.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(day.setHours(23, 59, 59, 999));
-      query.createdAt = { $gte: startOfDay, $lte: endOfDay };
-    }
+    // if (date) {
+    //   const day = new Date(date);
+    //   const startOfDay = new Date(day.setHours(0, 0, 0, 0));
+    //   const endOfDay = new Date(day.setHours(23, 59, 59, 999));
+    //   query.createdAt = { $gte: startOfDay, $lte: endOfDay };
+    // }
 
     const classrooms = await ClassroomModel.find(query)
       .populate({
@@ -210,5 +210,47 @@ export const endAttendance = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error", error });
+  }
+};
+
+export const getClassroomsAndStudentsByTeacherId = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    if (!teacherId) {
+      return res.status(400).json({ message: "teacherId is required" });
+    }
+
+    const query = { teacher: teacherId };
+
+    const classrooms = await ClassroomModel.find(query)
+      .populate({
+        path: "attendanceHistory",
+        model: "Attendance",
+        populate: {
+          path: "attendingStudents.student", // ✅ populate the student field inside subdocument
+          model: "User",
+          select: "studentId name", // select whatever fields you want
+        },
+      })
+      .populate("ClassroomStudents", "studentId name")
+      .populate("lectureName");
+
+    // Format output
+    const formattedClassrooms = classrooms.map((classroom) => ({
+      _id: classroom._id,
+      lectureName: classroom.lectureName,
+      lectureDate: classroom.lectureDate,
+      teacher: classroom.teacher,
+      ClassroomStudents: classroom.ClassroomStudents,
+      joinLink: classroom.joinLink,
+    }));
+
+    return res.status(200).json({ classrooms: formattedClassrooms });
+  } catch (error) {
+    console.error("❌ getClassroomsByTeacherId error:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
