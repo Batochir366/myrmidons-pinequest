@@ -48,28 +48,32 @@ export function QRControlCenter() {
       setTeacherId(storedId);
     }
   }, []);
+  console.log(teacherId);
 
   // Fetch classrooms
   useEffect(() => {
+    console.log("useEffect triggered, teacherId:", teacherId);
+
     const fetchClassrooms = async () => {
       try {
         if (!teacherId) return;
 
         const res = await axios.get(
-          `https://myrmidons-pinequest-backend.vercel.app/teacher/classrooms/${teacherId}`
+          `https://myrmidons-pinequest-backend.vercel.app/teacher/only-classrooms/${teacherId}`
         );
+        console.log(res.data);
 
         setClassrooms(res.data.classrooms || []);
       } catch (error) {
         console.error("Error fetching classrooms:", error);
-        // alert("Ангийн мэдээлэл авахад алдаа гарлаа");
+        alert("Ангийн мэдээлэл авахад алдаа гарлаа");
       }
     };
 
     if (teacherId) {
       fetchClassrooms();
     }
-  }, []);
+  }, [teacherId]);
 
   // Poll for real-time attendance updates
   const pollAttendanceData = async (attendanceId: string) => {
@@ -187,10 +191,10 @@ export function QRControlCenter() {
         });
       }, 1000);
 
-      // // Start polling for real attendance data every 2 seconds
-      // pollRef.current = window.setInterval(() => {
-      //   pollAttendanceData(_id);
-      // }, 2000);
+      // Start polling for real attendance data every 2 seconds
+      pollRef.current = window.setInterval(() => {
+        pollAttendanceData(_id);
+      }, 2000);
     } catch (error) {
       console.error("Error creating attendance:", error);
       alert("Ирц үүсгэхэд алдаа гарлаа");
