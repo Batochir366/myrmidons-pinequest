@@ -13,7 +13,6 @@ import {
 import { getLocation } from "@/utils/getLocation";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
-import { ca } from "date-fns/locale";
 type Student = {
   studentId: string;
 };
@@ -78,13 +77,15 @@ const AttendanceSystem: React.FC = () => {
     window.addEventListener("popstate", handleParams);
     return () => window.removeEventListener("popstate", handleParams);
   }, []);
+  console.log(classroomId, attendanceId);
+
   useEffect(() => {
     if (!classroomId) return;
 
     const fetchStudents = async () => {
       try {
         const response = await axios.get(
-          `https://myrmidons-pinequest-backend.vercel.app/attendance/${classroomId}`
+          `https://myrmidons-pinequest-backend.vercel.app/attendance/only/${classroomId}`
         );
         setStudents(response.data.classroom.ClassroomStudents || []);
       } catch (error) {
@@ -145,7 +146,6 @@ const AttendanceSystem: React.FC = () => {
       {
         studentId,
         classroom_students: students.map((s) => s.studentId),
-        attendanceId,
         latitude: location.latitude,
         longitude: location.longitude,
       },
