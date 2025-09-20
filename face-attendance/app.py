@@ -8,8 +8,15 @@ from flask_cors import CORS
 import traceback
 from datetime import datetime
 from math import radians, cos, sin, sqrt, atan2
+import sys
 import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_PATH = os.path.join(BASE_DIR, "Silent_Face_Anti_Spoofing")
+sys.path.append(TEST_PATH)
+
 from test import test
+
 
 
 app = Flask(__name__)

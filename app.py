@@ -10,7 +10,12 @@ from datetime import datetime
 from math import radians, cos, sin, sqrt, atan2
 import os
 from test import test
+import sys
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_PATH = os.path.join(BASE_DIR, "face-attendance", "Silent_Face_Anti_Spoofing")
+sys.path.append(TEST_PATH)
 
+from test import test
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
