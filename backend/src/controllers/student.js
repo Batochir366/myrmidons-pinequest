@@ -67,8 +67,7 @@ export const addStudentToAttendance = async (req, res) => {
 
     if (!classroom) {
       return res.status(403).json({
-        message:
-          "Та энэ хичээлд нэгдээгүй байна. Эхлээд хичээлд нэгдэнэ үү.",
+        message: "Та энэ хичээлд нэгдээгүй байна. Эхлээд хичээлд нэгдэнэ үү.",
       });
     }
 
@@ -120,6 +119,18 @@ export const joinClassroom = async (req, res) => {
       return res.status(404).json({ message: "Сурагч олдсонгүй" });
     }
 
+    // Check if student is already in the classroom
+    const existingClassroom = await ClassroomModel.findOne({
+      _id: classroomId,
+      "ClassroomStudents.studentId": student.studentId,
+    });
+
+    if (existingClassroom) {
+      return res
+        .status(400)
+        .json({ message: "Сурагч аль хэдийн энэ ангид байна" });
+    }
+
     // Retrieve the student's existing embedding
     const embedding = student.embedding; // Existing embedding
 
@@ -130,10 +141,10 @@ export const joinClassroom = async (req, res) => {
       embedding: embedding,
     };
 
-    // Add student to classroom's ClassroomStudents array (avoid duplicates)
+    // Add student to classroom's ClassroomStudents array
     const updatedClassroom = await ClassroomModel.findByIdAndUpdate(
       classroomId,
-      { $addToSet: { ClassroomStudents: classroomStudent } }, // Add student with detailed info to ClassroomStudents
+      { $addToSet: { ClassroomStudents: classroomStudent } }, // Add student with detailed info
       { new: true }
     );
 
@@ -149,8 +160,14 @@ export const joinClassroom = async (req, res) => {
 
     return res.status(200).json({
       message: "Сурагч ангид амжилттай нэгдлээ",
-      classroom: updatedClassroom,
-      student: updatedStudent,
+      classroom: {
+        name: updatedClassroom.name,
+        classroomId: updatedClassroom._id,
+      },
+      student: {
+        name: updatedStudent.name,
+        studentId: updatedStudent.studentId,
+      },
     });
   } catch (error) {
     console.error("❌ joinClassroom error:", error);
