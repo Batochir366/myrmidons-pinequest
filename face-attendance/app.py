@@ -595,33 +595,56 @@ def login_teacher():
         image_base64 = data.get("image_base64")
 
         if not teacherName or not image_base64:
+            print(f"❌ Missing fields - teacherName: {bool(teacherName)}, image: {bool(image_base64)}")
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        header, encoded = image_base64.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        # Decode image
+        try:
+            header, encoded = image_base64.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        except Exception as e:
+            print(f"❌ Image decoding error: {e}")
+            return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
         if frame is None:
+            print("❌ Frame is None after decoding")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-        if not is_spoof(frame):
+
+        # Spoof detection
+        print("🔍 Running spoof detection...")
+        spoof_result = is_spoof(frame)
+        print(f"🔍 Spoof detection result: {spoof_result}")
+        
+        if not spoof_result:
+            print("❌ Spoof detected - returning 403")
             return jsonify({"success": False, "message": "Spoof detected. Please provide a genuine image."}), 403
+
+        # Face recognition
+        print("👤 Running face recognition...")
         name, matched_teacher = recognize_teacher_face(frame)
+        print(f"👤 Face recognition result - name: {name}, matched_teacher: {bool(matched_teacher)}")
 
         if name in ['unknown_teacher', 'no_persons_found']:
+            print(f"❌ Face not recognized - returning 401")
             return jsonify({
                 "success": False,
                 "verified": False,
                 "message": "Unknown face or no face found"
             }), 401
 
+        # Check teacher name match
+        print(f"🔍 Checking teacher name match: provided={teacherName}, matched={matched_teacher.get('teacherName', 'None')}")
         if matched_teacher['teacherName'] != teacherName:
+            print(f"❌ Teacher name mismatch - returning 403")
             return jsonify({
                 "success": False,
                 "verified": False,
                 "message": "Face does not match provided teacher name"
             }), 403
 
+        print(f"✅ Login successful for {teacherName}")
         return jsonify({
             "success": True,
             "verified": True,
@@ -631,8 +654,59 @@ def login_teacher():
         })
 
     except Exception as e:
+        print(f"❌ Exception in teacher login: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
+
+
+def recognize_teacher_face(frame):
+    name = "unknown_teacher"
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    face_encodings = face_recognition.face_encodings(rgb_frame)
+    
+    print(f"🔍 Face encodings found: {len(face_encodings)}")
+    
+    if not face_encodings:
+        print("❌ No face encodings found")
+        return "no_persons_found", None
+
+    encoding = face_encodings[0]
+    best_match_teacher = None
+    best_match_distance = 0.6  # Increased from 0.45 to 0.6 for better accuracy
+
+    if teachers_collection is not None:
+        try:
+            teachers = list(teachers_collection.find())
+            print(f"🔍 Found {len(teachers)} teachers in database")
+        except Exception as e:
+            print(f"❌ Database error during teacher fetch: {e}")
+            teachers = []
+    else:
+        print("❌ Teachers collection is None")
+        teachers = []
+
+    for i, teacher in enumerate(teachers):
+        try:
+            if 'embedding' not in teacher:
+                print(f"⚠️ Teacher {i} has no embedding")
+                continue
+                
+            stored_encoding = np.array(teacher['embedding'])
+            distance = face_recognition.face_distance([stored_encoding], encoding)[0]
+            print(f"🔍 Teacher {teacher.get('teacherName', 'unknown')} - Distance: {distance:.4f}")
+
+            if distance < best_match_distance:
+                best_match_distance = distance
+                best_match_teacher = teacher
+                name = teacher.get('teacherName', 'unknown_teacher')
+                print(f"✅ New best match: {name} with distance {distance:.4f}")
+                
+        except Exception as e:
+            print(f"❌ Error processing teacher record {i}: {e}")
+            continue
+
+    print(f"🔍 Final result - name: {name}, distance: {best_match_distance:.4f}")
+    return name, best_match_teacher
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
