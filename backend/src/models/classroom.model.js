@@ -18,8 +18,18 @@ export const ClassroomSchema = new Schema(
     },
     ClassroomStudents: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "User",
+        studentId: {
+          type: String,
+          required: true,
+        },
+        name: {
+          type: String,
+          required: true,
+        },
+        embedding: {
+          type: [Number],
+          required: true,
+        },
       },
     ],
     attendanceHistory: [
