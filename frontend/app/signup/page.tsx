@@ -120,7 +120,7 @@ export default function SignupPage() {
       };
 
       endpoint =
-        "https://myrmidons-pinequest-production.up.railway.app/register";
+        "https://myrmidons-pinequest-production.up.railway.app/student/register";
     } else if (userType === "teacher") {
       if (!teacherData.teacherName) {
         setSubmissionSuccess(false);

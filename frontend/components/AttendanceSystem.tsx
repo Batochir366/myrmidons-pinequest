@@ -107,7 +107,7 @@ const AttendanceSystem: React.FC = () => {
     const verified = await captureAndVerify(
       videoRef,
       canvasRef,
-      "https://myrmidons-pinequest-backend.vercel.app/student/attend",
+      "https://myrmidons-pinequest-production.up.railway.app/student/attend",
       { studentId },
       setMessage,
       setIsRecognizing,

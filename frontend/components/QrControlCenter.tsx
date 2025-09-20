@@ -102,6 +102,7 @@ export function QRControlCenter() {
       console.error("Error polling attendance data:", error);
     }
   };
+  console.log(classrooms);
 
   const generateJoinLinkQr = (link: string) => {
     QRCode.toDataURL(link, { width: 128 }, (err, dataUrl) => {

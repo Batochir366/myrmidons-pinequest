@@ -82,7 +82,7 @@ const JoinClassPage: React.FC = () => {
     const verified = await captureAndVerify(
       videoRef,
       canvasRef,
-      "https://myrmidons-pinequest-backend.vercel.app/student/join",
+      "https://myrmidons-pinequest-production.up.railway.app/student/join",
       {
         studentId,
       },

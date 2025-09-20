@@ -14,18 +14,14 @@ app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
 
 port = 8080
 
-CORS(app, supports_credentials=True, resources={
-    r"/*": {
-        "origins": [
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "https://myrmidons-pinequest-frontend-delta.vercel.app",  
-            "https://myrmidons-pinequest-production.up.railway.app"
-        ],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
+CORS(app, 
+     supports_credentials=True,
+     origins=[
+         "http://localhost:3000",
+         "http://127.0.0.1:3000",
+         "https://myrmidons-pinequest-frontend-delta.vercel.app",
+         "https://myrmidons-pinequest-production.up.railway.app"
+     ])
 # Use environment variable for MongoDB connection with SSL configuration
 mongodb_uri = os.environ.get('MONGODB_URI', "mongodb+srv://tinderpinecone:FFpZdNZp1ifDSumn@tindermongodb.ukfwlma.mongodb.net/face_verification_db").strip()
 
@@ -275,20 +271,22 @@ def join_class():
         if not studentId or not image_base64:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Decode base64 image
         try:
             header, encoded = image_base64.split(",", 1)
             image_bytes = base64.b64decode(encoded)
             np_arr = np.frombuffer(image_bytes, np.uint8)
             frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        except Exception:
+        except Exception as e:
+            print(f"❌ Image decoding failed: {e}")
             return jsonify({"success": False, "message": "Invalid image encoding"}), 400
 
         if frame is None:
+            print("❌ Frame is None after decoding")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Run recognition against all users
         name, matched_user = recognize_face(frame)
+        print("✅ Recognized name:", name)
+        print("✅ Matched user:", matched_user)
 
         if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
             return jsonify({
@@ -297,44 +295,45 @@ def join_class():
                 "message": "Face not recognized"
             }), 401
 
-        if matched_user['studentId'] != studentId:
+        if not matched_user or matched_user.get("studentId") != studentId:
             return jsonify({
                 "success": False,
                 "verified": False,
                 "message": "Face does not match the provided student ID"
             }), 403
 
-        # Check if student has already joined
-        if logs_collection:
-            try:
-                existing = logs_collection.find_one({
-                    "studentId": studentId,
-                    "action": "joined"
-                })
+        if logs_collection is None:
+            print("❌ logs_collection not initialized")
+            return jsonify({"success": False, "message": "Server misconfiguration"}), 500
 
-                if existing:
-                    return jsonify({
-                        "success": True,
-                        "alreadyJoined": True,
-                        "studentId": matched_user['studentId'],
-                        "name": matched_user['name'],
-                        "message": f"{matched_user['name']} has already joined the classroom"
-                    })
-                
-                # Log the join action
-                logs_collection.insert_one({
+        try:
+            existing = logs_collection.find_one({
+                "studentId": studentId,
+                "action": "joined"
+            })
+
+            if existing:
+                return jsonify({
+                    "success": True,
+                    "alreadyJoined": True,
                     "studentId": matched_user['studentId'],
                     "name": matched_user['name'],
-                    "timestamp": datetime.datetime.now(),
-                    "action": "joined"
+                    "message": f"{matched_user['name']} has already joined the classroom"
                 })
 
-            except Exception as e:
-                print(f"Error checking or logging join: {e}")
-                return jsonify({
-                    "success": False,
-                    "message": "Database error while processing join"
-                }), 500
+            logs_collection.insert_one({
+                "studentId": matched_user['studentId'],
+                "name": matched_user['name'],
+                "timestamp": datetime.datetime.now(),
+                "action": "joined"
+            })
+
+        except Exception as e:
+            print(f"❌ Database error: {e}")
+            return jsonify({
+                "success": False,
+                "message": "Database error while processing join"
+            }), 500
 
         return jsonify({
             "success": True,
@@ -345,8 +344,10 @@ def join_class():
         })
 
     except Exception as e:
+        print(f"❌ Unhandled Exception: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
+
 
 
 @app.route('/student/register', methods=['POST', 'OPTIONS'])
