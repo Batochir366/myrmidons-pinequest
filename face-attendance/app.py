@@ -172,6 +172,7 @@ def health():
 def attend_class():
     if request.method == 'OPTIONS':
         return '', 204
+
     try:
         data = request.get_json()
         studentId = data.get('studentId')
@@ -179,12 +180,12 @@ def attend_class():
         classroom_students = data.get('classroom_students')  # List of studentIds
         latitude = data.get('latitude')    # student's latitude
         longitude = data.get('longitude')  # student's longitude
-        attendanceId = data.get('attendanceId')
 
-        if not all([studentId, image_base64, attendanceId, latitude, longitude]) or classroom_students is None:
+        # Check for required fields
+        if not all([studentId, image_base64, latitude, longitude]) or classroom_students is None:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-
+        # Check if student is part of the classroom
         if studentId not in classroom_students:
             return jsonify({
                 "success": False,
@@ -192,14 +193,12 @@ def attend_class():
                 "message": "Student is not part of this classroom"
             }), 403
 
-        attendance = AttendanceModel.objects(id=attendanceId).first()
-        if not attendance:
-            return jsonify({"success": False, "message": "Attendance session not found"}), 404
-
-        teacher_lat = attendance.latitude
-        teacher_lon = attendance.longitude
+        # Check location (Haversine distance)
+        teacher_lat = 47.91417544200054  # Hardcoded teacher location (can be dynamic if needed)
+        teacher_lon = 106.91655931106844  # Same here
 
         def haversine(lat1, lon1, lat2, lon2):
+            from math import radians, sin, cos, sqrt, atan2
             R = 6371000  # radius of Earth in meters
             phi1, phi2 = radians(lat1), radians(lat2)
             delta_phi = radians(lat2 - lat1)
@@ -210,7 +209,7 @@ def attend_class():
             return R * c
 
         distance = haversine(teacher_lat, teacher_lon, latitude, longitude)
-        max_distance_meters = 100  # adjust as needed
+        max_distance_meters = 100  # Max distance in meters (adjust as needed)
 
         if distance > max_distance_meters:
             return jsonify({
@@ -220,14 +219,18 @@ def attend_class():
             }), 403
 
         # Decode the base64 image
-        header, encoded = image_base64.split(",", 1)
-        image_bytes = base64.b64decode(encoded)
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-        if frame is None:
+        try:
+            header, encoded = image_base64.split(",", 1)
+            image_bytes = base64.b64decode(encoded)
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        except Exception:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
+        if frame is None:
+            return jsonify({"success": False, "message": "Failed to decode image properly"}), 400
+
+        # Perform face recognition
         name, matched_user = recognize_face(frame, filter_student_ids=classroom_students)
 
         if name in ['unknown_person', 'no_persons_found', 'face_recognition_disabled']:
@@ -244,30 +247,18 @@ def attend_class():
                 "message": "Face does not match provided student ID"
             }), 403
 
-        # Check if attendance already recorded
-        existing = next((s for s in attendance.attendingStudents if str(s.student) == studentId), None)
-        if existing:
-            return jsonify({
-                "success": True,
-                "verified": True,
-                "message": "Attendance already recorded",
-                "studentId": studentId,
-                "name": matched_user['name'],
-            })
-
-        # You can add logic here to mark attendance if not existing
-
         return jsonify({
             "success": True,
             "verified": True,
-            "message": "Attendance recorded successfully",
+            "message": "Student verified, location and face match",
             "studentId": studentId,
             "name": matched_user['name'],
-        })
+        }), 200
 
     except Exception:
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
+
 
 
 @app.route('/student/join', methods=['POST'])
