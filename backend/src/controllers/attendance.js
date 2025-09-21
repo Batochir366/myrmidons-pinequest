@@ -1,5 +1,57 @@
 import { AttendanceModel } from "../models/attendance.model.js";
 import { ClassroomModel } from "../models/classroom.model.js";
+import { UserModel } from "../models/user.model.js";
+
+export const checkStudentAttendance = async (req, res) => {
+  try {
+    const { attendanceId, studentId } = req.params;
+
+    if (!attendanceId || !studentId) {
+      return res.status(400).json({
+        message: "attendanceId болон studentId хэрэгтэй",
+      });
+    }
+
+    const student = await UserModel.findOne({ studentId: studentId });
+    if (!student) {
+      return res.status(404).json({
+        already_attended: false,
+        message: "Сурагч олдсонгүй",
+      });
+    }
+
+    const attendance = await AttendanceModel.findById(attendanceId);
+    if (!attendance) {
+      return res.status(404).json({
+        already_attended: false,
+        message: "Attendance олдсонгүй",
+      });
+    }
+
+    const alreadyAttended = attendance.attendingStudents.some(
+      (s) => s.student.toString() === student._id.toString()
+    );
+
+    if (alreadyAttended) {
+      return res.status(409).json({
+        already_attended: true,
+        message: "Таны ирц аль хэдийн бүртгэгдсэн байна.",
+      });
+    }
+
+    return res.status(200).json({
+      already_attended: false,
+      message: "Student can attend",
+    });
+  } catch (error) {
+    console.error("❌ checkStudentAttendance error:", error);
+    return res.status(500).json({
+      already_attended: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
 
 export const getAttendanceById = async (req, res) => {
   try {

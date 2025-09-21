@@ -2,67 +2,31 @@ import { AttendanceModel } from "../models/attendance.model.js";
 import { ClassroomModel } from "../models/classroom.model.js";
 import { UserModel } from "../models/user.model.js";
 
-// export const checkStudentInClassroom = async (req, res) => {
-//   try {
-//     const { studentId } = req.params;
-
-//     if (!studentId) {
-//       return res.status(400).json({ message: "studentId шаардлагатай" });
-//     }
-
-//     const student = await UserModel.findOne({ studentId: studentId });
-//     if (!student) {
-//       return res.status(404).json({ message: "Сурагч олдсонгүй" });
-//     }
-
-//     const classroom = await ClassroomModel.findOne({
-//       ClassroomStudents: student._id,
-//     });
-
-//     if (!classroom) {
-//       return res.status(404).json({
-//         message:
-//           "Та ямар ч хичээлд нэгдээгүй байна. Эхлээд хичээлд нэгдэнэ үү.",
-//       });
-//     }
-
-//     res.status(200).json({
-//       message: "Оюутан хичээлд нэгдсэн байна",
-//       classroomId: classroom._id,
-//       classroomName: classroom.name,
-//     });
-//   } catch (error) {
-//     console.error("❌ checkStudentInClassroom error:", error);
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
-
 export const addStudentToAttendance = async (req, res) => {
   try {
     const { attendanceId, studentId } = req.body;
 
+    // Only process attendanceId and studentId
     if (!attendanceId || !studentId) {
       return res
         .status(400)
         .json({ message: "attendanceId болон studentId хэрэгтэй" });
     }
 
-    // Сурагчийн ID шалгах
+    // Continue with your existing logic
     const student = await UserModel.findOne({ studentId: studentId });
     if (!student) {
       return res.status(404).json({ message: "Сурагч олдсонгүй" });
     }
 
-    // Attendance авах
     const attendance = await AttendanceModel.findById(attendanceId);
     if (!attendance) {
       return res.status(404).json({ message: "Attendance олдсонгүй" });
     }
 
-    // Сурагч тухайн ангидаа байгаа эсэхийг шалгах
     const classroom = await ClassroomModel.findOne({
       _id: attendance.classroom,
-      ClassroomStudents: student._id,
+      "ClassroomStudents.studentId": student.studentId,
     });
 
     if (!classroom) {
@@ -71,7 +35,6 @@ export const addStudentToAttendance = async (req, res) => {
       });
     }
 
-    // Давхардах шалгалт
     const alreadyAttended = attendance.attendingStudents.some(
       (s) => s.student.toString() === student._id.toString()
     );
@@ -82,7 +45,6 @@ export const addStudentToAttendance = async (req, res) => {
         .json({ message: "Та аль хэдийн ирц бүртгэгдсэн байна." });
     }
 
-    // Ирц нэмэх
     attendance.attendingStudents.push({
       student: student._id,
       attendedAt: new Date(),
@@ -132,19 +94,19 @@ export const joinClassroom = async (req, res) => {
     }
 
     // Retrieve the student's existing embedding
-    const embedding = student.embedding; // Existing embedding
-
+    const realname = student.name;
+    const embedding = student.embedding;
     // Create the student object with required fields for ClassroomStudents array
     const classroomStudent = {
-      studentId: student.studentId,
-      name: student.name,
+      studentId: studentId,
+      name: realname,
       embedding: embedding,
     };
 
     // Add student to classroom's ClassroomStudents array
     const updatedClassroom = await ClassroomModel.findByIdAndUpdate(
       classroomId,
-      { $addToSet: { ClassroomStudents: classroomStudent } }, // Add student with detailed info
+      { $addToSet: { ClassroomStudents: classroomStudent } },
       { new: true }
     );
 

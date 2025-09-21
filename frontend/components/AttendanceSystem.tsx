@@ -12,13 +12,14 @@ import {
 } from "@/utils/attendanceUtils";
 import { getLocation } from "@/utils/getLocation";
 import { jwtDecode } from "jwt-decode";
-import axios from "axios";
 import { axiosInstance, PYTHON_BACKEND_URL } from "@/lib/utils";
+
 type Student = {
   studentId: string;
   embedding: number[];
   _id: string;
 };
+
 const AttendanceSystem: React.FC = () => {
   const [studentId, setStudentId] = useState("");
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -26,6 +27,7 @@ const AttendanceSystem: React.FC = () => {
   const [recognitionProgress, setRecognitionProgress] = useState(0);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [isRecordingAttendance, setIsRecordingAttendance] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -80,6 +82,7 @@ const AttendanceSystem: React.FC = () => {
     window.addEventListener("popstate", handleParams);
     return () => window.removeEventListener("popstate", handleParams);
   }, []);
+
   console.log(classroomId, attendanceId);
 
   useEffect(() => {
@@ -98,70 +101,194 @@ const AttendanceSystem: React.FC = () => {
 
     fetchStudents();
   }, [classroomId]);
+
+  // Enhanced camera useEffect with better cleanup
   useEffect(() => {
-    if (step === 2) {
+    let isMounted = true;
+
+    if (step === 2 && isMounted) {
       startCamera(videoRef, setMessage, streamRef);
     }
 
     return () => {
+      isMounted = false;
       stopCamera(streamRef);
     };
   }, [step]);
 
   const handleRecognitionComplete = async () => {
-    const onSuccess = async (name?: string) => {
-      setMessage(
-        `Сайн байна уу, ${name || "Оюутан"}! Царай амжилттай танигдлаа.`
+    // Enhanced guard: Prevent multiple calls with processing lock
+    if (isRecognizing || isRecordingAttendance || isProcessing) {
+      console.log(
+        "Recognition, attendance, or processing already in progress, skipping..."
       );
-      setIsRecordingAttendance(true);
-      try {
-        const location = await getLocation();
-        const attendanceRecorded = await recordAttendance(
-          attendanceId!,
-          studentId,
-          setMessage,
-          location.latitude,
-          location.longitude
-        );
+      return;
+    }
 
-        setIsRecordingAttendance(false);
+    // Set processing lock immediately
+    setIsProcessing(true);
 
-        if (attendanceRecorded) {
-          setMessage(
-            `Сайн байна уу, ${name || "Оюутан"}! Ирц амжилттай бүртгэгдлээ.`
+    try {
+      // Handler for ONLY face recognition success from Python
+      const onFaceRecognitionSuccess = async (name?: string) => {
+        console.log("✅ Face recognition successful from Python:", name);
+
+        // Check if we're still processing to prevent duplicate calls
+        if (isRecordingAttendance) {
+          console.log(
+            "Attendance already recording, ignoring duplicate success"
           );
-          stopCamera(streamRef);
-          setStep(3);
+          return;
         }
-      } catch (error) {
-        setIsRecordingAttendance(false);
+
+        // Show face recognition success message
         setMessage(
-          "Байршлын мэдээллийг авах боломжгүй байна. Байршлын зөвшөөрөл өгнө үү."
+          `Сайн байна уу, ${name || "Оюутан"}! Царай амжилттай танигдлаа.`
         );
+
+        // Small delay to show recognition success
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        // Now start attendance recording process
+        await handleAttendanceRecording(name);
+      };
+
+      // Separate function for attendance recording
+      const handleAttendanceRecording = async (studentName?: string) => {
+        // Additional guard for attendance recording
+        if (isRecordingAttendance) {
+          console.log("Attendance recording already in progress, skipping");
+          return;
+        }
+
+        console.log("🎯 Starting attendance recording process");
+
+        setIsRecordingAttendance(true);
+        setMessage("Ирц бүртгэж байна...");
+
+        try {
+          const location = await getLocation();
+          const attendanceRecorded = await recordAttendance(
+            attendanceId!,
+            studentId,
+            setMessage,
+            location.latitude,
+            location.longitude
+          );
+
+          if (attendanceRecorded) {
+            console.log("✅ Attendance recording successful");
+
+            // Final success message
+            setMessage(
+              `Сайн байна уу, ${
+                studentName || "Оюутан"
+              }! Ирц амжилттай бүртгэгдлээ.`
+            );
+
+            stopCamera(streamRef);
+            setStep(3);
+          } else {
+            console.log("❌ Attendance recording failed");
+            setMessage("Ирц бүртгэхэд алдаа гарлаа.");
+          }
+        } catch (error) {
+          console.error("❌ Error in attendance recording:", error);
+          setMessage(
+            "Байршлын мэдээллийг авах боломжгүй байна. Байршлын зөвшөөрөл өгнө үү."
+          );
+        } finally {
+          setIsRecordingAttendance(false);
+        }
+      };
+
+      const location = await getLocation();
+      console.log(
+        "🚀 Starting attendance verification with students:",
+        students.length
+      );
+
+      // First check if student already attended (Node.js check)
+      try {
+        const attendanceCheckResponse = await axiosInstance.get(
+          `/attendance/check/${attendanceId}/${studentId}`
+        );
+
+        // If we get here, student can attend (200 response)
+        console.log(
+          "✅ Attendance check passed, proceeding with face recognition"
+        );
+      } catch (error: any) {
+        // Handle expected 409 (already attended) vs unexpected errors
+        if (error.response?.status === 409) {
+          // This is expected - student already attended
+          const errorMessage =
+            error.response.data?.message ||
+            "Та аль хэдийн ирц бүртгэгдсэн байна.";
+          console.log("ℹ️ Student already attended:", errorMessage);
+          setMessage(errorMessage);
+          setIsRecognizing(false);
+          setRecognitionProgress(0);
+          return; // Stop here, don't proceed to face recognition
+        }
+
+        // Check for other attendance-related error messages
+        const errorMessage = error.response?.data?.message || "";
+        if (
+          errorMessage.includes("бүртгэгдсэн") ||
+          errorMessage.includes("ирц") ||
+          errorMessage.includes("already")
+        ) {
+          console.log(
+            "ℹ️ Student already attended (by message):",
+            errorMessage
+          );
+          setMessage(errorMessage);
+          setIsRecognizing(false);
+          setRecognitionProgress(0);
+          return;
+        }
+
+        // For unexpected errors, log them but continue
+        console.error("❌ Unexpected attendance check error:", error.message);
+        console.log("Proceeding with face recognition despite check failure");
       }
-    };
-    const location = await getLocation();
-    console.log(students);
 
-    const verified = await captureAndVerify(
-      videoRef,
-      canvasRef,
-      `${PYTHON_BACKEND_URL}student/attend`,
-      {
-        studentId,
-        classroom_students: students,
-        latitude: location.latitude,
-        longitude: location.longitude,
-      },
-      setMessage,
-      setIsRecognizing,
-      setRecognitionProgress,
-      onSuccess
-    );
+      console.log(
+        "✅ Attendance check passed, proceeding with face recognition"
+      );
 
-    if (!verified) {
+      // Call captureAndVerify with ONLY face recognition callback
+      const verified = await captureAndVerify(
+        videoRef,
+        canvasRef,
+        `${PYTHON_BACKEND_URL}student/attend`,
+        {
+          studentId,
+          classroom_students: students,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+        setMessage,
+        setIsRecognizing,
+        setRecognitionProgress,
+        onFaceRecognitionSuccess
+      );
+
+      if (!verified) {
+        console.log("❌ Face recognition failed - message should be displayed");
+        setIsRecognizing(false);
+        setRecognitionProgress(0);
+        // Note: setMessage is already called inside captureAndVerify for error cases
+      }
+    } catch (error) {
+      console.error("❌ Error in handleRecognitionComplete:", error);
       setIsRecognizing(false);
       setRecognitionProgress(0);
+      setMessage("Алдаа гарлаа. Дахин оролдоно уу.");
+    } finally {
+      // Always release processing lock
+      setIsProcessing(false);
     }
   };
 
@@ -360,16 +487,11 @@ const AttendanceSystem: React.FC = () => {
               </div>
             )}
 
-            {recognitionProgress === 100 && !isRecordingAttendance && (
-              <div className="flex items-center justify-center gap-2 text-green-600 mb-4">
-                <Eye size={18} />
-                <span className="font-medium">Таних амжилттай боллоо!</span>
-              </div>
-            )}
-
             {!isRecognizing &&
               !isRecordingAttendance &&
-              recognitionProgress === 0 && (
+              !isProcessing &&
+              recognitionProgress === 0 &&
+              !message && (
                 <button
                   onClick={() =>
                     simulateRecognition(
@@ -384,11 +506,34 @@ const AttendanceSystem: React.FC = () => {
                 </button>
               )}
 
+            {/* Show "Go back" button when there's an error */}
+            {!isRecognizing &&
+              !isRecordingAttendance &&
+              !isProcessing &&
+              recognitionProgress === 0 &&
+              message &&
+              !message.includes("амжилттай") &&
+              !message.includes("Сайн байна уу") && (
+                <button
+                  onClick={() => {
+                    setMessage("");
+                    setRecognitionProgress(0);
+                    setStudentId("");
+                    stopCamera(streamRef);
+                    setStep(1);
+                  }}
+                  className="w-full bg-gray-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+                >
+                  Буцаж оюутны ID оруулах
+                </button>
+              )}
+
             {message && (
               <p
                 className={`mt-4 text-sm text-center ${
                   message.includes("амжилттай") ||
-                  message.includes("Сайн байна уу")
+                  message.includes("Сайн байна уу") ||
+                  message.includes("байна...")
                     ? "text-green-600"
                     : "text-red-600"
                 }`}

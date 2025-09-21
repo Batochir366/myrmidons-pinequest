@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  checkStudentAttendance,
   getAttendanceById,
   getClassroomAttendanceHistoryById,
   getClassroomById,
@@ -10,4 +11,5 @@ export const attendanceRouter = Router();
 attendanceRouter
   .get("/:attendanceId", getAttendanceById)
   .get("/classroom/:classroomId", getClassroomAttendanceHistoryById)
-  .get("/only/:classroomId", getClassroomById);
+  .get("/only/:classroomId", getClassroomById)
+  .get("/check/:attendanceId/:studentId", checkStudentAttendance);

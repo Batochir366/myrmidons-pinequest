@@ -88,6 +88,7 @@ export const captureAndVerify = async (
   }
 };
 
+// Enhanced recordAttendance with idempotency check
 export const recordAttendance = async (
   attendanceId: string,
   studentId: string,
@@ -116,6 +117,19 @@ export const recordAttendance = async (
     return true;
   } catch (error: any) {
     console.error("❌ Error recording attendance:", error);
+
+    // Check if error is due to duplicate attendance
+    if (error.response?.status === 400) {
+      const errorMessage = error.response?.data?.message || "";
+      if (
+        errorMessage.includes("already") ||
+        errorMessage.includes("duplicate") ||
+        errorMessage.includes("бүртгэгдсэн")
+      ) {
+        console.log("Attendance already recorded, treating as success");
+        return true; // Treat duplicate as success
+      }
+    }
 
     const errorMsg =
       error.response?.data?.message || "Ирц бүртгэхэд алдаа гарлаа.";
@@ -147,6 +161,7 @@ export const joinClassroom = async (
   }
 };
 
+// Enhanced simulateRecognition to prevent multiple intervals
 export const simulateRecognition = (
   setIsRecognizing: (state: boolean) => void,
   setRecognitionProgress: React.Dispatch<React.SetStateAction<number>>,
@@ -155,11 +170,22 @@ export const simulateRecognition = (
   setIsRecognizing(true);
   setRecognitionProgress(0);
 
-  const interval = setInterval(() => {
+  let completed = false; // Add completion flag
+  let intervalId: NodeJS.Timeout | null = null;
+
+  const cleanup = () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+  };
+
+  intervalId = setInterval(() => {
     setRecognitionProgress((prev) => {
       const next = typeof prev === "number" ? prev + 10 : 10;
-      if (next >= 100) {
-        clearInterval(interval);
+      if (next >= 100 && !completed) {
+        completed = true; // Set flag to prevent multiple completions
+        cleanup();
         setTimeout(() => {
           onComplete();
         }, 500);
@@ -168,4 +194,7 @@ export const simulateRecognition = (
       return next;
     });
   }, 200);
+
+  // Return cleanup function
+  return cleanup;
 };
