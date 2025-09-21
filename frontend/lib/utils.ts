@@ -20,9 +20,9 @@ export const PYTHON_BACKEND_URL =
   "https://myrmidons-pinequest-production.up.railway.app/";
 
 export const axiosInstance = axios.create({
-  baseURL: LOCAL_BACKEND_URL,
+  baseURL: BATAA_BACKEND_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
-export const axiosInstanceFront = LOCAL_FRONTEND_URL;
+export const axiosInstanceFront = BATAA_FRONTEND_URL;
