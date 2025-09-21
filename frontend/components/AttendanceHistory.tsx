@@ -30,105 +30,6 @@ interface AttendanceRecord {
   }[]
 }
 
-const sampleAttendanceData: AttendanceRecord[] = [
-  {
-    id: 1,
-    lectureName: "Financial Accounting",
-    date: "2025-09-16",
-    startTime: "08:50",
-    endTime: "09:30",
-    qrStartTime: "08:50",
-    qrEndTime: "09:30",
-    totalStudents: 45,
-    presentStudents: 42,
-    attendanceRate: 93,
-    students: [
-      {
-        id: 1,
-        name: "Sarah Johnson",
-        code: "ACC2021001",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "08:52",
-      },
-      {
-        id: 2,
-        name: "Michael Chen",
-        code: "ACC2021002",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "08:53",
-      },
-      {
-        id: 3,
-        name: "Emma Davis",
-        code: "ACC2021003",
-        photo: "/diverse-students.png",
-        status: "late",
-        timestamp: "09:15",
-      },
-      {
-        id: 4,
-        name: "James Wilson",
-        code: "ACC2021004",
-        photo: "/diverse-students.png",
-        status: "absent",
-      },
-      {
-        id: 5,
-        name: "Lisa Anderson",
-        code: "ACC2021005",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "08:51",
-      },
-    ],
-  },
-  {
-    id: 2,
-    lectureName: "Mathematics 201",
-    date: "2025-09-14",
-    startTime: "10:00",
-    endTime: "11:30",
-    qrStartTime: "10:00",
-    qrEndTime: "11:30",
-    totalStudents: 24,
-    presentStudents: 24,
-    attendanceRate: 100,
-    students: [
-      {
-        id: 1,
-        name: "Sarah Johnson",
-        code: "CS2021001",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "10:02",
-      },
-      {
-        id: 2,
-        name: "Мишээл",
-        code: "CS2021002",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "10:01",
-      },
-    ],
-  },
-  {
-    id: 3,
-    lectureName: "Physics 301",
-    date: "2025-09-15",
-    startTime: "12:00",
-    endTime: "13:30",
-    qrStartTime: "12:00",
-    qrEndTime: "13:30",
-    totalStudents: 32,
-    presentStudents: 30,
-    attendanceRate: 94,
-    students: [],
-  },
-]
-
 export function AttendanceHistory() {
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]) // ⬅️ эхэнд зарлана
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
@@ -202,16 +103,9 @@ export function AttendanceHistory() {
   }, [])
 
   useEffect(() => {
-    if (selectedDateAttendance.length === 0) {
-      setShowReport(false)
-      setSelectedLecture(null)
-    }
-  }, [selectedDateAttendance])
-
-  useEffect(() => {
     if (selectedDateAttendance.length > 0) {
       setSelectedLecture(selectedDateAttendance[0])
-      setShowReport(true)
+      setShowReport(false)
     } else {
       setSelectedLecture(null)
       setShowReport(false)
