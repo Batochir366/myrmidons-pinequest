@@ -15,7 +15,7 @@ export default function JoinLinkQrButton({
       {/* QR Button */}
       <Button
         onClick={() => setShowQr(!showQr)}
-        className="bg-slate-800 hover:bg-slate-900 text-white gap-2 shadow-md"
+        className="bg-slate-700 text-white gap-2 shadow-md"
       >
         {showQr ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         {showQr ? "QR нуух" : "QR харуулах"}
@@ -27,7 +27,7 @@ export default function JoinLinkQrButton({
           <img
             src={joinLinkQr}
             alt="Join Link QR Code"
-            className="w-70 h-70 rounded-xl border shadow-md cursor-pointer transition-transform hover:scale-105"
+            className="w-50 h-50 rounded-xl border shadow-md cursor-pointer transition-transform hover:scale-105"
             onClick={() => setEnlarged(true)} // click -> томруулах
           />
         </div>
@@ -42,7 +42,7 @@ export default function JoinLinkQrButton({
           <img
             src={joinLinkQr || ""}
             alt="Enlarged QR Code"
-            className="w-[400px] h-[400px] rounded-xl shadow-2xl"
+            className="w-[500px] h-[500px] rounded-xl shadow-2xl"
           />
         </div>
       )}
