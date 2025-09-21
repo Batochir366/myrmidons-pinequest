@@ -17,7 +17,7 @@ const LOCAL_BACKEND_URL = "http://localhost:5000/";
 const LOCAL_FRONTEND_URL = "http://localhost:3000/";
 
 export const PYTHON_BACKEND_URL =
-  "myrmidons-pinequest-production.up.railway.app/";
+  "https://myrmidons-pinequest-production.up.railway.app/";
 
 export const axiosInstance = axios.create({
   baseURL: LOCAL_BACKEND_URL,

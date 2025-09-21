@@ -1,12 +1,11 @@
 from flask import Flask, request, jsonify
 import os
-import datetime
 from pymongo import MongoClient
 import numpy as np
 import base64
 from flask_cors import CORS
 import traceback
-from datetime import datetime
+import datetime
 from math import radians, cos, sin, sqrt, atan2
 
 app = Flask(__name__)

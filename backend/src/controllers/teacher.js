@@ -2,6 +2,8 @@ import { AttendanceModel } from "../models/attendance.model.js";
 import { ClassroomModel } from "../models/classroom.model.js";
 import { TeacherModel } from "../models/teacher.model.js";
 import jwt from "jsonwebtoken";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 const SECRET_KEY = "pinequest-secret";
 
@@ -39,7 +41,7 @@ export const createClassroom = async (req, res) => {
 
     const token = jwt.sign(tokenPayload, SECRET_KEY, { expiresIn: "30d" });
 
-    const joinLink = `https://myrmidons-pinequest-frontend-delta.vercel.app/join?token=${token}`;
+    const joinLink = `${process.env.FRONT_END_URL}/join?token=${token}`;
 
     savedClassroom.joinLink = joinLink;
     await savedClassroom.save();

@@ -76,7 +76,13 @@ export default function LoginPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const rawText = await response.text();
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Серверээс ирсэн формат буруу байна (JSON биш).");
+      }
+
+      const data = JSON.parse(rawText);
 
       if (response.ok) {
         setSubmissionSuccess(true);
@@ -93,6 +99,7 @@ export default function LoginPage() {
         setSubmissionMessage(data.message || "Нэвтрэхэд алдаа гарлаа.");
       }
     } catch (error: any) {
+      console.error("❌ Frontend error:", error);
       setSubmissionSuccess(false);
       setSubmissionMessage(
         "Нэвтрэхэд алдаа гарлаа: " + (error.message || "Тодорхойгүй алдаа")
