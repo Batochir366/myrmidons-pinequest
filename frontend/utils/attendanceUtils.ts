@@ -1,5 +1,6 @@
 "use client";
 
+import { axiosInstance } from "@/lib/utils";
 import React from "react";
 
 export const startCamera = async (
@@ -110,26 +111,16 @@ export const recordAttendance = async (
       bodyPayload.longitude = longitude;
     }
 
-    const res = await fetch(
-      "https://myrmidons-pinequest-backend.vercel.app/student/add",
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyPayload),
-      }
-    );
+    const res = await axiosInstance.put("/student/add", bodyPayload);
 
-    const data = await res.json();
-
-    if (res.ok) {
-      return true;
-    } else {
-      setMessage(data.message || "Ирц бүртгэхэд алдаа гарлаа.");
-      return false;
-    }
-  } catch (error) {
+    return true;
+  } catch (error: any) {
     console.error("❌ Error recording attendance:", error);
-    setMessage("Сүлжээний алдаа. Дахин оролдоно уу.");
+
+    const errorMsg =
+      error.response?.data?.message || "Ирц бүртгэхэд алдаа гарлаа.";
+    setMessage(errorMsg);
+
     return false;
   }
 };
@@ -140,26 +131,18 @@ export const joinClassroom = async (
   setMessage: (msg: string) => void
 ): Promise<boolean> => {
   try {
-    const res = await fetch(
-      `https://myrmidons-pinequest-backend.vercel.app/student/join/${classroomId}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId }),
-      }
-    );
+    const res = await axiosInstance.put(`/student/join/${classroomId}`, {
+      studentId,
+    });
 
-    const data = await res.json();
-
-    if (res.ok) {
-      return true;
-    } else {
-      setMessage(data.message || "Хичээлд нэгдэхэд алдаа гарлаа.");
-      return false;
-    }
-  } catch (error) {
+    return true;
+  } catch (error: any) {
     console.error("❌ Error joining classroom:", error);
-    setMessage("Сүлжээний алдаа. Дахин оролдоно уу.");
+
+    const errorMsg =
+      error.response?.data?.message || "Хичээлд нэгдэхэд алдаа гарлаа.";
+    setMessage(errorMsg);
+
     return false;
   }
 };

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import Webcam from "react-webcam";
+import { PYTHON_BACKEND_URL } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -69,14 +70,11 @@ export default function LoginPage() {
     };
 
     try {
-      const response = await fetch(
-        "https://myrmidons-pinequest-production.up.railway.app/teacher/login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`${PYTHON_BACKEND_URL}teacher/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       const data = await response.json();
 

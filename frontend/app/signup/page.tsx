@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { QrCode, GraduationCap, User, Loader2 } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import Webcam from "react-webcam";
+import { PYTHON_BACKEND_URL } from "@/lib/utils";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -119,8 +120,7 @@ export default function SignupPage() {
         image_base64: imageBase64,
       };
 
-      endpoint =
-        "https://myrmidons-pinequest-production.up.railway.app/student/register";
+      endpoint = `${PYTHON_BACKEND_URL}student/register`;
     } else if (userType === "teacher") {
       if (!teacherData.teacherName) {
         setSubmissionSuccess(false);
@@ -132,8 +132,7 @@ export default function SignupPage() {
         teacherName: teacherData.teacherName,
         image_base64: imageBase64,
       };
-      endpoint =
-        "https://myrmidons-pinequest-production.up.railway.app/teacher/register";
+      endpoint = `${PYTHON_BACKEND_URL}teacher/register`;
     } else {
       setSubmissionSuccess(false);
       setSubmissionMessage("Хэрэглэгчийн төрөл буруу байна.");

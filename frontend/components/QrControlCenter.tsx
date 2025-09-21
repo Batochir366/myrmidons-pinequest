@@ -9,6 +9,7 @@ import QRCode from "qrcode";
 import axios from "axios";
 import { getLocation } from "@/utils/getLocation";
 import jwtEncode from "jwt-encode";
+import { axiosInstance, axiosInstanceFront } from "@/lib/utils";
 
 interface Classroom {
   _id: string;
@@ -59,8 +60,8 @@ export function QRControlCenter() {
       try {
         if (!teacherId) return;
 
-        const res = await axios.get(
-          `https://myrmidons-pinequest-backend.vercel.app/teacher/only-classrooms/${teacherId}`
+        const res = await axiosInstance.get(
+          `teacher/only-classrooms/${teacherId}`
         );
         console.log(res.data);
 
@@ -79,8 +80,8 @@ export function QRControlCenter() {
   // Poll for real-time attendance updates
   const pollAttendanceData = async (attendanceId: string) => {
     try {
-      const res = await axios.get(
-        `https://myrmidons-pinequest-backend.vercel.app/teacher/attendance/${attendanceId}/students`
+      const res = await axiosInstance.get(
+        `teacher/attendance/${attendanceId}/students`
       );
 
       if (res.data.attendance?.attendingStudents) {
@@ -127,7 +128,7 @@ export function QRControlCenter() {
     const secret = "FACE"; // Warning: secret exposed in frontend
     const token = jwtEncode(payload, secret);
 
-    const url = `https://myrmidons-pinequest-frontend-delta.vercel.app/student?token=${token}`;
+    const url = `${axiosInstanceFront}student?token=${token}`;
 
     setQrData(url);
 
@@ -170,14 +171,11 @@ export function QRControlCenter() {
 
       const { latitude, longitude } = await getLocation();
 
-      const res = await axios.post(
-        `https://myrmidons-pinequest-backend.vercel.app/teacher/create-attendance`,
-        {
-          classroomId: selectedClassroomId,
-          latitude,
-          longitude,
-        }
-      );
+      const res = await axiosInstance.post(`teacher/create-attendance`, {
+        classroomId: selectedClassroomId,
+        latitude,
+        longitude,
+      });
 
       if (!res.data) throw new Error("Attendance ID алга");
       const { _id } = res.data;
@@ -219,13 +217,9 @@ export function QRControlCenter() {
     if (!attendanceId) return;
 
     try {
-      // End the attendance session
-      await axios.put(
-        "https://myrmidons-pinequest-backend.vercel.app/teacher/end-classroom",
-        {
-          attendanceId: attendanceId,
-        }
-      );
+      await axiosInstance.put(`teacher/end-classroom"`, {
+        attendanceId: attendanceId,
+      });
 
       stopTimer();
     } catch (error) {

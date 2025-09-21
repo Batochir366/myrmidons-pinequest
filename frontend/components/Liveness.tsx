@@ -1,4 +1,5 @@
 "use client";
+import { PYTHON_BACKEND_URL } from "@/lib/utils";
 import React, { useRef, useState, useEffect } from "react";
 
 export default function LivenessCapture() {
@@ -72,7 +73,7 @@ export default function LivenessCapture() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageDataURL = canvas.toDataURL("image/jpeg");
 
-    fetch("https://myrmidons-pinequest-production.up.railway.app/login", {
+    fetch(`${PYTHON_BACKEND_URL}/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
