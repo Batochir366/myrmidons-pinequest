@@ -63,23 +63,26 @@ export const ClassroomsView = () => {
     null
   );
   const [loading, setLoading] = useState(false);
-
+  const [teacherId, setTeacherId] = useState("");
+  useEffect(() => {
+    const storedId = localStorage.getItem("teacherId");
+    if (storedId) {
+      setTeacherId(storedId);
+    }
+    fetchClassrooms();
+  }, [teacherId]);
   // ---------- Fetch classrooms ----------
   const fetchClassrooms = async () => {
+    if (!teacherId) return;
     try {
       const res = await axiosInstance.get(
-        "teacher/classrooms-and-students/68ce474c004b100ccdb45adc"
+        `teacher/classrooms-and-students/${teacherId}`
       );
       setData(res.data.classrooms);
     } catch (error) {
       console.error("Error fetching classrooms:", error);
     }
   };
-
-  useEffect(() => {
-    fetchClassrooms();
-  }, []);
-
   // ---------- Create classroom ----------
   const createClassroom = async (values: ClassroomForm) => {
     const formattedStartTime = values.startTime + " - " + values.endTime;
@@ -89,7 +92,7 @@ export const ClassroomsView = () => {
       await axiosInstance.post("teacher/create-classroom", {
         lectureName: values.name,
         lectureDate: formattedStartTime,
-        teacherId: "68ce474c004b100ccdb45adc",
+        teacherId: teacherId,
       });
 
       toast.success("Анги амжилттай үүсгэлээ!");
@@ -142,7 +145,7 @@ export const ClassroomsView = () => {
     <div className="space-y-6 w-full">
       <Toaster position="bottom-right" />
       {/* Create Classroom Button */}
-      {!showClassroom && (
+      {showClassroom === false && (
         <div className="flex justify-end">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>

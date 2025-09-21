@@ -308,10 +308,12 @@ def student_join():
         return '', 204
         
     try:
+        # Extract data from the request
         data = request.json
         studentId = data.get('studentId')
         image_base64 = data.get('image_base64')
 
+        # Check if the necessary data (studentId, image_base64) is provided
         if not studentId:
             return jsonify({
                 "success": False,
@@ -324,7 +326,7 @@ def student_join():
                 "message": "Missing face image for verification"
             }), 400
 
-        # Check if student exists in database
+        # Check if student exists in the database
         existing = users_collection.find_one({"studentId": studentId})
         if not existing:
             return jsonify({
@@ -333,7 +335,7 @@ def student_join():
                 "message": "User not found in the database"
             }), 404
 
-        # Decode the face image
+        # Decode the face image from base64
         try:
             header, encoded = image_base64.split(",", 1)
             image_bytes = base64.b64decode(encoded)
@@ -341,28 +343,37 @@ def student_join():
             frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         except Exception as e:
             print(f"Image decoding error: {e}")
-            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+            return jsonify({"success": False, "message": f"Failed to decode image: {str(e)}"}), 400
 
         if frame is None:
-            return jsonify({"success": False, "message": "Failed to decode image"}), 400
+            return jsonify({"success": False, "message": "Decoded image is empty or invalid"}), 400
 
-        # Verify the face matches the student
+        # Attempt to verify the face
         name, matched_user = recognize_face(frame, filter_student_ids=[studentId])
-        
-        if name in ['unknown_person', 'no_persons_found']:
+
+        # If no face is detected or recognized, handle the failure
+        if name == 'no_persons_found':
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": "No faces found in the provided image"
+            }), 400
+        elif name == 'unknown_person':
             return jsonify({
                 "success": False,
                 "verified": False,
                 "message": "Face not recognized"
             }), 401
 
+        # If face is detected, but the user does not match, handle the mismatch
         if not matched_user or matched_user.get('studentId') != studentId:
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Face does not match the provided student ID"
+                "message": "Detected face does not match the provided student ID"
             }), 403
 
+        # If the face matches, return success
         return jsonify({
             "success": True,
             "verified": True,
@@ -371,11 +382,12 @@ def student_join():
         })
 
     except Exception as e:
-        print(f"Database error: {e}")
+        print(f"General error: {str(e)}")
         return jsonify({
             "success": False,
-            "message": "Database error while checking student ID"
+            "message": f"An error occurred: {str(e)}"
         }), 500
+
 
 
 
