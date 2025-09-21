@@ -8,6 +8,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { ViewReport } from "./VIewReport"
 import { axiosInstance } from "@/lib/utils"
+import { AttendanceChart } from "./AttendanceChart"
 
 interface AttendanceRecord {
   id: number
@@ -162,6 +163,15 @@ export function AttendanceHistory() {
                 />
               </CardContent>
             </Card>
+            {/* Calendar-ийн доор ирцийн chart */}
+            <div className="mt-6">
+              <AttendanceChart
+                data={attendanceData.map((record) => ({
+                  date: record.date,
+                  attendanceRate: record.attendanceRate,
+                }))}
+              />
+            </div>
           </div>
           {showReport && selectedLecture ? (
             <ViewReport
