@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, Play, Square, QrCode } from "lucide-react";
+import { ChevronDown, Play, Square, QrCode, Copy } from "lucide-react";
 import JoinLinkQrButton from "./JoinLinkQrButton";
 
 interface Classroom {
