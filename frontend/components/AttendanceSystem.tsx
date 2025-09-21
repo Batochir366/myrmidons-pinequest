@@ -211,16 +211,30 @@ const AttendanceSystem: React.FC = () => {
       {/* Progress Indicator */}
       <div className="bg-white shadow-sm">
         <div className="max-w-2xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between mb-4">
-            {steps.map((stepItem) => {
+          <div className="flex items-center justify-between mb-4 relative">
+            {steps.map((stepItem, index) => {
               const Icon = stepItem.icon;
               const isActive = step === stepItem.id;
               const isCompleted = step > stepItem.id;
+              const isLast = index === steps.length - 1;
 
               return (
-                <div key={stepItem.id} className="flex flex-col items-center">
+                <div
+                  key={stepItem.id}
+                  className="flex-1 flex flex-col items-center relative"
+                >
+                  {/* Connector line */}
+                  {!isLast && (
+                    <div
+                      className={`absolute top-6 left-1/2 w-full h-0.5 -translate-y-1/2 ${
+                        isCompleted ? "bg-slate-700" : "bg-gray-200"
+                      }`}
+                    />
+                  )}
+
+                  {/* Circle icon */}
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${
+                    className={`z-10 w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${
                       isActive || isCompleted
                         ? "bg-slate-700 text-white"
                         : "bg-gray-200 text-gray-400"
@@ -228,6 +242,8 @@ const AttendanceSystem: React.FC = () => {
                   >
                     <Icon size={20} />
                   </div>
+
+                  {/* Label */}
                   <span
                     className={`text-sm font-medium ${
                       isActive || isCompleted
@@ -240,16 +256,6 @@ const AttendanceSystem: React.FC = () => {
                 </div>
               );
             })}
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-slate-700 h-2 rounded-full transition-all duration-500"
-              style={{
-                width: step === 1 ? "33%" : step === 2 ? "66%" : "100%",
-              }}
-            />
           </div>
         </div>
       </div>
