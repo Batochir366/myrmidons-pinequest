@@ -57,6 +57,23 @@ export function AttendanceHistory() {
         const month = String(dateObj.getMonth() + 1).padStart(2, "0")
         const day = String(dateObj.getDate()).padStart(2, "0")
 
+        // Ирсэн оюутнуудын ID жагсаалт
+        const attendedIds = history.attendingStudents.map((att: any) => att.student.studentId)
+
+        // Бүх сурагчийг шалгаж багтаана
+        const students = classroom.ClassroomStudents.map((student: any) => {
+          const attended = history.attendingStudents.find(
+            (att: any) => att.student.studentId === student.studentId
+          )
+          return {
+            id: student._id,
+            name: student.name,
+            code: student.studentId,
+            // photo: "/diverse-students.png",
+            timestamp: attended ? new Date(attended.attendedAt).toLocaleTimeString() : null,
+          }
+        })
+
         return {
           id: history._id,
           lectureName: classroom.lectureName,
@@ -73,17 +90,12 @@ export function AttendanceHistory() {
                 classroom.ClassroomStudents.length) * 100
             )
             : 0,
-          students: history.attendingStudents.map((att: any) => ({
-            id: att.student._id,
-            name: att.student.name,
-            code: att.student.studentId,
-            photo: "/diverse-students.png", // backend-д зураг байхгүй тул түр placeholder
-            timestamp: new Date(att.attendedAt).toLocaleTimeString(),
-          })),
+          students, // бүх сурагчид (ирсэн + ирээгүй)
         }
       })
     })
   }
+
 
   useEffect(() => {
     const teacherId = localStorage.getItem("teacherId")
@@ -195,9 +207,11 @@ export function AttendanceHistory() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 w-full sm:w-auto">
+                          <div className="flex items-center gap-3 w-full sm:w-auto justify-between">
                             <div className="text-right sm:flex-initial">
-                              <p className="text-xs text-muted-foreground mt-1">{lecture.totalStudents} сурагч</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {lecture.presentStudents}/{lecture.totalStudents} сурагч
+                              </p>
                             </div>
                             <Button
                               variant="outline"

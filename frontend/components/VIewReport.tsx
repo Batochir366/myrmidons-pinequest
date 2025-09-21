@@ -177,11 +177,11 @@ export function ViewReport({ lecture, onBack }: ViewReportProps) {
 
           {/* Students Table */}
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="p-5">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b bg-muted/50">
+                    <tr className="border-b">
                       <th className="text-left p-4 font-medium">Оюутны нэр</th>
                       <th className="text-left p-4 font-medium">Оюутны дугаар</th>
                       <th className="text-left p-4 font-medium">Бүртгүүлсэн цаг</th>
@@ -195,24 +195,23 @@ export function ViewReport({ lecture, onBack }: ViewReportProps) {
                       .map((student, index) => (
                         <tr
                           key={student.id}
-                          className={`border-b hover:bg-muted/30 ${index % 2 === 0 ? "bg-background" : "bg-muted/20"}`}
+                          className={`border-b`}
                         >
                           <td className="p-4">
                             <div className="flex items-center gap-3">
-                              <Avatar className="w-8 h-8">
-                                <AvatarImage src={student.photo || "/placeholder.svg"} />
-                                <AvatarFallback className="text-xs">
-                                  {student.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")}
-                                </AvatarFallback>
-                              </Avatar>
                               <span className="font-medium">{student.name}</span>
                             </div>
                           </td>
                           <td className="p-4 text-muted-foreground">{student.code}</td>
                           <td className="p-4 text-muted-foreground">{student.timestamp || "-"}</td>
+                          {/* <td
+                            className={`p-4 font-medium ${student.timestamp
+                                ? "text-green-600" // ирсэн
+                                : "text-red-600" // ирээгүй
+                              }`}
+                          >
+                            {student.timestamp || "Ирээгүй"}
+                          </td> */}
                         </tr>
                       ))}
                   </tbody>
