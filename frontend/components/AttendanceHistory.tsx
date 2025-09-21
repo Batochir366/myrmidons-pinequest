@@ -192,7 +192,8 @@ export function AttendanceHistory() {
     if (!teacherId) return
 
     axiosInstance
-      .get(`teacher/classrooms/${teacherId}`)
+      // .get(`teacher/classrooms/${teacherId}`)
+      .get(`teacher/classrooms/68cf9442078a17ed12ddac55`)
       .then((res) => {
         const transformed = transformApiData(res.data.classrooms)
         setAttendanceData(transformed)
@@ -200,7 +201,22 @@ export function AttendanceHistory() {
       .catch((err) => console.error("Error fetching data:", err))
   }, [])
 
+  useEffect(() => {
+    if (selectedDateAttendance.length === 0) {
+      setShowReport(false)
+      setSelectedLecture(null)
+    }
+  }, [selectedDateAttendance])
 
+  useEffect(() => {
+    if (selectedDateAttendance.length > 0) {
+      setSelectedLecture(selectedDateAttendance[0])
+      setShowReport(true)
+    } else {
+      setSelectedLecture(null)
+      setShowReport(false)
+    }
+  }, [selectedDate])
   return (
     <TooltipProvider>
 
@@ -222,15 +238,15 @@ export function AttendanceHistory() {
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   className="
-      rounded-md border w-full [&_.rdp-day]:p-0
-    [&_.rdp-day_selected]:bg-slate-800
-    [&_.rdp-day_selected]:text-white
-    [&_.rdp-day_selected]:rounded-full !important
-    [&_.rdp-day_selected]:border-0
-    [&_.rdp-day_selected]:outline-none
-    [&_.rdp-day_selected]:shadow-none
-    [&_.rdp-day:hover]:rounded-full
-  "
+                    rounded-md border w-full [&_.rdp-day]:p-0
+                  [&_.rdp-day_selected]:bg-slate-800
+                  [&_.rdp-day_selected]:text-white
+                  [&_.rdp-day_selected]:rounded-full !important
+                  [&_.rdp-day_selected]:border-0
+                  [&_.rdp-day_selected]:outline-none
+                  [&_.rdp-day_selected]:shadow-none
+                  [&_.rdp-day:hover]:rounded-full
+                  "
                   modifiers={{
                     hasLecture: getLectureDays(),
                   }}
@@ -240,8 +256,6 @@ export function AttendanceHistory() {
                   }}
                 />
               </CardContent>
-
-
             </Card>
           </div>
           {showReport && selectedLecture ? (
@@ -315,6 +329,6 @@ export function AttendanceHistory() {
         </div>
 
       </div>
-    </TooltipProvider>
+    </TooltipProvider >
   )
 }
