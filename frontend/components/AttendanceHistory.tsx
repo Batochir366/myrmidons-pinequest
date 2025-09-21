@@ -25,7 +25,6 @@ interface AttendanceRecord {
     name: string
     code: string
     photo: string
-    status: "present" | "late" | "absent"
     timestamp?: string
   }[]
 }
@@ -49,8 +48,6 @@ export function AttendanceHistory() {
   const getLectureDays = () => {
     return attendanceData.map((record) => new Date(record.date))
   }
-
-
 
   const transformApiData = (classrooms: any[]): AttendanceRecord[] => {
     return classrooms.flatMap((classroom) => {
@@ -93,8 +90,7 @@ export function AttendanceHistory() {
     if (!teacherId) return
 
     axiosInstance
-      // .get(`teacher/classrooms/${teacherId}`)
-      .get(`teacher/classrooms/68cf9442078a17ed12ddac55`)
+      .get(`teacher/classrooms/${teacherId}`)
       .then((res) => {
         const transformed = transformApiData(res.data.classrooms)
         setAttendanceData(transformed)
@@ -130,7 +126,12 @@ export function AttendanceHistory() {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
+                  onSelect={(date) => {
+                    if (!date) return;
+                    // Хэрвээ дахин дарж байгаа бол state update хийхгүй
+                    if (selectedDate?.toDateString() === date.toDateString()) return;
+                    setSelectedDate(date);
+                  }}
                   className="
                     rounded-md border w-full [&_.rdp-day]:p-0
                   [&_.rdp-day_selected]:bg-slate-800
