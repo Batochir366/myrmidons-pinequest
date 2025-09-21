@@ -62,10 +62,9 @@ export function QRControlCenter() {
 
   useEffect(() => stopTimer, []);
 
-  // Poll attendance students
   const pollAttendanceData = (attendanceId: string) => {
     axiosInstance
-      .get(`teacher/attendance/${attendanceId}`)
+      .get(`attendance/live/${attendanceId}`)
       .then((res) => {
         const attendingStudents = res.data.attendance?.attendingStudents || [];
         setStudents(
@@ -165,7 +164,7 @@ export function QRControlCenter() {
   const stop = async () => {
     if (!attendanceId) return;
     try {
-      await axiosInstance.put(`teacher/end-classroom`, { attendanceId });
+      await axiosInstance.put(`attendance/end`, { attendanceId });
       stopTimer();
     } catch (err) {
       console.error("Error ending attendance:", err);

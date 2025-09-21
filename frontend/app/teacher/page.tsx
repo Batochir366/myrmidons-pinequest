@@ -34,7 +34,6 @@ export default function AttendanceDashboard() {
   useEffect(() => {
     const storedName = localStorage.getItem("teacherName");
     const storedImage = localStorage.getItem("teacherImage");
-    const storedId = localStorage.getItem("teacherId");
 
     if (storedName) {
       setTeacherName(storedName);

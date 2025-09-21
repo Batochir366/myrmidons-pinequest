@@ -174,3 +174,67 @@ export const getClassroomById = async (req, res) => {
     });
   }
 };
+
+export const getLiveAttendance = async (req, res) => {
+  try {
+    const { attendanceId } = req.params;
+
+    if (!attendanceId) {
+      return res.status(400).json({ message: "Attendance ID is required" });
+    }
+    const attendance = await AttendanceModel.findById(attendanceId).populate({
+      path: "attendingStudents.student",
+      select: "name studentId",
+    });
+
+    if (!attendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+
+    const formattedStudents = attendance.attendingStudents.map((entry) => ({
+      _id: entry._id,
+      studentName: entry.student?.name || "Нэргүй",
+      studentId: entry.student?.studentId || "ID байхгүй",
+      time: entry.attendedAt,
+    }));
+
+    return res.status(200).json({
+      attendance: {
+        attendingStudents: formattedStudents,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error fetching live attendance:", error);
+    return res.status(500).json({
+      message: "Server error while fetching live attendance",
+      error: error.message,
+    });
+  }
+};
+
+export const endAttendance = async (req, res) => {
+  try {
+    const { attendanceId } = req.body;
+
+    if (!attendanceId) {
+      return res.status(400).json({ message: "Attendance ID is required" });
+    }
+
+    const updatedAttendance = await AttendanceModel.findByIdAndUpdate(
+      attendanceId,
+      { endedAt: new Date() },
+      { new: true }
+    );
+
+    if (!updatedAttendance) {
+      return res.status(404).json({ message: "Attendance not found" });
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Attendance ended", attendance: updatedAttendance });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error", error });
+  }
+};
