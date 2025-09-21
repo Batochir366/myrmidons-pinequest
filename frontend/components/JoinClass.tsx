@@ -13,6 +13,7 @@ import {
   joinClassroom,
 } from "@/utils/attendanceUtils";
 import { Toaster, toast } from "sonner";
+import { PYTHON_BACKEND_URL } from "@/lib/utils";
 
 interface TokenPayload {
   classroomId: string;
@@ -82,7 +83,7 @@ const JoinClassPage: React.FC = () => {
     const verified = await captureAndVerify(
       videoRef,
       canvasRef,
-      "https://myrmidons-pinequest-production.up.railway.app/student/join",
+      `${PYTHON_BACKEND_URL}student/join`,
       {
         studentId,
       },

@@ -5,6 +5,7 @@ import axios from "axios";
 import { Button } from "./ui/button";
 import { Toaster, toast } from "sonner";
 import { Check } from "lucide-react";
+import { axiosInstance } from "@/lib/utils";
 
 interface Props {
   onSuccess?: () => void;
@@ -23,11 +24,10 @@ export const CreateClassroomForm = ({ onSuccess }: Props) => {
 
     setIsLoading(true);
     try {
-      const res = await axios.post(
-        "https://myrmidons-pinequest-backend.vercel.app/teacher/create-classroom",
-        { lectureName, teacherId },
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const res = await axiosInstance.post(`teacher/create-classroom`, {
+        lectureName,
+        teacherId,
+      });
 
       toast.custom(() => (
         <div className="w-[400px] p-4 rounded-xl shadow-lg bg-[#18181b] text-white flex items-center gap-4 transition-all">

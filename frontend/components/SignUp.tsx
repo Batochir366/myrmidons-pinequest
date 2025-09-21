@@ -1,4 +1,5 @@
 "use client";
+import { PYTHON_BACKEND_URL } from "@/lib/utils";
 import React, { useState, useRef } from "react";
 import Webcam from "react-webcam";
 
@@ -32,14 +33,11 @@ export default function Signup() {
     };
 
     try {
-      const response = await fetch(
-        "https://myrmidons-pinequest-production.up.railway.app/register",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`${PYTHON_BACKEND_URL}register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       const data = await response.json();
       alert(data.message || "Signup successful!");
       setName("");

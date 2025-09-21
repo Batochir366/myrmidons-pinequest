@@ -13,6 +13,7 @@ import {
 import { getLocation } from "@/utils/getLocation";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
+import { axiosInstance, PYTHON_BACKEND_URL } from "@/lib/utils";
 type Student = {
   studentId: string;
   embedding: number[];
@@ -86,8 +87,8 @@ const AttendanceSystem: React.FC = () => {
 
     const fetchStudents = async () => {
       try {
-        const response = await axios.get(
-          `https://myrmidons-pinequest-backend.vercel.app/attendance/only/${classroomId}`
+        const response = await axiosInstance.get(
+          `attendance/only/${classroomId}`
         );
         setStudents(response.data.classroom.ClassroomStudents || []);
       } catch (error) {
@@ -145,7 +146,7 @@ const AttendanceSystem: React.FC = () => {
     const verified = await captureAndVerify(
       videoRef,
       canvasRef,
-      "https://myrmidons-pinequest-production.up.railway.app/student/attend",
+      `${PYTHON_BACKEND_URL}student/attend`,
       {
         studentId,
         classroom_students: students,
