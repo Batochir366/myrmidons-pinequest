@@ -188,33 +188,6 @@ export const createAttendance = async (req, res) => {
   }
 };
 
-export const endAttendance = async (req, res) => {
-  try {
-    const { attendanceId } = req.body;
-
-    if (!attendanceId) {
-      return res.status(400).json({ message: "Classroom ID is required" });
-    }
-
-    const updatedAttendance = await AttendanceModel.findByIdAndUpdate(
-      attendanceId,
-      { endedAt: new Date() },
-      { new: true }
-    );
-
-    if (!updatedAttendance) {
-      return res.status(404).json({ message: "Classroom not found" });
-    }
-
-    return res
-      .status(200)
-      .json({ message: "Classroom ended", classroom: updatedAttendance });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error", error });
-  }
-};
-
 export const getClassroomsAndStudentsByTeacherId = async (req, res) => {
   try {
     const { teacherId } = req.params;
