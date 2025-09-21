@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import jwtEncode from "jwt-encode";
+
 import { getLocation } from "@/utils/getLocation";
 import { axiosInstance, axiosInstanceFront } from "@/lib/utils";
-import AttendanceControlPanel from "./AttendanceControlPanel";
-import QrAndAttendance from "./QrAndAttendance";
+import AttendanceControlPanel from "@/components/AttendanceControlPanel";
+import QrAndAttendance from "@/components/QrAndAttendance";
+
+// -----------------------------
+// Interfaces
+// -----------------------------
 
 interface Classroom {
   _id: string;
@@ -21,52 +26,150 @@ interface Student {
   time: string;
 }
 
-export function QRControlCenter() {
+interface QRControlCenterProps {
+  attendanceId: string | null;
+  setAttendanceId: React.Dispatch<React.SetStateAction<string | null>>;
+  students: Student[];
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+  countdown: number;
+  setCountdown: React.Dispatch<React.SetStateAction<number>>;
+  qrData: string | null;
+  setQrData: React.Dispatch<React.SetStateAction<string | null>>;
+  qrImage: string | null;
+  setQrImage: React.Dispatch<React.SetStateAction<string | null>>;
+  running: boolean;
+  setRunning: React.Dispatch<React.SetStateAction<boolean>>;
+  loading: boolean;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedClassroomId: string;
+  setSelectedClassroomId: React.Dispatch<React.SetStateAction<string>>;
+  selectedLectureName: string;
+  setSelectedLectureName: React.Dispatch<React.SetStateAction<string>>;
+  timerRef: React.MutableRefObject<NodeJS.Timeout | null>;
+  pollRef: React.MutableRefObject<NodeJS.Timeout | null>;
+  onStart: () => void;
+  onStop: () => void;
+  onClassroomChange: (id: string, lectureName: string) => void;
+  isRestoringSession?: boolean;
+}
+
+export function QRControlCenter({
+  attendanceId,
+  setAttendanceId,
+  students,
+  setStudents,
+  countdown,
+  setCountdown,
+  qrData,
+  setQrData,
+  qrImage,
+  setQrImage,
+  running,
+  setRunning,
+  loading,
+  setLoading,
+  selectedClassroomId,
+  setSelectedClassroomId,
+  selectedLectureName,
+  setSelectedLectureName,
+  timerRef,
+  pollRef,
+  onStart,
+  onStop,
+  onClassroomChange,
+  isRestoringSession = false,
+}: QRControlCenterProps) {
+  // -----------------------------
+  // State Definitions (Component-specific only)
+  // -----------------------------
   const [teacherId, setTeacherId] = useState("");
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
-  const [selectedClassroomId, setSelectedClassroomId] = useState("");
-  const [selectedLectureName, setSelectedLectureName] = useState("");
-
-  const [qrData, setQrData] = useState<string | null>(null);
-  const [qrImage, setQrImage] = useState<string | null>(null);
   const [joinLinkQr, setJoinLinkQr] = useState<string | null>(null);
-
-  const [attendanceId, setAttendanceId] = useState<string | null>(null);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [countdown, setCountdown] = useState(5);
-  const [running, setRunning] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [sessionRestored, setSessionRestored] = useState(false);
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // -----------------------------
+  // Effects
+  // -----------------------------
 
-  // Load teacherId
+  // Load teacher ID from localStorage
   useEffect(() => {
     const storedId = localStorage.getItem("teacherId");
     if (storedId) setTeacherId(storedId);
   }, []);
 
-  // Fetch classrooms
+  // Fetch classrooms on teacherId load
   useEffect(() => {
     if (!teacherId) return;
 
     axiosInstance
       .get(`teacher/only-classrooms/${teacherId}`)
-      .then((res) => setClassrooms(res.data.classrooms || []))
+      .then((res) => {
+        const fetchedClassrooms = res.data.classrooms || [];
+        setClassrooms(fetchedClassrooms);
+
+        // If restoring session and we have a selected classroom, generate join link QR
+        if (isRestoringSession && selectedClassroomId && !sessionRestored) {
+          const classroom = fetchedClassrooms.find(
+            (c: Classroom) => c._id === selectedClassroomId
+          );
+          if (classroom?.joinLink) {
+            generateJoinLinkQr(classroom.joinLink);
+          }
+          setSessionRestored(true);
+        }
+      })
       .catch((err) => {
         console.error("Error fetching classrooms:", err);
         alert("Ангийн мэдээлэл авахад алдаа гарлаа");
       });
-  }, [teacherId]);
+  }, [teacherId, selectedClassroomId, isRestoringSession, sessionRestored]);
 
-  useEffect(() => stopTimer, []);
+  // Resume timers if session is being restored
+  useEffect(() => {
+    if (
+      isRestoringSession &&
+      running &&
+      attendanceId &&
+      !timerRef.current &&
+      !pollRef.current
+    ) {
+      console.log("Resuming timers for restored session...");
+
+      // Resume QR generation timer
+      timerRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === 1) {
+            generateQr(attendanceId);
+            return 5;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      // Resume polling
+      pollRef.current = setInterval(
+        () => pollAttendanceData(attendanceId),
+        2000
+      );
+
+      // Generate initial QR if we don't have one
+      if (!qrImage || !qrData) {
+        generateQr(attendanceId);
+      }
+    }
+  }, [isRestoringSession, running, attendanceId, qrImage, qrData]);
+
+  // -----------------------------
+  // QR & Attendance Logic
+  // -----------------------------
 
   const pollAttendanceData = (attendanceId: string) => {
     axiosInstance
       .get(`attendance/live/${attendanceId}`)
       .then((res) => {
         const attendingStudents = res.data.attendance?.attendingStudents || [];
+
         setStudents(
           attendingStudents.map((s: any) => ({
             _id: s._id,
@@ -79,60 +182,72 @@ export function QRControlCenter() {
       .catch((err) => console.error("Error polling attendance data:", err));
   };
 
-  // Generate join link QR
   const generateJoinLinkQr = (link: string) => {
     QRCode.toDataURL(link, { width: 128 })
-      .then((dataUrl) => setJoinLinkQr(dataUrl))
+      .then(setJoinLinkQr)
       .catch(() => setJoinLinkQr(null));
   };
 
-  // Generate attendance QR (JWT)
   const generateQr = (attendanceId: string) => {
-    const expiresAt = Date.now() + 5000;
+    const expiresAt = Math.floor((Date.now() + 5000) / 1000); // Convert to seconds for JWT
+
     const payload = {
       attendanceId,
       classroomId: selectedClassroomId,
       exp: expiresAt,
     };
+
     const secret = "FACE";
     const token = jwtEncode(payload, secret);
     const url = `${axiosInstanceFront}student?token=${token}`;
 
     setQrData(url);
+
     QRCode.toDataURL(url, { width: 256 })
-      .then((dataUrl) => setQrImage(dataUrl))
+      .then(setQrImage)
       .catch((err) => console.error("Error generating QR code:", err));
   };
 
-  const onClassroomChange = (id: string) => {
-    if (running) stopTimer();
-    setSelectedClassroomId(id);
+  // -----------------------------
+  // Handlers
+  // -----------------------------
+
+  const handleClassroomChange = (id: string) => {
+    if (running) onStop(); // Use parent's stop function
 
     const classroom = classrooms.find((c) => c._id === id);
+    const lectureName = classroom?.lectureName || "";
+
+    // Update both local and parent state
+    onClassroomChange(id, lectureName);
+
     if (classroom) {
-      setSelectedLectureName(classroom.lectureName);
       classroom.joinLink
         ? generateJoinLinkQr(classroom.joinLink)
         : setJoinLinkQr(null);
     } else {
-      setSelectedLectureName("");
       setJoinLinkQr(null);
     }
   };
 
   const start = async () => {
-    if (running || !selectedClassroomId) return alert("Ангийг сонгоно уу");
+    if (running || !selectedClassroomId) {
+      return alert("Ангийг сонгоно уу");
+    }
+
     setLoading(true);
 
     try {
       const { latitude, longitude } = await getLocation();
-      const res = await axiosInstance.post(`teacher/create-attendance`, {
+
+      const res = await axiosInstance.post("teacher/create-attendance", {
         classroomId: selectedClassroomId,
         latitude,
         longitude,
       });
 
       const { _id } = res.data;
+
       if (!_id) throw new Error("Attendance ID алга");
 
       setAttendanceId(_id);
@@ -141,7 +256,9 @@ export function QRControlCenter() {
 
       setCountdown(5);
       setRunning(true);
+      onStart(); // Notify parent
 
+      // QR Timer - managed by parent's refs
       timerRef.current = setInterval(() => {
         setCountdown((prev) => {
           if (prev === 1) {
@@ -152,6 +269,7 @@ export function QRControlCenter() {
         });
       }, 1000);
 
+      // Poll attendance data - managed by parent's refs
       pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
     } catch (err) {
       console.error("Error creating attendance:", err);
@@ -163,28 +281,19 @@ export function QRControlCenter() {
 
   const stop = async () => {
     if (!attendanceId) return;
+
     try {
-      await axiosInstance.put(`attendance/end`, { attendanceId });
-      stopTimer();
+      await axiosInstance.put("attendance/end", { attendanceId });
+      onStop();
     } catch (err) {
       console.error("Error ending attendance:", err);
       alert("Ирц дуусгахад алдаа гарлаа");
     }
   };
 
-  const stopTimer = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (pollRef.current) clearInterval(pollRef.current);
-    timerRef.current = null;
-    pollRef.current = null;
-
-    setRunning(false);
-    setCountdown(5);
-    setQrData(null);
-    setQrImage(null);
-    setAttendanceId(null);
-    setStudents([]);
-  };
+  // -----------------------------
+  // Render
+  // -----------------------------
 
   return (
     <div className="w-full max-w-[1600px] mx-auto space-y-8 p-4 sm:p-6">
@@ -195,7 +304,7 @@ export function QRControlCenter() {
         loading={loading}
         running={running}
         joinLinkQr={joinLinkQr}
-        onClassroomChange={onClassroomChange}
+        onClassroomChange={handleClassroomChange}
         start={start}
         stop={stop}
       />
