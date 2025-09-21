@@ -25,111 +25,12 @@ interface AttendanceRecord {
     name: string
     code: string
     photo: string
-    status: "present" | "late" | "absent"
     timestamp?: string
   }[]
 }
 
-const sampleAttendanceData: AttendanceRecord[] = [
-  {
-    id: 1,
-    lectureName: "Financial Accounting",
-    date: "2025-09-16",
-    startTime: "08:50",
-    endTime: "09:30",
-    qrStartTime: "08:50",
-    qrEndTime: "09:30",
-    totalStudents: 45,
-    presentStudents: 42,
-    attendanceRate: 93,
-    students: [
-      {
-        id: 1,
-        name: "Sarah Johnson",
-        code: "ACC2021001",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "08:52",
-      },
-      {
-        id: 2,
-        name: "Michael Chen",
-        code: "ACC2021002",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "08:53",
-      },
-      {
-        id: 3,
-        name: "Emma Davis",
-        code: "ACC2021003",
-        photo: "/diverse-students.png",
-        status: "late",
-        timestamp: "09:15",
-      },
-      {
-        id: 4,
-        name: "James Wilson",
-        code: "ACC2021004",
-        photo: "/diverse-students.png",
-        status: "absent",
-      },
-      {
-        id: 5,
-        name: "Lisa Anderson",
-        code: "ACC2021005",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "08:51",
-      },
-    ],
-  },
-  {
-    id: 2,
-    lectureName: "Mathematics 201",
-    date: "2025-09-14",
-    startTime: "10:00",
-    endTime: "11:30",
-    qrStartTime: "10:00",
-    qrEndTime: "11:30",
-    totalStudents: 24,
-    presentStudents: 24,
-    attendanceRate: 100,
-    students: [
-      {
-        id: 1,
-        name: "Sarah Johnson",
-        code: "CS2021001",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "10:02",
-      },
-      {
-        id: 2,
-        name: "Мишээл",
-        code: "CS2021002",
-        photo: "/diverse-students.png",
-        status: "present",
-        timestamp: "10:01",
-      },
-    ],
-  },
-  {
-    id: 3,
-    lectureName: "Physics 301",
-    date: "2025-09-15",
-    startTime: "12:00",
-    endTime: "13:30",
-    qrStartTime: "12:00",
-    qrEndTime: "13:30",
-    totalStudents: 32,
-    presentStudents: 30,
-    attendanceRate: 94,
-    students: [],
-  },
-]
-
 export function AttendanceHistory() {
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]) // ⬅️ эхэнд зарлана
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedLecture, setSelectedLecture] = useState<AttendanceRecord | null>(null)
   const [showReport, setShowReport] = useState(false)
@@ -139,16 +40,73 @@ export function AttendanceHistory() {
     const month = String(date.getMonth() + 1).padStart(2, "0")
     const day = String(date.getDate()).padStart(2, "0")
     const dateString = `${year}-${month}-${day}`
-    return sampleAttendanceData.filter((record) => record.date === dateString)
+    return attendanceData.filter((record) => record.date === dateString)
   }
 
   const selectedDateAttendance = selectedDate ? getAttendanceForDate(selectedDate) : []
 
   const getLectureDays = () => {
-    return sampleAttendanceData.map((record) => new Date(record.date))
+    return attendanceData.map((record) => new Date(record.date))
   }
-  useEffect(() => { axiosInstance.get('attendance/classroom/68ce4c789f3a21f8452ed86b').then(res => console.log(res.data)) }, [])
 
+  const transformApiData = (classrooms: any[]): AttendanceRecord[] => {
+    return classrooms.flatMap((classroom) => {
+      return classroom.attendanceHistory.map((history: any) => {
+        const dateObj = new Date(history.date)
+        const year = dateObj.getFullYear()
+        const month = String(dateObj.getMonth() + 1).padStart(2, "0")
+        const day = String(dateObj.getDate()).padStart(2, "0")
+
+        return {
+          id: history._id,
+          lectureName: classroom.lectureName,
+          date: `${year}-${month}-${day}`,
+          startTime: classroom.lectureDate.split(" ")[0],
+          endTime: classroom.lectureDate.split(" ")[1],
+          qrStartTime: classroom.lectureDate.split(" ")[0],
+          qrEndTime: classroom.lectureDate.split(" ")[1],
+          totalStudents: classroom.ClassroomStudents.length,
+          presentStudents: history.totalAttending ?? history.attendingStudents.length,
+          attendanceRate: classroom.ClassroomStudents.length
+            ? Math.round(
+              ((history.totalAttending ?? history.attendingStudents.length) /
+                classroom.ClassroomStudents.length) * 100
+            )
+            : 0,
+          students: history.attendingStudents.map((att: any) => ({
+            id: att.student._id,
+            name: att.student.name,
+            code: att.student.studentId,
+            photo: "/diverse-students.png", // backend-д зураг байхгүй тул түр placeholder
+            timestamp: new Date(att.attendedAt).toLocaleTimeString(),
+          })),
+        }
+      })
+    })
+  }
+
+  useEffect(() => {
+    const teacherId = localStorage.getItem("teacherId")
+    if (!teacherId) return
+
+    axiosInstance
+      .get(`teacher/classrooms/${teacherId}`)
+      .then((res) => {
+        const transformed = transformApiData(res.data.classrooms)
+        setAttendanceData(transformed)
+      })
+      .catch((err) => console.error("Error fetching data:", err))
+  }, [])
+
+  useEffect(() => {
+    if (selectedDateAttendance.length > 0) {
+      setSelectedLecture(selectedDateAttendance[0])
+      setShowReport(false)
+    } else {
+      setSelectedLecture(null)
+      setShowReport(false)
+    }
+  }, [selectedDate])
   return (
     <TooltipProvider>
 
@@ -168,17 +126,22 @@ export function AttendanceHistory() {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
+                  onSelect={(date) => {
+                    if (!date) return;
+                    // Хэрвээ дахин дарж байгаа бол state update хийхгүй
+                    if (selectedDate?.toDateString() === date.toDateString()) return;
+                    setSelectedDate(date);
+                  }}
                   className="
-      rounded-md border w-full [&_.rdp-day]:p-0
-    [&_.rdp-day_selected]:bg-slate-800
-    [&_.rdp-day_selected]:text-white
-    [&_.rdp-day_selected]:rounded-full !important
-    [&_.rdp-day_selected]:border-0
-    [&_.rdp-day_selected]:outline-none
-    [&_.rdp-day_selected]:shadow-none
-    [&_.rdp-day:hover]:rounded-full
-  "
+                    rounded-md border w-full [&_.rdp-day]:p-0
+                  [&_.rdp-day_selected]:bg-slate-800
+                  [&_.rdp-day_selected]:text-white
+                  [&_.rdp-day_selected]:rounded-full !important
+                  [&_.rdp-day_selected]:border-0
+                  [&_.rdp-day_selected]:outline-none
+                  [&_.rdp-day_selected]:shadow-none
+                  [&_.rdp-day:hover]:rounded-full
+                  "
                   modifiers={{
                     hasLecture: getLectureDays(),
                   }}
@@ -188,8 +151,6 @@ export function AttendanceHistory() {
                   }}
                 />
               </CardContent>
-
-
             </Card>
           </div>
           {showReport && selectedLecture ? (
@@ -263,6 +224,6 @@ export function AttendanceHistory() {
         </div>
 
       </div>
-    </TooltipProvider>
+    </TooltipProvider >
   )
 }
