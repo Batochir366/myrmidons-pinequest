@@ -12,6 +12,7 @@ import { axiosInstance } from "@/lib/utils"
 interface AttendanceRecord {
   id: number
   lectureName: string
+  lectureDate: string
   date: string
   startTime: string
   endTime: string
@@ -56,7 +57,6 @@ export function AttendanceHistory() {
         const year = dateObj.getFullYear()
         const month = String(dateObj.getMonth() + 1).padStart(2, "0")
         const day = String(dateObj.getDate()).padStart(2, "0")
-
         // Ирсэн оюутнуудын ID жагсаалт
         const attendedIds = history.attendingStudents.map((att: any) => att.student.studentId)
 
@@ -73,15 +73,13 @@ export function AttendanceHistory() {
             timestamp: attended ? new Date(attended.attendedAt).toLocaleTimeString() : null,
           }
         })
-
         return {
           id: history._id,
           lectureName: classroom.lectureName,
+          lectureDate: classroom.lectureDate,
           date: `${year}-${month}-${day}`,
-          startTime: classroom.lectureDate.split(" ")[0],
-          endTime: classroom.lectureDate.split(" ")[1],
-          qrStartTime: classroom.lectureDate.split(" ")[0],
-          qrEndTime: classroom.lectureDate.split(" ")[1],
+          qrStartTime: new Date(history.date).toLocaleTimeString(),
+          qrEndTime: history.endedAt ? new Date(history.endedAt).toLocaleTimeString() : "--",
           totalStudents: classroom.ClassroomStudents.length,
           presentStudents: history.totalAttending ?? history.attendingStudents.length,
           attendanceRate: classroom.ClassroomStudents.length
@@ -90,12 +88,12 @@ export function AttendanceHistory() {
                 classroom.ClassroomStudents.length) * 100
             )
             : 0,
-          students, // бүх сурагчид (ирсэн + ирээгүй)
+
+          students,
         }
       })
     })
   }
-
 
   useEffect(() => {
     const teacherId = localStorage.getItem("teacherId")
@@ -203,7 +201,7 @@ export function AttendanceHistory() {
                             <div className="min-w-0">
                               <h3 className="font-medium text-card-foreground truncate">{lecture.lectureName}</h3>
                               <p className="text-sm text-muted-foreground">
-                                {lecture.startTime} - {lecture.endTime}
+                                {lecture.lectureDate}
                               </p>
                             </div>
                           </div>
