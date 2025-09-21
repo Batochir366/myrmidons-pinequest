@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, QrCode, History, Menu } from "lucide-react";
+import { Users, QrCode, History, Menu, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,12 +24,13 @@ import { QRControlCenter } from "@/components/QrControlCenter";
 import { AttendanceHistory } from "@/components/AttendanceHistory";
 import { ClassroomsView } from "@/components/ClassroomsView";
 import { RequireAuth } from "@/components/RequireAuth";
+import { useRouter } from "next/navigation";
 
 export default function AttendanceDashboard() {
   const [activeView, setActiveView] = useState("attendance");
   const [teacherName, setTeacherName] = useState("");
   const [teacherImage, setTeacherImage] = useState("");
-
+  const router = useRouter();
   useEffect(() => {
     const storedName = localStorage.getItem("teacherName");
     const storedImage = localStorage.getItem("teacherImage");
@@ -40,7 +41,10 @@ export default function AttendanceDashboard() {
       setTeacherImage(storedImage || "");
     }
   }, []);
-
+  const logOut = () => {
+    localStorage.clear();
+    router.push("/");
+  };
   const menuItems = [
     { id: "attendance", label: "Ирц бүртгэх", icon: QrCode },
     { id: "history", label: "Ирцийн түүх", icon: History },
@@ -72,7 +76,7 @@ export default function AttendanceDashboard() {
             </div>
           </div>
         </div>
-        <div className="px-4 py-6 bg-white dark:bg-gray-900">
+        <div className="px-4 py-6 bg-white dark:bg-gray-900 flex flex-col justify-between h-full pb-15">
           <div className="space-y-2">
             {menuItems.map((item) => (
               <Button
@@ -90,6 +94,13 @@ export default function AttendanceDashboard() {
               </Button>
             ))}
           </div>
+          <Button
+            onClick={() => logOut()}
+            className="w-full justify-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer border-0 bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-md hover:scale-105 hover:shadow-lg"
+          >
+            Системээс гарах
+            <LogOut className="w-5 h-5" />
+          </Button>
         </div>
       </SheetContent>
     </Sheet>
@@ -102,7 +113,7 @@ export default function AttendanceDashboard() {
           <QrCode className="w-5 h-5 text-white" />
         </div>
       </div>
-      <div className="flex-1 px-2 py-6 bg-white dark:bg-gray-900">
+      <div className="flex-1 px-2 py-6 bg-white dark:bg-gray-900 flex flex-col justify-between h-full pb-15">
         <div className="space-y-2">
           {menuItems.map((item) => (
             <Button
@@ -121,6 +132,12 @@ export default function AttendanceDashboard() {
             </Button>
           ))}
         </div>
+        <Button
+          onClick={() => logOut()}
+          className="w-full justify-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer border-0 bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-md hover:scale-105 hover:shadow-lg"
+        >
+          <LogOut className="w-5 h-5" />
+        </Button>
       </div>
     </div>
   );
@@ -158,7 +175,7 @@ export default function AttendanceDashboard() {
               </div>
             </SidebarHeader>
 
-            <SidebarContent className="px-4 py-6 bg-white dark:bg-gray-900">
+            <SidebarContent className="px-4 pt-6 pb-20 bg-white dark:bg-gray-900 flex flex-col justify-between">
               <SidebarMenu className="space-y-2">
                 {menuItems.map((item) => (
                   <SidebarMenuItem key={item.id}>
@@ -201,6 +218,13 @@ export default function AttendanceDashboard() {
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
+              <Button
+                onClick={() => logOut()}
+                className="w-full justify-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium cursor-pointer border-0 bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-md hover:scale-105 hover:shadow-lg"
+              >
+                Системээс гарах
+                <LogOut className="w-5 h-5" />
+              </Button>
             </SidebarContent>
           </Sidebar>
 
