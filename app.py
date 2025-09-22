@@ -459,28 +459,31 @@ def register():
 
         # Check for duplicate face (find closest match)
         if users_collection is not None:
-           try:
-               all_users = list(users_collection.find())
-               closest_match = None
-               min_distance = float('inf')
+            try:
+                all_users = list(users_collection.find())
+                closest_match = None
+                min_distance = float('inf')
         
-               for user in all_users:
-                   try:
-                       existing_encoding = np.array(user['embedding'])
-                       distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
-                       if distance < 0.6 and distance < min_distance:
-                          min_distance = distance
-                          closest_match = user
+                for user in all_users:
+                    try:
+                        existing_encoding = np.array(user['embedding'])
+                        distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
+                        if distance < 0.6 and distance < min_distance:
+                            min_distance = distance
+                            closest_match = user
                     except Exception as inner_e:
                         print(f"Error comparing face for user {user.get('studentId', 'unknown')}: {inner_e}")
-                         continue
+                        continue
         
                 if closest_match:
                     print(f"Duplicate face detected. Closest match with studentId: {closest_match['studentId']} (distance: {min_distance})")
-                     return jsonify({
-                            "success": False,
-                            "message": f"Таны царайг {closest_match['studentId']} дор аль хэдийн бүртгүүлсэн байна."
-                            }), 409
+                    return jsonify({
+                        "success": False,
+                        "message": f"Таны царайг {closest_match['studentId']} дор аль хэдийн бүртгүүлсэн байна."
+                    }), 409
+            except Exception as e:
+                print(f"Error checking duplicate faces: {e}")
+                return jsonify({"success": False, "message": "Error checking duplicate faces"}), 500
 
         # Save user
         user_data = {
