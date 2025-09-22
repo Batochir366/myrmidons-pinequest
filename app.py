@@ -209,19 +209,18 @@ def health():
 def attend_class():
     if request.method == 'OPTIONS':
         return '', 204
-
     try:
         data = request.get_json()
         studentId = data.get('studentId')
         image_base64 = data.get('image_base64')
-        classroom_students = data.get('classroom_students')  # Array of student objects with embeddings
+        classroom_students = data.get('classroom_students') 
         
         longitude = data.get('longitude')
         latitude = data.get('latitude')
 
         # Check for required fields
         if not all([studentId, image_base64, latitude, longitude]) or not classroom_students:
-            return jsonify({"success": False, "message": "Missing required fields"}), 400
+            return jsonify({"success": False, "message": "Байршлын мэдээллийн зөвшөөрлийг өгнө үү"}), 400
 
         # Extract student IDs for membership check
         student_ids = [student.get('studentId') for student in classroom_students if isinstance(student, dict)]
@@ -231,7 +230,7 @@ def attend_class():
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": f"Student {studentId} not in classroom. Available: {student_ids}"
+                "message": f"Та ангид байхгүй байна. Та эхлээд ангидаа элсээрэй"
             }), 403
 
         # Location check
@@ -255,10 +254,9 @@ def attend_class():
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": f"Location too far ({distance:.1f}m)"
+                "message": f"Та одоогоор ангидаа байхгүй байна. Сургуульдаа яваарай"
             }), 403
-
-        # Decode image
+       # 1. Decode image
         try:
             header, encoded = image_base64.split(",", 1)
             image_bytes = base64.b64decode(encoded)
@@ -269,25 +267,24 @@ def attend_class():
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-
-        # Use the new function that works ONLY with classroom students
+        # 2. Face Recognition
         name, matched_user = recognize_classroom_face(frame, classroom_students)
-
-        if name in ['unknown_person', 'no_persons_found']:
+        # 3. No recognizable face in frame
+        if name in ['unknown_person', 'no_persons_found'] or not matched_user:
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Face not recognized among classroom students"
+                "message": "Ангийн сурагчдын дунд царай танигдаагүй байна"
             }), 401
-
-        if not matched_user or matched_user.get('studentId') != studentId:
-            recognized_id = matched_user.get('studentId') if matched_user else 'None'
+        # 4. Face mismatch
+        if matched_user.get('studentId') != studentId:
+            recognized_id = matched_user.get('studentId')
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": f"Face mismatch. Recognized: {recognized_id}, Expected: {studentId}"
+                "message": f"Таны бүртгүүлсэн царай болон дугаар таарахгүй байна"
             }), 403
-
+        # 5. Success
         return jsonify({
             "success": True,
             "verified": True,
@@ -332,7 +329,7 @@ def student_join():
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "User not found in the database"
+                "message": "Та хараахан бүртгүүлээгүй байна"
             }), 404
 
         # Decode the face image from base64
@@ -356,13 +353,13 @@ def student_join():
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "No faces found in the provided image"
+                "message": "Өгөгдсөн зурагнаас царай олдсонгүй"
             }), 400
         elif name == 'unknown_person':
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Face not recognized"
+                "message": "Царайг таньсангүй"
             }), 401
 
         # If face is detected, but the user does not match, handle the mismatch
@@ -370,14 +367,14 @@ def student_join():
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Detected face does not match the provided student ID"
+                "message": "Илэрсэн царай нь өгсөн оюутны дугаартай таарахгүй байна"
             }), 403
 
         # If the face matches, return success
         return jsonify({
             "success": True,
             "verified": True,
-            "message": f"Student {studentId} verified and joined successfully",
+            "message": f"Та ангидаа амжилттай элслээ",
             "name": matched_user.get('name', name)
         })
 
@@ -402,7 +399,7 @@ def register():
             print("Face recognition not available")
             return jsonify({
                 "success": False,
-                "message": "Face recognition is not available. Please contact administrator."
+                "message": "Царай таних боломжгүй. Админтай холбогдоно уу."
             }), 503
 
         data = request.get_json(force=True, silent=True)
@@ -424,7 +421,7 @@ def register():
                 existing_user = users_collection.find_one({"studentId": studentId})
                 if existing_user:
                     print("User already exists:", studentId)
-                    return jsonify({"success": False, "message": "User already exists"}), 409
+                    return jsonify({"success": False, "message": "Өгөгдсөн ID-тай хэрэглэгч аль хэдийн байна"}), 409
             except Exception as e:
                 print(f"Database error during user check: {e}")
                 return jsonify({"success": False, "message": "Database connection error"}), 500
@@ -456,30 +453,34 @@ def register():
 
         if not face_encodings:
             print("No face detected in image")
-            return jsonify({"success": False, "message": "No face detected in image"}), 400
+            return jsonify({"success": False, "message": "Зураг дээр ямар ч царай илэрсэнгүй"}), 400
 
         new_face_encoding = face_encodings[0]
 
-        # Check for duplicate face (regardless of studentId)
+        # Check for duplicate face (find closest match)
         if users_collection is not None:
-            try:
-                all_users = list(users_collection.find())
-                for user in all_users:
-                    try:
-                        existing_encoding = np.array(user['embedding'])
-                        distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
-                        if distance < 0.6:
-                            print(f"Duplicate face detected. Matches with studentId: {user['studentId']}")
-                            return jsonify({
-                                "success": False,
-                                "message": f"Face already registered under studentId {user['studentId']}. Duplicate registration not allowed."
-                            }), 409
+           try:
+               all_users = list(users_collection.find())
+               closest_match = None
+               min_distance = float('inf')
+        
+               for user in all_users:
+                   try:
+                       existing_encoding = np.array(user['embedding'])
+                       distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
+                       if distance < 0.6 and distance < min_distance:
+                          min_distance = distance
+                          closest_match = user
                     except Exception as inner_e:
                         print(f"Error comparing face for user {user.get('studentId', 'unknown')}: {inner_e}")
-                        continue
-            except Exception as e:
-                print(f"Error checking duplicate faces: {e}")
-                return jsonify({"success": False, "message": "Error checking duplicate faces"}), 500
+                         continue
+        
+                if closest_match:
+                    print(f"Duplicate face detected. Closest match with studentId: {closest_match['studentId']} (distance: {min_distance})")
+                     return jsonify({
+                            "success": False,
+                            "message": f"Таны царайг {closest_match['studentId']} дор аль хэдийн бүртгүүлсэн байна."
+                            }), 409
 
         # Save user
         user_data = {
@@ -506,7 +507,7 @@ def register():
         print(f"User {studentName} registered successfully")
         return jsonify({
             "success": True,
-            "message": f"User {studentName} registered successfully!"
+            "message": f"Хэрэглэгч {studentName} та амжилттай бүртгүүллээ!"
         })
 
     except Exception as e:
@@ -514,7 +515,7 @@ def register():
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-    
+
 @app.route('/teacher/register', methods=['POST','OPTIONS'])
 def register_teacher():
     if request.method == 'OPTIONS':
@@ -546,27 +547,41 @@ def register_teacher():
         face_encodings = face_recognition.face_encodings(rgb_frame)
 
         if not face_encodings:
-            return jsonify({"success": False, "message": "No face detected in image"}), 400
+            return jsonify({"success": False, "message": "Зураг дээр ямар ч царай илэрсэнгүй"}), 400
 
         new_face_encoding = face_encodings[0]
 
+        # Check if teacher name already exists
         if teachers_collection.find_one({"teacherName": teacherName}):
-            return jsonify({"success": False, "message": "Teacher already exists"}), 409
+            return jsonify({"success": False, "message": "Багшийн нэр аль хэдийн бүртгэгдсэн байна"}), 409
 
         try:
             existing_teachers = list(teachers_collection.find())
+            closest_match = None
+            min_distance = float('inf')
+            
             for teacher in existing_teachers:
-                existing_encoding = np.array(teacher['embedding'])
-                distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
-                if distance < 0.6: 
-                    print(f"Duplicate face detected for teacher: {teacher['teacherName']}")
-                    return jsonify({
-                        "success": False,
-                        "message": f"Face already registered under teacher {teacher['teacherName']}. Duplicate not allowed."
-                    }), 409
+                try:
+                    existing_encoding = np.array(teacher['embedding'])
+                    distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
+                    if distance < 0.6 and distance < min_distance:
+                        min_distance = distance
+                        closest_match = teacher
+                except Exception as inner_e:
+                    print(f"Error comparing face for teacher {teacher.get('teacherName', 'unknown')}: {inner_e}")
+                    continue
+            
+            if closest_match:
+                print(f"Duplicate face detected. Closest match with teacher: {closest_match['teacherName']} (distance: {min_distance})")
+                return jsonify({
+                    "success": False,
+                    "message": f"{closest_match['teacherName']} багшийн нэрээр царай бүртгэлтэй байна. Давхар бүртгэл хийх боломжгүй."
+                }), 409
+                
         except Exception as e:
             print(f"Error during face duplication check: {e}")
             return jsonify({"success": False, "message": "Face duplication check failed"}), 500
+            
         now = datetime.datetime.utcnow()
         teacher_data = {
             "teacherName": teacherName,
@@ -583,12 +598,13 @@ def register_teacher():
 
         return jsonify({
             "success": True,
-            "message": f"Teacher {teacherName} registered successfully!"
+            "message": f"{teacherName} та багшаар амжилттай бүртгүүллээ!"
         })
 
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal Server Error"}), 500
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500 
+
 
 @app.route('/teacher/login', methods=['POST', 'OPTIONS'])
 def login_teacher():
@@ -627,7 +643,7 @@ def login_teacher():
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Unknown face or no face found"
+                "message": "Ийм царай олдсонгүй"
             }), 401
 
         # Check teacher name match
@@ -637,7 +653,7 @@ def login_teacher():
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": "Face does not match provided teacher name"
+                "message": "Царай нь заасан багшийн нэртэй таарахгүй байна"
             }), 403
 
         print(f"✅ Login successful for {teacherName}")
@@ -646,7 +662,7 @@ def login_teacher():
             "verified": True,
             "teacherId": str(matched_teacher['_id']), 
             "teacherName": matched_teacher['teacherName'],
-            "message": f"Welcome, {matched_teacher['teacherName']}!"
+            "message": f"Тавтай морил, {matched_teacher['teacherName']}!"
         })
 
     except Exception as e:
