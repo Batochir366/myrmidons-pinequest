@@ -205,7 +205,7 @@ const JoinClassPage = () => {
                         ref={webcamRef}
                         screenshotFormat="image/jpeg"
                         videoConstraints={{ facingMode: "user" }}
-                        className="w-full h-full rounded-full object-cover border-2 border-gray-300"
+                        className="w-full h-full rounded-full object-cover border-2 border-gray-300 -scale-x-100"
                       />
 
                       {/* SVG overlay */}
