@@ -145,7 +145,7 @@ export const joinClassroom = async (
   setMessage: (msg: string) => void
 ): Promise<{ success: boolean; alreadyJoined?: boolean }> => {
   try {
-    const res = await axiosInstance.put(`/student/join/${classroomId}`, {
+    const res = await axiosInstance.put(`student/join/${classroomId}`, {
       studentId,
     });
     if (res.data.alreadyJoined) {

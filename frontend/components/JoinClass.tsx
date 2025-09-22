@@ -1,19 +1,25 @@
 "use client";
-export const dynamic = "force-dynamic";
 
-import React, { useState, useEffect, useRef } from "react";
-import { User, Camera, CheckCircle, ArrowRight, Eye } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import { jwtDecode } from "jwt-decode";
+import React, { useState, useRef, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
-  captureAndVerify,
-  simulateRecognition,
-  startCamera,
-  stopCamera,
-  joinClassroom,
-} from "@/utils/attendanceUtils";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Camera } from "lucide-react";
+import Webcam from "react-webcam";
 import { Toaster, toast } from "sonner";
+import { jwtDecode } from "jwt-decode";
 import { PYTHON_BACKEND_URL } from "@/lib/utils";
+import { joinClassroom } from "@/utils/attendanceUtils";
+import { Navigation } from "./Navigation";
+import { InvalidToken } from "./InvalidToken";
 
 interface TokenPayload {
   classroomId: string;
@@ -21,32 +27,23 @@ interface TokenPayload {
   teacherName: string;
 }
 
-const JoinClassPage: React.FC = () => {
+const JoinClassPage = () => {
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const router = useRouter();
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [classroomId, setClassroomId] = useState("");
   const [lectureName, setLectureName] = useState("...");
   const [teacherName, setTeacherName] = useState("...");
-  const [classroomId, setClassroomId] = useState("");
   const [studentId, setStudentId] = useState("");
+  const [studentIdError, setStudentIdError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [message, setMessage] = useState("");
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const [step, setStep] = useState<1 | 2>(1);
-  const [isFaceVerified, setIsFaceVerified] = useState(false);
-  const [isRecognizing, setIsRecognizing] = useState(false);
-  const [recognitionProgress, setRecognitionProgress] = useState(0);
-
-  const steps = [
-    { id: 1, label: "Оюутны ID", icon: User },
-    { id: 2, label: "Царай таних", icon: Camera },
-  ];
+  const [src, setSrc] = useState("");
+  const webcamRef = useRef<Webcam>(null);
 
   useEffect(() => {
+    const token = searchParams.get("token");
     if (token) {
       try {
         const decoded = jwtDecode<TokenPayload>(token);
@@ -55,263 +52,204 @@ const JoinClassPage: React.FC = () => {
         setTeacherName(decoded.teacherName);
       } catch (error) {
         console.error("⚠️ Token decode error:", error);
-        setMessage("Буруу токен байна.");
+        toast.error("Токен буруу байна.");
       }
     } else {
-      setMessage("Токен олдсонгүй.");
+      toast.error("Токен олдсонгүй.");
     }
-  }, [token]);
+  }, []);
+  if (!classroomId || !lectureName || !teacherName) {
+    return <InvalidToken />;
+  }
+  const handleJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  useEffect(() => {
-    if (step === 2) {
-      startCamera(videoRef, setMessage, streamRef);
+    if (studentId.trim() === "") {
+      setStudentIdError("Оюутны ID заавал бөглөх ёстой");
+      return;
     }
-    return () => {
-      stopCamera(streamRef);
-    };
-  }, [step]);
+    setStudentIdError("");
 
-  const handleRecognitionComplete = async () => {
-    const onSuccess = async (name?: string): Promise<void> => {
-      setMessage(
-        `Сайн байна уу, ${name || "Оюутан"}! Царай амжилттай танигдлаа.`
-      );
-      setIsFaceVerified(true);
-      stopCamera(streamRef);
-    };
-
-    const verified = await captureAndVerify(
-      videoRef,
-      canvasRef,
-      `${PYTHON_BACKEND_URL}student/join`,
-      {
-        studentId,
-      },
-      setMessage,
-      setIsRecognizing,
-      setRecognitionProgress,
-      onSuccess
-    );
-
-    if (!verified) {
-      setIsRecognizing(false);
-      setRecognitionProgress(0);
+    if (!webcamRef.current) {
+      toast.error("Камер ажиллахгүй байна.");
+      return;
     }
-  };
 
-  const handleJoinClass = async () => {
+    setIsCapturing(true);
     setIsLoading(true);
-    setMessage("");
+
+    const screenshot = webcamRef.current.getScreenshot();
+    setSrc(screenshot!);
+    if (!screenshot) {
+      toast.error("Царай авахад алдаа гарлаа. Дахин оролдоно уу.");
+      setIsCapturing(false);
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const result = await joinClassroom(classroomId, studentId, setMessage);
+      const response = await fetch(`${PYTHON_BACKEND_URL}student/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          classroomId,
+          studentId,
+          image_base64: screenshot,
+        }),
+      });
 
-      if (result.success && !result.alreadyJoined) {
-        toast.custom(() => (
-          <div className="w-[400px] p-4 rounded-xl shadow-lg bg-[#18181b] text-white flex items-center gap-4 transition-all">
-            <CheckCircle className="size-4 text-white" />
-            <span className="text-[16px] font-medium text-[#FAFAFA]">
-              Хичээлд амжилттай нэгдлээ!
-            </span>
-          </div>
-        ));
+      const contentType = response.headers.get("content-type");
+      const rawText = await response.text();
+
+      if (!contentType || !contentType.includes("application/json")) {
+        toast.error("Сервертэй холбогдоход алдаа гарлаа");
+        return;
       }
-    } catch (error) {
-      console.error("❌ Error joining classroom:", error);
-      setMessage("Сүлжээний алдаа. Дахин оролдоно уу.");
+
+      const data = JSON.parse(rawText);
+
+      if (response.ok) {
+        try {
+          const result = await joinClassroom(
+            classroomId,
+            studentId,
+            setMessage
+          );
+          if (result.success) {
+            toast.success(
+              result.alreadyJoined
+                ? "Та аль хэдийн энэ ангид байна"
+                : "Хичээлд амжилттай нэгдлээ"
+            );
+            if (!result.alreadyJoined)
+              toast.success("Хичээлд амжилттай нэгдлээ");
+            setTimeout(() => {
+              router.push("/");
+            }, 3000);
+          }
+        } catch (error) {
+          console.error(error);
+          toast.error("Нэгдэхэд алдаа гарлаа");
+        }
+      } else if (data.message === "Unknown face or no face found") {
+        toast.error("Царай олдсонгүй эсвэл бүртгэлгүй байна");
+      } else if (data.message === "Face does not match student ID") {
+        toast.error("Царай оюутны ID-тай тохирохгүй байна");
+      } else {
+        toast.error(data.message || "Нэгдэхэд алдаа гарлаа");
+      }
+    } catch (error: any) {
+      console.error("Join error:", error);
+      toast.error(error.message || "Сүлжээний алдаа.");
     } finally {
+      setIsCapturing(false);
       setIsLoading(false);
+      setSrc("");
+      setMessage("");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Progress Indicator */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-2xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between mb-4">
-            {steps.map((stepItem) => {
-              const Icon = stepItem.icon;
-              const isActive = step === stepItem.id;
-              const isCompleted = step > stepItem.id;
+    <div className="min-h-screen bg-background justify-center">
+      <Navigation />
+      <Toaster position="top-right" />
 
-              return (
-                <div key={stepItem.id} className="flex flex-col items-center">
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${
-                      isActive || isCompleted
-                        ? "bg-slate-700 text-white"
-                        : "bg-gray-200 text-gray-400"
-                    }`}
-                  >
-                    <Icon size={20} />
-                  </div>
-                  <span
-                    className={`text-sm font-medium ${
-                      isActive || isCompleted
-                        ? "text-slate-700"
-                        : "text-gray-400"
-                    }`}
-                  >
-                    {stepItem.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+      <div className="flex items-center justify-center min-h-screen py-12">
+        <div className="mx-auto flex w-screen flex-col justify-center space-y-6 sm:w-[400px] px-4">
+          <Card>
+            <CardHeader className="space-y-1 text-center">
+              <CardTitle className="text-2xl">Хичээлд нэгдэх</CardTitle>
+              <CardDescription>
+                Та <b>{teacherName}</b> багшийн <b>{lectureName}</b> хичээлд
+                орохдоо оюутны кодоо оруулж, царайгаа баталгаажуулна уу.
+              </CardDescription>
+            </CardHeader>
 
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-slate-700 h-2 rounded-full transition-all duration-500"
-              style={{ width: step === 1 ? "50%" : "100%" }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        {step === 1 && (
-          <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Хичээлд нэгдэх
-              </h2>
-              <p className="text-gray-600">
-                Хичээлийн мэдээлэл болон оюутны ID-г оруулна уу
-              </p>
-            </div>
-
-            <div className="space-y-4 mb-6 p-4 bg-gray-50 rounded-lg">
-              <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                <span className="text-gray-600 font-medium">Багш:</span>
-                <span className="font-medium text-gray-900">{teacherName}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-600 font-medium">Хичээл:</span>
-                <span className="font-medium text-gray-900">{lectureName}</span>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Оюутны ID
-                </label>
-                <input
-                  type="text"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="24LP0000"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent outline-none transition-all"
-                />
-              </div>
-
-              <button
-                onClick={() => studentId.trim() && setStep(2)}
-                disabled={!studentId.trim()}
-                className="w-full bg-slate-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                Царай таних руу үргэлжлүүлэх
-                <ArrowRight size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Царай таних
-              </h2>
-              <p className="text-gray-600">Камерт шууд харна уу</p>
-            </div>
-
-            <div className="relative mb-6">
-              <div className="w-64 h-64 mx-auto relative">
-                <div className="absolute inset-0 rounded-full border-2 border-gray-200" />
-                <div className="absolute inset-2 rounded-full border border-gray-300" />
-                <div className="absolute inset-4 rounded-full border border-gray-400" />
-                <div className="absolute inset-6 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
+            <CardContent>
+              <form onSubmit={handleJoin} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="studentId">Оюутны ID</Label>
+                  <Input
+                    id="studentId"
+                    type="text"
+                    placeholder="24LP0000"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value)}
+                    className={studentIdError ? "border-red-500" : ""}
+                    disabled={isLoading || isCapturing}
+                    required
                   />
-                  {!streamRef.current && (
-                    <Camera size={48} className="text-gray-400" />
+                  {studentIdError && (
+                    <p className="text-sm text-red-500">{studentIdError}</p>
                   )}
                 </div>
-              </div>
-            </div>
 
-            <canvas ref={canvasRef} className="hidden" />
+                <div className="flex flex-col items-center  space-y-4 overflow-hidden rounded-full py-2">
+                  {src !== "" && isCapturing ? (
+                    <div className="relative w-60 h-60 flex items-center justify-center rounded-full">
+                      {/* Captured face */}
+                      <img
+                        className="rounded-full w-55 h-55 object-cover blur-sm"
+                        src={src}
+                        alt="Captured"
+                      />
 
-            {isRecognizing && (
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">
-                    Таних явц
-                  </span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {recognitionProgress}%
-                  </span>
+                      {/* Spinner overlay */}
+                      <div className="absolute w-60 h-60 border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin rounded-full"></div>
+                    </div>
+                  ) : (
+                    <div className="relative w-60 h-60">
+                      <Webcam
+                        screenshotQuality={1}
+                        audio={false}
+                        ref={webcamRef}
+                        screenshotFormat="image/jpeg"
+                        videoConstraints={{ facingMode: "user" }}
+                        className="w-full h-full rounded-full object-cover border-2 border-gray-300"
+                      />
+
+                      {/* SVG overlay */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 256 256"
+                        className="absolute inset-0 w-full h-full pointer-events-none mt-2"
+                      >
+                        <path
+                          style={{ stroke: "white" }}
+                          fill="none"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeDasharray="4 5"
+                          transform="scale(1.2) translate(-25 -0.1)" // 🔹 makes it bigger & recenters
+                          d="M72.2,95.9c0,5.5,4.1,9.9,9.1,9.9c0,0,0.1,0,0.2,0c1.9,26.2,22,52.4,46.5,52.4c24.5,0,44.6-26.2,46.5-52.4
+c0,0,0.1,0,0.2,0c5,0,9.1-4.5,9.1-9.9c0-4.1-2.2-7.5-5.4-9.1c1.9-5.9,2.8-12.2,2.8-18.8C181.2,36,157.4,10,128,10
+c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
+                        />
+                      </svg>
+                    </div>
+                  )}
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-slate-700 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${recognitionProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-            {message && (
-              <div className="flex items-center justify-center gap-2 text-green-600 mb-4">
-                <p
-                  className={`text-sm text-center ${
-                    message.includes("Сайн байна уу")
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {message}
-                </p>
-              </div>
-            )}
 
-            {!isFaceVerified ? (
-              !isRecognizing && recognitionProgress === 0 ? (
-                <button
-                  onClick={() =>
-                    simulateRecognition(
-                      setIsRecognizing,
-                      setRecognitionProgress,
-                      handleRecognitionComplete
-                    )
-                  }
-                  className="w-full bg-slate-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-800 transition-colors"
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={studentId.trim() === "" || isLoading || isCapturing}
                 >
-                  Царай таних
-                </button>
-              ) : null
-            ) : (
-              <button
-                onClick={handleJoinClass}
-                disabled={isLoading}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {isLoading ? "Нэгдэж байна..." : "Хичээлд нэгдэх"}
-                {!isLoading && <CheckCircle size={18} />}
-              </button>
-            )}
-          </div>
-        )}
+                  {isLoading || isCapturing ? (
+                    <>Нэгдэж байна...</>
+                  ) : (
+                    <>
+                      <Camera className="mr-2 h-4 w-4" />
+                      Хичээлд нэгдэх
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      <Toaster position="bottom-right" />
     </div>
   );
 };
