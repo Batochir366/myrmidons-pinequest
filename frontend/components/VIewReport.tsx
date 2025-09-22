@@ -1,6 +1,6 @@
 "use client"
 
-import { FileText, Printer } from "lucide-react"
+import { FileText, Printer, Undo } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -123,7 +123,7 @@ export function ViewReport({ lecture, onBack }: ViewReportProps) {
             </CardDescription>
           </div>
           <Button variant="outline" onClick={onBack} className="w-full sm:w-auto">
-            Түүх рүү буцах
+            <Undo className="w-4 h-4" /> Түүх рүү буцах
           </Button>
         </div>
       </CardHeader>
