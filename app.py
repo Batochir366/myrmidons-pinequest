@@ -68,6 +68,51 @@ import face_recognition
 FACE_RECOGNITION_AVAILABLE = True
 print("✅ Face recognition libraries loaded successfully")
 
+# Import anti-spoof detection
+try:
+    from anti_spoof_detector import check_face_liveness, is_anti_spoof_available
+    ANTI_SPOOF_AVAILABLE = is_anti_spoof_available()
+    if ANTI_SPOOF_AVAILABLE:
+        print("✅ Anti-spoof detection loaded successfully")
+    else:
+        print("⚠️ Anti-spoof detection not available")
+except ImportError as e:
+    print(f"⚠️ Anti-spoof detection not available: {e}")
+    ANTI_SPOOF_AVAILABLE = False
+
+def recognize_face_with_liveness(frame, filter_student_ids=None, check_liveness=True):
+    """
+    Recognize face with optional liveness detection
+    
+    Args:
+        frame: OpenCV image frame
+        filter_student_ids: List of student IDs to filter by
+        check_liveness: Whether to perform anti-spoof detection
+        
+    Returns:
+        Tuple: (name, user_data, liveness_result)
+            - name: Recognized name or "unknown_person"
+            - user_data: User data if recognized, None otherwise
+            - liveness_result: (is_live, confidence, message) if check_liveness=True, None otherwise
+    """
+    # First check liveness if requested
+    liveness_result = None
+    if check_liveness and ANTI_SPOOF_AVAILABLE:
+        try:
+            is_live, confidence, message = check_face_liveness(frame)
+            liveness_result = (is_live, confidence, message)
+            
+            # If spoof detected, return early
+            if not is_live:
+                return "spoof_detected", None, liveness_result
+        except Exception as e:
+            print(f"Liveness detection error: {e}")
+            liveness_result = (True, 0.5, f"Liveness check failed: {str(e)}")
+    
+    # Proceed with face recognition
+    name, user_data = recognize_face(frame, filter_student_ids)
+    return name, user_data, liveness_result
+
 def recognize_face(frame, filter_student_ids=None):
     name = "unknown_person"
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -201,7 +246,9 @@ def health():
     return jsonify({
         "status": "healthy",
         "face_recognition": FACE_RECOGNITION_AVAILABLE,
-        "database": "connected" if mongo_client else "disconnected"
+        "anti_spoof_detection": ANTI_SPOOF_AVAILABLE,
+        "database": "connected" if mongo_client else "disconnected",
+        "timestamp": datetime.datetime.now().isoformat()
     })
 
 
@@ -267,9 +314,24 @@ def attend_class():
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-        # 2. Face Recognition
-        name, matched_user = recognize_classroom_face(frame, classroom_students)
-        # 3. No recognizable face in frame
+        # 2. Face Recognition with Liveness Detection
+        name, matched_user, liveness_result = recognize_face_with_liveness(frame, filter_student_ids=[studentId], check_liveness=True)
+        
+        # 3. Check for spoof detection
+        if name == 'spoof_detected':
+            is_live, confidence, message = liveness_result
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": f"Царай танилт амжилтгүй: {message}",
+                "liveness_check": {
+                    "is_live": is_live,
+                    "confidence": confidence,
+                    "message": message
+                }
+            }), 401
+            
+        # 4. No recognizable face in frame
         if name in ['unknown_person', 'no_persons_found'] or not matched_user:
             return jsonify({
                 "success": False,
@@ -285,13 +347,24 @@ def attend_class():
                 "message": f"Таны бүртгүүлсэн царай болон дугаар таарахгүй байна"
             }), 403
         # 5. Success
-        return jsonify({
+        response_data = {
             "success": True,
             "verified": True,
             "message": "Student verified successfully",
             "studentId": studentId,
             "name": matched_user.get('name', name),
-        }), 200
+        }
+        
+        # Add liveness check results if available
+        if liveness_result:
+            is_live, confidence, message = liveness_result
+            response_data["liveness_check"] = {
+                "is_live": is_live,
+                "confidence": confidence,
+                "message": message
+            }
+        
+        return jsonify(response_data), 200
 
     except Exception as e:
         import traceback
@@ -443,6 +516,28 @@ def register():
         if frame is None:
             print("Failed to decode image into frame")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
+
+        # Check for liveness (anti-spoof detection) during registration
+        if ANTI_SPOOF_AVAILABLE:
+            try:
+                is_live, confidence, message = check_face_liveness(frame)
+                if not is_live:
+                    print(f"Liveness check failed: {message}")
+                    return jsonify({
+                        "success": False,
+                        "message": f"Царай танилт амжилтгүй: {message}",
+                        "liveness_check": {
+                            "is_live": is_live,
+                            "confidence": confidence,
+                            "message": message
+                        }
+                    }), 400
+                else:
+                    print(f"Liveness check passed: {message}")
+            except Exception as e:
+                print(f"Liveness detection error during registration: {e}")
+                # Don't fail registration if liveness check fails, just log it
+                pass
  
         try:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
