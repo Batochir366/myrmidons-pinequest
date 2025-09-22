@@ -5,7 +5,6 @@ import { User, Camera, CheckCircle, ArrowRight, Eye } from "lucide-react";
 import { QRError } from "@/components/QRerror";
 import {
   captureAndVerify,
-  simulateRecognition,
   startCamera,
   stopCamera,
   recordAttendance,
@@ -13,6 +12,7 @@ import {
 import { getLocation } from "@/utils/getLocation";
 import { jwtDecode } from "jwt-decode";
 import { axiosInstance, PYTHON_BACKEND_URL } from "@/lib/utils";
+import Webcam from "react-webcam";
 
 type Student = {
   studentId: string;
@@ -31,6 +31,7 @@ const AttendanceSystem: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const webcamRef = useRef<Webcam>(null); // for webcam
   const [token, setToken] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [attendanceId, setAttendanceId] = useState<string | null>(null);
@@ -38,6 +39,8 @@ const AttendanceSystem: React.FC = () => {
   const [paramsLoaded, setParamsLoaded] = useState(false);
   const [classroomId, setClassroomId] = useState<string | null>(null);
   const [students, setStudents] = React.useState<Student[]>([]);
+  const [src, setSrc] = useState<string>("");
+  const [isCapturing, setIsCapturing] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -345,10 +348,20 @@ const AttendanceSystem: React.FC = () => {
               const isCompleted = step > stepItem.id;
               const isLast = index === steps.length - 1;
 
+              // Allow clicking only on current or previous steps
+              const isClickable = stepItem.id <= step;
+
               return (
                 <div
                   key={stepItem.id}
-                  className="flex-1 flex flex-col items-center relative"
+                  onClick={() => {
+                    if (isClickable) {
+                      setStep(stepItem.id as 1 | 2 | 3);
+                    }
+                  }}
+                  className={`flex-1 flex flex-col items-center relative ${
+                    isClickable ? "cursor-pointer" : "cursor-not-allowed"
+                  }`}
                 >
                   {/* Connector line */}
                   {!isLast && (
@@ -437,29 +450,52 @@ const AttendanceSystem: React.FC = () => {
               <p className="text-gray-600">Камерт шууд харна уу</p>
             </div>
 
-            <div className="relative mb-6">
-              <div className="w-64 h-64 mx-auto relative">
-                <div className="absolute inset-0 rounded-full border-2 border-gray-200"></div>
-                <div className="absolute inset-2 rounded-full border border-gray-300"></div>
-                <div className="absolute inset-4 rounded-full border border-gray-400"></div>
-
-                <div className="absolute inset-6 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
+            <div className="flex flex-col items-center space-y-4 overflow-hidden rounded-full py-2">
+              {src !== "" && isCapturing ? (
+                <div className="relative w-60 h-60 flex items-center justify-center rounded-full">
+                  {/* Captured face */}
+                  <img
+                    className="rounded-full w-55 h-55 object-cover blur-sm"
+                    src={src}
+                    alt="Captured"
                   />
-                  {!streamRef.current && (
-                    <Camera size={48} className="text-gray-400" />
-                  )}
+                  {/* Spinner overlay */}
+                  <div className="absolute w-60 h-60 border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin rounded-full"></div>
                 </div>
-              </div>
+              ) : (
+                <div className="relative w-60 h-60">
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef} // add a ref for webcam
+                    screenshotFormat="image/jpeg"
+                    screenshotQuality={1}
+                    videoConstraints={{ facingMode: "user" }}
+                    className="w-full h-full rounded-full object-cover border-2 border-gray-300 -scale-x-100"
+                  />
+                  {/* SVG overlay */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 256 256"
+                    className="absolute inset-0 w-full h-full pointer-events-none mt-2"
+                  >
+                    <path
+                      style={{ stroke: "white" }}
+                      fill="none"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeDasharray="4 5"
+                      transform="scale(1.2) translate(-25 -0.1)"
+                      d="M72.2,95.9c0,5.5,4.1,9.9,9.1,9.9c0,0,0.1,0,0.2,0c1.9,26.2,22,52.4,46.5,52.4c24.5,0,44.6-26.2,46.5-52.4
+c0,0,0.1,0,0.2,0c5,0,9.1-4.5,9.1-9.9c0-4.1-2.2-7.5-5.4-9.1c1.9-5.9,2.8-12.2,2.8-18.8C181.2,36,157.4,10,128,10
+c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
+                    />
+                  </svg>
+                </div>
+              )}
             </div>
 
-            <canvas ref={canvasRef} className="hidden" />
-
+            {/* The rest: progress bar / message / buttons, replacing video‑based logic */}
             {(isRecognizing || isRecordingAttendance) && (
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
@@ -493,20 +529,29 @@ const AttendanceSystem: React.FC = () => {
               recognitionProgress === 0 &&
               !message && (
                 <button
-                  onClick={() =>
-                    simulateRecognition(
-                      setIsRecognizing,
-                      setRecognitionProgress,
-                      handleRecognitionComplete
-                    )
-                  }
+                  onClick={async () => {
+                    // When user clicks, take screenshot, set src & isCapturing, then run recognition
+                    if (webcamRef.current) {
+                      const shot = webcamRef.current.getScreenshot();
+                      if (shot) {
+                        setSrc(shot);
+                        setIsCapturing(true);
+                        // maybe small delay so UI shows blur + spinner
+                        // Then call your handleRecognitionComplete or a wrapper
+                        await handleRecognitionComplete();
+                        // after done, set isCapturing(false) if needed
+                        setIsCapturing(false);
+                      } else {
+                        setMessage("Царай авахад алдаа гарлаа.");
+                      }
+                    }
+                  }}
                   className="w-full bg-slate-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-800 transition-colors"
                 >
                   Царай таних
                 </button>
               )}
 
-            {/* Show "Go back" button when there's an error */}
             {!isRecognizing &&
               !isRecordingAttendance &&
               !isProcessing &&
@@ -519,7 +564,8 @@ const AttendanceSystem: React.FC = () => {
                     setMessage("");
                     setRecognitionProgress(0);
                     setStudentId("");
-                    stopCamera(streamRef);
+                    setSrc("");
+                    stopCamera(streamRef); // optional
                     setStep(1);
                   }}
                   className="w-full bg-gray-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-700 transition-colors"
