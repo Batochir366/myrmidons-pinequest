@@ -270,12 +270,6 @@ const JoinClassPage: React.FC = () => {
             )}
             {message && (
               <div className="flex items-center justify-center gap-2 text-green-600 mb-4">
-                <Eye
-                  className={`${
-                    message.includes("Сайн байна уу") ? "flex" : "hidden"
-                  }`}
-                  size={18}
-                />
                 <p
                   className={`text-sm text-center ${
                     message.includes("Сайн байна уу")
