@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import { Button } from "@/components/ui/button"
 import {
     Card,
     CardContent,
@@ -16,34 +17,118 @@ import {
     ChartTooltipContent,
 } from "@/components/ui/chart"
 
+interface AttendanceRecord {
+    id: number
+    lectureName: string
+    lectureDate: string
+    date: string
+    startTime: string
+    endTime: string
+    qrStartTime: string
+    qrEndTime: string
+    totalStudents: number
+    presentStudents: number
+    attendanceRate: number
+    students: {
+        id: number
+        name: string
+        code: string
+        photo: string
+        timestamp?: string
+    }[]
+}
+
 interface AttendanceChartProps {
-    data: { date: string; attendanceRate: number }[]
+    data: { date: string; attendanceRate: number; presentStudents: number; totalStudents: number }[]
+    attendanceData: AttendanceRecord[]
 }
 
 const chartConfig = {
-    attendanceRate: {
-        label: "Attendance Rate",
+    presentStudents: {
+        label: "Ирсэн сурагчид",
         color: "var(--chart-1)",
     },
 } satisfies ChartConfig
 
-export function AttendanceChart({ data }: AttendanceChartProps) {
+export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) {
+    const [selectedLecture, setSelectedLecture] = React.useState<string | null>(null)
+
+    const uniqueLectures = React.useMemo(() => {
+        const lectureMap = new Map()
+        attendanceData.forEach(record => {
+            if (!lectureMap.has(record.lectureName)) {
+                lectureMap.set(record.lectureName, record.lectureName)
+            }
+        })
+        return Array.from(lectureMap.values())
+    }, [attendanceData])
+
+    // attendanceData орж ирсний дараа эхний хичээлийг сонгоно
+    React.useEffect(() => {
+        if (uniqueLectures.length > 0 && !selectedLecture) {
+            setSelectedLecture(uniqueLectures[0])
+        }
+    }, [uniqueLectures, selectedLecture])
+
+    const chartData = React.useMemo(() => {
+        if (!selectedLecture) {
+            return []
+        }
+
+        return attendanceData
+            .filter(record => record.lectureName === selectedLecture)
+            .map(record => ({
+                date: record.date,
+                attendanceRate: record.attendanceRate,
+                presentStudents: record.presentStudents,
+                totalStudents: record.totalStudents
+            }))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    }, [selectedLecture, attendanceData])
+
+    const chartTitle = `${selectedLecture} - Ирцийн график`
+    const chartDescription = `${selectedLecture} хичээлийн өдөр бүрийн ирцийн хувь`
+
+
     return (
-        <Card className="py-4 sm:py-0">
-            <CardHeader className="flex flex-col items-stretch border-b !p-0 sm:flex-row">
-                <div className="flex flex-1 flex-col justify-center gap-1 px-6 pb-3 sm:pb-0">
-                    <CardTitle>Хичээлийн ирц</CardTitle>
-                    <CardDescription>Өдөр бүрийн ирцийн хувь</CardDescription>
-                </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>{chartTitle}</CardTitle>
+                <CardDescription>{chartDescription}</CardDescription>
+                {/* Lecture Selection Buttons */}
+                {uniqueLectures.length > 0 && (
+                    <div className="px-6 py-4">
+                        <div className="flex flex-wrap gap-2">
+                            {uniqueLectures.map((lectureName) => {
+                                const isSelected = selectedLecture === lectureName
+                                return (
+                                    <Button
+                                        key={lectureName}
+                                        variant={isSelected ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setSelectedLecture(lectureName)}
+                                        className={`rounded-full font-bold ${isSelected
+                                            ? "bg-slate-700 text-white hover:bg-accent hover:text-black hover:border"
+                                            : " text-accent-foreground hover:bg-accent/80"
+                                            }`}
+                                    >
+                                        {lectureName}
+                                    </Button>
+                                )
+                            })}
+
+                        </div>
+                    </div>
+                )}
             </CardHeader>
-            <CardContent className="px-2 sm:p-6">
+            <CardContent >
                 <ChartContainer
                     config={chartConfig}
                     className="aspect-auto h-[250px] w-full"
                 >
                     <LineChart
                         accessibilityLayer
-                        data={data}
+                        data={chartData}
                         margin={{ left: 12, right: 12 }}
                     >
                         <CartesianGrid vertical={false} />
@@ -61,11 +146,17 @@ export function AttendanceChart({ data }: AttendanceChartProps) {
                                 })
                             }}
                         />
-                        <YAxis domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
+                        <YAxis
+                            yAxisId="left"
+                            orientation="left"
+                            allowDecimals={false}
+                            tickFormatter={(val) => `${val}`}
+                            label={{ value: 'Ирц өгсөн оюутны тоо', angle: -90, position: 'insideCenter' }}
+                        />
                         <ChartTooltip
                             content={
                                 <ChartTooltipContent
-                                    className="w-[120px]"
+                                    className="w-[50px]"
                                     labelFormatter={(value) =>
                                         new Date(value).toLocaleDateString("en-US", {
                                             month: "short",
@@ -73,19 +164,28 @@ export function AttendanceChart({ data }: AttendanceChartProps) {
                                             year: "numeric",
                                         })
                                     }
+                                    formatter={(value, name) => {
+                                        if (name === 'presentStudents') {
+                                            const data = chartData.find(d => d.date === value) || chartData[0]
+                                            return [`${value}/${data?.totalStudents || 0}`, ' сурагч']
+                                        }
+                                        return [`${value}%`, ' ирцтэй']
+                                    }}
                                 />
                             }
                         />
                         <Line
-                            dataKey="attendanceRate"
+                            yAxisId="left"
+                            dataKey="presentStudents"
                             type="monotone"
-                            stroke="var(--color-attendanceRate)"
-                            strokeWidth={2}
-                            dot={true}
+                            stroke="var(--color-presentStudents)"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            name="presentStudents"
                         />
                     </LineChart>
                 </ChartContainer>
             </CardContent>
-        </Card>
+        </Card >
     )
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CalendarIcon, History, Eye } from "lucide-react"
+import { CalendarIcon, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
@@ -32,7 +32,7 @@ interface AttendanceRecord {
 }
 
 export function AttendanceHistory() {
-  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]) // ⬅️ эхэнд зарлана
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([])
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedLecture, setSelectedLecture] = useState<AttendanceRecord | null>(null)
   const [showReport, setShowReport] = useState(false)
@@ -58,10 +58,7 @@ export function AttendanceHistory() {
         const year = dateObj.getFullYear()
         const month = String(dateObj.getMonth() + 1).padStart(2, "0")
         const day = String(dateObj.getDate()).padStart(2, "0")
-        // Ирсэн оюутнуудын ID жагсаалт
-        const attendedIds = history.attendingStudents.map((att: any) => att.student.studentId)
 
-        // Бүх сурагчийг шалгаж багтаана
         const students = classroom.ClassroomStudents.map((student: any) => {
           const attended = history.attendingStudents.find(
             (att: any) => att.student.studentId === student.studentId
@@ -70,10 +67,10 @@ export function AttendanceHistory() {
             id: student._id,
             name: student.name,
             code: student.studentId,
-            // photo: "/diverse-students.png",
             timestamp: attended ? new Date(attended.attendedAt).toLocaleTimeString() : null,
           }
         })
+
         return {
           id: history._id,
           lectureName: classroom.lectureName,
@@ -89,7 +86,6 @@ export function AttendanceHistory() {
                 classroom.ClassroomStudents.length) * 100
             )
             : 0,
-
           students,
         }
       })
@@ -118,61 +114,55 @@ export function AttendanceHistory() {
       setShowReport(false)
     }
   }, [selectedDate])
+
   return (
     <TooltipProvider>
-
-      <div className="w-full max-w-[1600px] mx-auto">
+      {/* ✅ Container: scroll зөвшөөрнө */}
+      <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 overflow-y-auto min-h-screen">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Calendar Section */}
-          <div>
+          <div className="flex flex-col gap-1">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5" />
                   Ирцийн календарь
                 </CardTitle>
-                <CardDescription>Ирцийн бүртгэлийг харахын тулд огноо сонгоно уу</CardDescription>
+                <CardDescription>
+                  Ирцийн бүртгэлийг харахын тулд огноо сонгоно уу
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Calendar
                   mode="single"
                   selected={selectedDate}
                   onSelect={(date) => {
-                    if (!date) return;
-                    // Хэрвээ дахин дарж байгаа бол state update хийхгүй
-                    if (selectedDate?.toDateString() === date.toDateString()) return;
-                    setSelectedDate(date);
+                    if (!date) return
+                    if (selectedDate?.toDateString() === date.toDateString()) return
+                    setSelectedDate(date)
                   }}
                   className="
                     rounded-md border w-full [&_.rdp-day]:p-0
-                  [&_.rdp-day_selected]:bg-slate-800
-                  [&_.rdp-day_selected]:text-white
-                  [&_.rdp-day_selected]:rounded-full !important
-                  [&_.rdp-day_selected]:border-0
-                  [&_.rdp-day_selected]:outline-none
-                  [&_.rdp-day_selected]:shadow-none
-                  [&_.rdp-day:hover]:rounded-full
+                    [&_.rdp-day_selected]:bg-slate-800
+                    [&_.rdp-day_selected]:text-white
+                    [&_.rdp-day_selected]:rounded-full !important
+                    [&_.rdp-day_selected]:border-0
+                    [&_.rdp-day_selected]:outline-none
+                    [&_.rdp-day_selected]:shadow-none
+                    [&_.rdp-day:hover]:rounded-full
                   "
                   modifiers={{
                     hasLecture: getLectureDays(),
                   }}
                   modifiersClassNames={{
                     hasLecture:
-                      'bg-slate-700 text-white rounded-full font-bold hover:bg-slate-800',
+                      "bg-accent text-accent-foreground rounded-full font-bold hover:bg-slate-100",
                   }}
                 />
               </CardContent>
             </Card>
-            {/* Calendar-ийн доор ирцийн chart */}
-            <div className="mt-6">
-              <AttendanceChart
-                data={attendanceData.map((record) => ({
-                  date: record.date,
-                  attendanceRate: record.attendanceRate,
-                }))}
-              />
-            </div>
           </div>
+          {/* Right Side Section */}
           {showReport && selectedLecture ? (
             <ViewReport
               lecture={selectedLecture}
@@ -180,8 +170,7 @@ export function AttendanceHistory() {
             />
           ) : (
             <div>
-              {/* Lectures Section */}
-              <Card>
+              <Card className="max-h-[500px] overflow-y-auto">
                 <CardHeader>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
@@ -209,7 +198,9 @@ export function AttendanceHistory() {
                           <div className="flex items-center gap-4 flex-1 min-w-0">
                             <div className="w-3 h-12 rounded-full bg-slate-700 flex-shrink-0" />
                             <div className="min-w-0">
-                              <h3 className="font-medium text-card-foreground truncate">{lecture.lectureName}</h3>
+                              <h3 className="font-medium text-card-foreground truncate">
+                                {lecture.lectureName}
+                              </h3>
                               <p className="text-sm text-muted-foreground">
                                 {lecture.lectureDate}
                               </p>
@@ -228,7 +219,7 @@ export function AttendanceHistory() {
                                 setShowReport(true)
                               }}
                             >
-                              <span >Дэлгэрэнгүй харах</span>
+                              <span>Дэлгэрэнгүй харах</span>
                             </Button>
                           </div>
                         </div>
@@ -242,10 +233,23 @@ export function AttendanceHistory() {
                   )}
                 </CardContent>
               </Card>
-            </div>)}
+            </div>
+          )}
         </div>
 
+        {/* Chart Section */}
+        <div className="mt-6">
+          <AttendanceChart
+            data={attendanceData.map((record) => ({
+              date: record.date,
+              attendanceRate: record.attendanceRate,
+              presentStudents: record.presentStudents,
+              totalStudents: record.totalStudents,
+            }))}
+            attendanceData={attendanceData}
+          />
+        </div>
       </div>
-    </TooltipProvider >
+    </TooltipProvider>
   )
 }

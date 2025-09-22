@@ -208,7 +208,8 @@ function CalendarDayButton({
         defaultClassNames.day,
 
         // Only selected single day styling
-        isSingleSelected && "bg-accent text-accent-foreground rounded-full border-0 shadow-none",
+        // isSingleSelected && "bg-accent text-accent-foreground rounded-full border-0 shadow-none",
+        isSingleSelected && "bg-slate-700 text-white rounded-full border-0 shadow-none",
 
         // Range styles
         modifiers.range_start && "bg-primary text-primary-foreground rounded-l-md border-0 shadow-none",
