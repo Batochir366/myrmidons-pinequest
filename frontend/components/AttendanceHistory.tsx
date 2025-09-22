@@ -117,12 +117,11 @@ export function AttendanceHistory() {
 
   return (
     <TooltipProvider>
-      {/* ✅ Container: scroll зөвшөөрнө */}
       <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 overflow-y-auto min-h-screen">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Calendar Section */}
           <div className="flex flex-col gap-1">
-            <Card>
+            <Card className="h-fit">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5" />
@@ -162,6 +161,7 @@ export function AttendanceHistory() {
               </CardContent>
             </Card>
           </div>
+
           {/* Right Side Section */}
           {showReport && selectedLecture ? (
             <ViewReport
@@ -169,9 +169,9 @@ export function AttendanceHistory() {
               onBack={() => setShowReport(false)}
             />
           ) : (
-            <div>
-              <Card className="max-h-[500px] overflow-y-auto">
-                <CardHeader>
+            <div className="flex flex-col">
+              <Card className="flex flex-col h-full">
+                <CardHeader className="flex-shrink-0">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
                       <CardTitle className="flex items-center gap-2">
@@ -186,9 +186,9 @@ export function AttendanceHistory() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1 overflow-hidden">
                   {selectedDateAttendance.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="h-full overflow-y-auto space-y-4 pr-2">
                       {selectedDateAttendance.map((lecture) => (
                         <div
                           key={lecture.id}
@@ -226,7 +226,7 @@ export function AttendanceHistory() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center h-full text-center py-8 text-muted-foreground">
                       <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>Энэ өдөрт хичээл олдсонгүй.</p>
                     </div>
