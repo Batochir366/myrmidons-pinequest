@@ -104,9 +104,9 @@ const JoinClassPage: React.FC = () => {
     setMessage("");
 
     try {
-      const success = await joinClassroom(classroomId, studentId, setMessage);
+      const result = await joinClassroom(classroomId, studentId, setMessage);
 
-      if (success) {
+      if (result.success && !result.alreadyJoined) {
         toast.custom(() => (
           <div className="w-[400px] p-4 rounded-xl shadow-lg bg-[#18181b] text-white flex items-center gap-4 transition-all">
             <CheckCircle className="size-4 text-white" />
@@ -270,9 +270,14 @@ const JoinClassPage: React.FC = () => {
             )}
             {message && (
               <div className="flex items-center justify-center gap-2 text-green-600 mb-4">
-                <Eye size={18} />
+                <Eye
+                  className={`${
+                    message.includes("Сайн байна уу") ? "flex" : "hidden"
+                  }`}
+                  size={18}
+                />
                 <p
-                  className={`text-sm text-center mb-4 ${
+                  className={`text-sm text-center ${
                     message.includes("Сайн байна уу")
                       ? "text-green-600"
                       : "text-red-600"
