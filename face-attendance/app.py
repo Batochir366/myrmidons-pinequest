@@ -78,7 +78,7 @@ def recognize_face(frame, filter_student_ids=None):
 
     encoding = face_encodings[0]
     best_match_user = None
-    best_match_distance = 0.6
+    best_match_distance = 0.3
 
     users = []
     if users_collection is not None:
@@ -122,7 +122,7 @@ def recognize_teacher_face(frame):
 
     encoding = face_encodings[0]
     best_match_teacher = None
-    best_match_distance = 0.6
+    best_match_distance = 0.3
 
     if teachers_collection is not None:
         try:
@@ -165,7 +165,7 @@ def recognize_classroom_face(frame, classroom_students):
 
     encoding = face_encodings[0]
     best_match_user = None
-    best_match_distance = 0.6
+    best_match_distance = 0.3
 
     # Work directly with the classroom students data (no database query)
     for student in classroom_students:
@@ -468,7 +468,7 @@ def register():
                     try:
                         existing_encoding = np.array(user['embedding'])
                         distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
-                        if distance < 0.6 and distance < min_distance:
+                        if distance < 0.3 and distance < min_distance:
                             min_distance = distance
                             closest_match = user
                     except Exception as inner_e:
@@ -567,7 +567,7 @@ def register_teacher():
                 try:
                     existing_encoding = np.array(teacher['embedding'])
                     distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
-                    if distance < 0.6 and distance < min_distance:
+                    if distance < 0.3 and distance < min_distance:
                         min_distance = distance
                         closest_match = teacher
                 except Exception as inner_e:
@@ -687,7 +687,7 @@ def recognize_teacher_face(frame):
 
     encoding = face_encodings[0]
     best_match_teacher = None
-    best_match_distance = 0.6 
+    best_match_distance = 0.3
 
     if teachers_collection is not None:
         try:
