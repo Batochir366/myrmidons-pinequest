@@ -247,13 +247,16 @@ export function QRControlCenter({
 
   const start = async () => {
     if (running || !selectedClassroomId) {
-      toast.success("Ангийг сонгоно уу!");
+      toast.error("Ангийг сонгоно уу!");
+      return;
     }
+
     if (students.length === 0) {
-      toast.success(
-        "Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!"
-      );
+      toast.error("Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!");
+      return;
     }
+
+    setLoading(true);
 
     setLoading(true);
 
