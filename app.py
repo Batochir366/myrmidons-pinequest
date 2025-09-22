@@ -78,7 +78,7 @@ def recognize_face(frame, filter_student_ids=None):
 
     encoding = face_encodings[0]
     best_match_user = None
-    best_match_distance = 0.45
+    best_match_distance = 0.6
 
     users = []
     if users_collection is not None:
@@ -122,7 +122,7 @@ def recognize_teacher_face(frame):
 
     encoding = face_encodings[0]
     best_match_teacher = None
-    best_match_distance = 0.45
+    best_match_distance = 0.6
 
     if teachers_collection is not None:
         try:
@@ -165,7 +165,7 @@ def recognize_classroom_face(frame, classroom_students):
 
     encoding = face_encodings[0]
     best_match_user = None
-    best_match_distance = 0.45
+    best_match_distance = 0.6
 
     # Work directly with the classroom students data (no database query)
     for student in classroom_students:
@@ -468,7 +468,7 @@ def register():
                     try:
                         existing_encoding = np.array(user['embedding'])
                         distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
-                        if distance < 0.45:
+                        if distance < 0.6:
                             print(f"Duplicate face detected. Matches with studentId: {user['studentId']}")
                             return jsonify({
                                 "success": False,
@@ -558,7 +558,7 @@ def register_teacher():
             for teacher in existing_teachers:
                 existing_encoding = np.array(teacher['embedding'])
                 distance = face_recognition.face_distance([existing_encoding], new_face_encoding)[0]
-                if distance < 0.45: 
+                if distance < 0.6: 
                     print(f"Duplicate face detected for teacher: {teacher['teacherName']}")
                     return jsonify({
                         "success": False,
@@ -668,7 +668,7 @@ def recognize_teacher_face(frame):
 
     encoding = face_encodings[0]
     best_match_teacher = None
-    best_match_distance = 0.6  # Increased from 0.45 to 0.6 for better accuracy
+    best_match_distance = 0.6 
 
     if teachers_collection is not None:
         try:
