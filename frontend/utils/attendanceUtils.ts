@@ -143,13 +143,17 @@ export const joinClassroom = async (
   classroomId: string,
   studentId: string,
   setMessage: (msg: string) => void
-): Promise<boolean> => {
+): Promise<{ success: boolean; alreadyJoined?: boolean }> => {
   try {
-    const res = await axiosInstance.put(`/student/join/${classroomId}`, {
+    const res = await axiosInstance.put(`student/join/${classroomId}`, {
       studentId,
     });
-
-    return true;
+    if (res.data.alreadyJoined) {
+      setMessage(res.data.message || "Та аль хэдийн энэ ангид байна");
+      return { success: true, alreadyJoined: true };
+    }
+    setMessage(res.data.message || "Хичээлд амжилттай нэгдлээ");
+    return { success: true };
   } catch (error: any) {
     console.error("❌ Error joining classroom:", error);
 
@@ -157,7 +161,7 @@ export const joinClassroom = async (
       error.response?.data?.message || "Хичээлд нэгдэхэд алдаа гарлаа.";
     setMessage(errorMsg);
 
-    return false;
+    return { success: false };
   }
 };
 

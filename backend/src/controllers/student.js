@@ -88,9 +88,18 @@ export const joinClassroom = async (req, res) => {
     });
 
     if (existingClassroom) {
-      return res
-        .status(400)
-        .json({ message: "Сурагч аль хэдийн энэ ангид байна" });
+      return res.status(200).json({
+        message: "Сурагч аль хэдийн энэ ангид байна",
+        alreadyJoined: true,
+        classroom: {
+          name: existingClassroom.name,
+          classroomId: existingClassroom._id,
+        },
+        student: {
+          name: student.name,
+          studentId: student.studentId,
+        },
+      });
     }
 
     // Retrieve the student's existing embedding

@@ -1,34 +1,26 @@
+"use client";
+
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Eye, EyeOff } from "lucide-react";
 
 export default function JoinLinkQrButton({
   joinLinkQr,
+  showQr,
 }: {
   joinLinkQr?: string | null;
+  showQr: boolean;
 }) {
-  const [showQr, setShowQr] = useState(false);
   const [enlarged, setEnlarged] = useState(false);
 
   return (
-    <div className="w-full flex flex-col items-center gap-4">
-      {/* QR Button */}
-      <Button
-        onClick={() => setShowQr(!showQr)}
-        className="bg-slate-700 text-white gap-2 shadow-md"
-      >
-        {showQr ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        {showQr ? "QR нуух" : "QR харуулах"}
-      </Button>
-
+    <div className="relative w-full flex flex-col items-center gap-4">
       {/* QR Image */}
       {showQr && joinLinkQr && (
-        <div className="mt-4">
+        <div className="">
           <img
             src={joinLinkQr}
             alt="Join Link QR Code"
-            className="w-50 h-50 rounded-xl border shadow-md cursor-pointer transition-transform hover:scale-105"
-            onClick={() => setEnlarged(true)} // click -> томруулах
+            className="w-50 h-50 rounded-xl border cursor-pointer transition-transform hover:scale-105"
+            onClick={() => setEnlarged(true)}
           />
         </div>
       )}
@@ -37,7 +29,7 @@ export default function JoinLinkQrButton({
       {enlarged && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
-          onClick={() => setEnlarged(false)} // click -> хаах
+          onClick={() => setEnlarged(false)}
         >
           <img
             src={joinLinkQr || ""}

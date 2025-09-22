@@ -3,6 +3,7 @@ import { ClassroomModel } from "../models/classroom.model.js";
 import { TeacherModel } from "../models/teacher.model.js";
 import jwt from "jsonwebtoken";
 import { configDotenv } from "dotenv";
+import { UserModel } from "../models/user.model.js";
 configDotenv();
 
 const SECRET_KEY = "pinequest-secret";
@@ -227,5 +228,31 @@ export const getClassroomsAndStudentsByTeacherId = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });
+  }
+};
+export const getStudentsByClassroomId = async (req, res) => {
+  const { classroomId } = req.params;
+
+  try {
+    const classroom = await ClassroomModel.findById(classroomId);
+
+    if (!classroom) {
+      return res.status(404).json({ message: "Анги олдсонгүй" });
+    }
+
+    if (
+      !classroom.ClassroomStudents ||
+      classroom.ClassroomStudents.length === 0
+    ) {
+      return res.status(200).json({
+        empty: true,
+        message: "Энэ ангид одоогоор оюутан байхгүй байна",
+      });
+    }
+
+    return res.status(200).json({ students: classroom.ClassroomStudents });
+  } catch (error) {
+    console.error("Error fetching students by classroom:", error);
+    return res.status(500).json({ message: "Оюутнуудыг авахад алдаа гарлаа" });
   }
 };

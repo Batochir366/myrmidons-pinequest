@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import jwtEncode from "jwt-encode";
+import { toast, Toaster } from "sonner";
 
 import { getLocation } from "@/utils/getLocation";
 import { axiosInstance, axiosInstanceFront } from "@/lib/utils";
@@ -87,6 +88,7 @@ export function QRControlCenter({
   const [joinLinkQr, setJoinLinkQr] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [sessionRestored, setSessionRestored] = useState(false);
+  const [classroomStudents, setClassroomStudents] = useState<Student[]>([]);
 
   // -----------------------------
   // Effects
@@ -211,14 +213,13 @@ export function QRControlCenter({
   // -----------------------------
   // Handlers
   // -----------------------------
-
-  const handleClassroomChange = (id: string) => {
-    if (running) onStop(); // Use parent's stop function
+  const handleClassroomChange = async (id: string) => {
+    if (running) onStop();
 
     const classroom = classrooms.find((c) => c._id === id);
     const lectureName = classroom?.lectureName || "";
 
-    // Update both local and parent state
+    // Update parent and local state
     onClassroomChange(id, lectureName);
 
     if (classroom) {
@@ -228,12 +229,34 @@ export function QRControlCenter({
     } else {
       setJoinLinkQr(null);
     }
+
+    // Fetch students for this classroom to check if empty
+    try {
+      const res = await axiosInstance.get(`/teacher/classroom-students/${id}`);
+
+      if (res.data.empty) {
+        setStudents([]);
+      } else {
+        setStudents(res.data.students || []);
+      }
+    } catch (error) {
+      console.error("Error fetching classroom students:", error);
+      alert("Оюутнуудыг авахад алдаа гарлаа");
+    }
   };
 
   const start = async () => {
     if (running || !selectedClassroomId) {
-      return alert("Ангийг сонгоно уу");
+      toast.error("Ангийг сонгоно уу!");
+      return;
     }
+
+    if (students.length === 0) {
+      toast.error("Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!");
+      return;
+    }
+
+    setLoading(true);
 
     setLoading(true);
 
@@ -297,6 +320,7 @@ export function QRControlCenter({
 
   return (
     <div className="w-full max-w-[1600px] mx-auto space-y-8 p-4 sm:p-6">
+      <Toaster position="bottom-right" />
       <AttendanceControlPanel
         classrooms={classrooms}
         selectedClassroomId={selectedClassroomId}

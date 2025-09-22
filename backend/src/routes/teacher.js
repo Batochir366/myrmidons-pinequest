@@ -5,6 +5,7 @@ import {
   getClassroomsAndStudentsByTeacherId,
   getClassroomsByTeacherId,
   getOnlyClassroomsByTeacherId,
+  getStudentsByClassroomId,
 } from "../controllers/teacher.js";
 
 const teacherRouter = Router();
@@ -17,6 +18,7 @@ teacherRouter
     getClassroomsAndStudentsByTeacherId
   )
   .post("/create-classroom", createClassroom)
-  .post("/create-attendance", createAttendance);
+  .post("/create-attendance", createAttendance)
+  .get("/classroom-students/:classroomId", getStudentsByClassroomId);
 
 export default teacherRouter;
