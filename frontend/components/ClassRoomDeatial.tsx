@@ -48,6 +48,7 @@ export const ClassRoomDetail: React.FC<ClassRoomDetailProps> = ({
           <span className="flex items-center gap-2 text-lg text-gray-500 font-medium w-[120px]">
             {classroom?.length ?? 0} оюутан
           </span>
+          g
         </h3>
 
         {/* Search Field */}

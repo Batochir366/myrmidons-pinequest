@@ -74,7 +74,7 @@ const JoinClassPage: React.FC = () => {
   const handleRecognitionComplete = async () => {
     const onSuccess = async (name?: string): Promise<void> => {
       setMessage(
-        `🎉 Сайн байна уу, ${name || "Оюутан"}! Царай амжилттай танигдлаа.`
+        `Сайн байна уу, ${name || "Оюутан"}! Царай амжилттай танигдлаа.`
       );
       setIsFaceVerified(true);
       stopCamera(streamRef);
@@ -268,22 +268,19 @@ const JoinClassPage: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {isFaceVerified && (
+            {message && (
               <div className="flex items-center justify-center gap-2 text-green-600 mb-4">
                 <Eye size={18} />
-                <span className="font-medium">Таних амжилттай боллоо!</span>
+                <p
+                  className={`text-sm text-center mb-4 ${
+                    message.includes("Сайн байна уу")
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {message}
+                </p>
               </div>
-            )}
-
-            {message && (
-              <p
-                className={`text-sm text-center mb-4 ${
-                  message.startsWith("🎉") ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {message}
-              </p>
             )}
 
             {!isFaceVerified ? (

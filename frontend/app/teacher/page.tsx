@@ -185,7 +185,7 @@ export default function AttendanceDashboard() {
         className="w-64 p-0 bg-white dark:bg-gray-900 border-r border-border"
       >
         <SheetTitle className="sr-only">Mobile Sidebar Navigation</SheetTitle>
-        <div className="p-6 bg-gray-50 dark:bg-gray-800 border-b border-border">
+        <div className="h-[89px] p-6 bg-gray-50 dark:bg-gray-800 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
               <QrCode className="w-5 h-5 text-white" />
@@ -273,7 +273,7 @@ export default function AttendanceDashboard() {
       <SidebarProvider>
         <div className="flex min-h-screen bg-background w-full">
           <Sidebar className="hidden md:flex border-r border-border bg-white dark:bg-gray-900">
-            <SidebarHeader className="h-[85px] p-6 border-b border-border bg-white">
+            <SidebarHeader className="h-[81px] p-6 border-b border-border bg-white">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
                   <QrCode className="w-5 h-5 text-white" />
@@ -336,7 +336,7 @@ export default function AttendanceDashboard() {
                   {running && (
                     <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      Ирц авж байна...
+                      <p className="hidden md:inline">Ирц авж байна...</p>
                     </div>
                   )}
                   <Avatar className="w-10 h-10">

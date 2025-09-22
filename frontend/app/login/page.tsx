@@ -77,7 +77,7 @@ export default function LoginPage() {
         localStorage.setItem("teacherImage", screenshot);
         localStorage.setItem("teacherId", data.teacherId);
 
-        // setTimeout(() => router.push("/teacher"), 2000);
+        router.push("/teacher");
       } else if (data.message === "Unknown face or no face found") {
         toast.error("Бүртгэлгүй царай эсвэл царай олдсонгүй");
       } else if (data.message === "Face does not match provided teacher name") {

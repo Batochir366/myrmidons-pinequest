@@ -2,13 +2,30 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, Play, Square, QrCode, Copy } from "lucide-react";
+import {
+  ChevronDown,
+  Play,
+  Square,
+  QrCode,
+  Copy,
+  EyeOff,
+  Eye,
+} from "lucide-react";
 import JoinLinkQrButton from "./JoinLinkQrButton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { useState } from "react";
 
 interface Classroom {
   _id: string;
   lectureName: string;
   joinLink?: string;
+  lectureDate?: string;
 }
 
 interface AttendanceControlPanelProps {
@@ -34,10 +51,12 @@ export default function AttendanceControlPanel({
   start,
   stop,
 }: AttendanceControlPanelProps) {
+  const [showQr, setShowQr] = useState(false);
+
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Control Panel */}
-      <Card className="flex-1 shadow-xl rounded-2xl bg-white border">
+      <Card className="flex-1 rounded-2xl bg-white border shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-700">
             <QrCode className="w-6 h-6" />
@@ -45,22 +64,27 @@ export default function AttendanceControlPanel({
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="relative w-full sm:w-64">
-            <select
-              className="w-full px-4 py-2 border rounded-xl shadow-sm bg-white text-gray-800 appearance-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+          <div className="relative max-w-[376px] w-full">
+            <Select
               value={selectedClassroomId}
-              onChange={(e) => onClassroomChange(e.target.value)}
+              onValueChange={(value) => onClassroomChange(value)}
             >
-              <option value="">Ангийг сонгоно уу</option>
-              {classrooms.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.lectureName}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-              <ChevronDown color="gray" />
-            </div>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Ангийг сонгоно уу" />
+              </SelectTrigger>
+              <SelectContent>
+                {classrooms.map((c) => (
+                  <SelectItem className="" key={c._id} value={c._id}>
+                    <div className="flex justify-between w-[320px]">
+                      <span>{c.lectureName}</span>
+                      <span className="text-muted-foreground">
+                        {c.lectureDate}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -72,6 +96,7 @@ export default function AttendanceControlPanel({
               <Play className="w-4 h-4" />
               {loading ? "Хүлээнэ үү..." : "QR үүсгэх"}
             </Button>
+
             <Button
               onClick={stop}
               disabled={!running}
@@ -81,12 +106,25 @@ export default function AttendanceControlPanel({
               <Square className="w-4 h-4" />
               Зогсоох
             </Button>
+
+            {/* QR Toggle Button */}
+            <Button
+              onClick={() => setShowQr(!showQr)}
+              className="bg-slate-700 text-white gap-2"
+            >
+              {showQr ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
+              {showQr ? "QR нуух" : "QR харуулах"}
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      <div className="w-full lg:w-120 flex items-center justify-center bg-gray-50 p-6 rounded-2xl shadow-xl border">
-        <JoinLinkQrButton joinLinkQr={joinLinkQr} />
+      <div className="w-full lg:w-120 flex items-center justify-center rounded-2xl border">
+        <JoinLinkQrButton joinLinkQr={joinLinkQr} showQr={showQr} />
       </div>
     </div>
   );
