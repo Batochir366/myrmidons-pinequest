@@ -18,6 +18,7 @@ import { GraduationCap, User, Loader2, Camera, Info } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import Webcam from "react-webcam";
 import { axiosInstance, PYTHON_BACKEND_URL } from "@/lib/utils";
+import { toast, Toaster } from "sonner";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -42,15 +43,13 @@ export default function SignupPage() {
     joinCode: "",
   });
   const webcamRef = useRef<Webcam>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [submissionMessage, setSubmissionMessage] = useState<string | null>(
-    null
-  );
+  const [imageBase64, setImageBase64] = useState("");
+
   const [submissionSuccess, setSubmissionSuccess] = useState<boolean | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(false);
-  const [src, setSrc] = useState("");
+
   const handleTeacherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -92,27 +91,24 @@ export default function SignupPage() {
     setStep(3);
   };
 
-  const capture = () => {
-    if (webcamRef.current) {
-      const screenshot = webcamRef.current.getScreenshot();
-      if (screenshot) {
-        setSrc(screenshot);
-        setImageBase64(screenshot);
-        setSubmissionMessage("Царай амжилттай авагдлаа.");
-      }
-    }
-  };
-
   const handleFaceCaptureComplete = async () => {
-    capture();
-    if (!imageBase64) {
-      setSubmissionSuccess(false);
-      setSubmissionMessage("Зураг авна уу.");
+    if (!webcamRef.current) {
+      toast.error("Камер ажиллахгүй байна.");
+      return;
+    }
+
+    setSubmissionSuccess(true);
+    setIsLoading(true);
+    const screenshot = webcamRef.current.getScreenshot();
+    setImageBase64(screenshot!);
+    if (!screenshot) {
+      toast.error("Царай авахад алдаа гарлаа. Дахин оролдоно уу.");
+      setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
-    setSubmissionMessage("Бүртгэж байна...");
+
     setSubmissionSuccess(null);
 
     try {
@@ -121,16 +117,15 @@ export default function SignupPage() {
 
         if (!studentName || !studentId) {
           setSubmissionSuccess(false);
-          setSubmissionMessage("Оюутны нэр болон дугаар заавал шаардлагатай.");
+          toast.error("Оюутны нэр болон дугаар заавал шаардлагатай.");
           setIsLoading(false);
           return;
         }
 
-        // Step 1: Register student to Python backend
         const payload = {
           studentName,
           studentId,
-          image_base64: imageBase64,
+          image_base64: screenshot, // use this
         };
 
         const response = await fetch(`${PYTHON_BACKEND_URL}student/register`, {
@@ -143,7 +138,7 @@ export default function SignupPage() {
 
         if (!response.ok) {
           setSubmissionSuccess(false);
-          setSubmissionMessage(data.message || "Бүртгэл үүсэхэд алдаа гарлаа.");
+          toast.error(data.message);
           setIsLoading(false);
           return;
         }
@@ -164,18 +159,18 @@ export default function SignupPage() {
             }
 
             setSubmissionSuccess(true);
-            setSubmissionMessage(message);
+            toast.success(message);
             setTimeout(() => router.push("/"), 2000);
           } catch (joinError) {
             console.error("⚠️ Ангид элсэхэд алдаа:", joinError);
             setSubmissionSuccess(false);
-            setSubmissionMessage("Ангид элсэхэд алдаа гарлаа.");
+            toast.error("Ангид элсэхэд алдаа гарлаа.");
             setIsLoading(false);
             return;
           }
         } else {
           setSubmissionSuccess(true);
-          setSubmissionMessage(data.message || "Бүртгэл амжилттай үүслээ!");
+          toast.success(data.message);
           setTimeout(() => router.push("/"), 2000);
         }
       } else if (userType === "teacher") {
@@ -183,14 +178,14 @@ export default function SignupPage() {
 
         if (!teacherName) {
           setSubmissionSuccess(false);
-          setSubmissionMessage("Багшийн нэр заавал шаардлагатай.");
+          toast.error("Багшийн нэр заавал шаардлагатай.");
           setIsLoading(false);
           return;
         }
 
         const payload = {
           teacherName,
-          image_base64: imageBase64,
+          image_base64: screenshot,
         };
 
         const response = await fetch(`${PYTHON_BACKEND_URL}teacher/register`, {
@@ -203,20 +198,20 @@ export default function SignupPage() {
 
         if (response.ok) {
           setSubmissionSuccess(true);
-          setSubmissionMessage(data.message || "Бүртгэл амжилттай.");
-          setTimeout(() => router.push("/"), 2000);
+          toast.success(data.message || "Бүртгэл амжилттай.");
+          setTimeout(() => router.push("/login"), 1000);
         } else {
           setSubmissionSuccess(false);
-          setSubmissionMessage(data.message || "Бүртгэл үүсэхэд алдаа гарлаа.");
+          toast.error(data.message || "Бүртгэл үүсэхэд алдаа гарлаа.");
         }
       } else {
         setSubmissionSuccess(false);
-        setSubmissionMessage("Хэрэглэгчийн төрөл буруу байна.");
+        toast.error("Хэрэглэгчийн төрөл буруу байна.");
       }
     } catch (error: any) {
       console.error("❌ Error during registration:", error);
       setSubmissionSuccess(false);
-      setSubmissionMessage(
+      toast.error(
         "Бүртгэл үүсэхэд алдаа гарлаа: " +
           (error.message || "Тодорхойгүй алдаа")
       );
@@ -239,6 +234,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Toaster position="top-right" />
       <Navigation />
       <div className="bg-white">
         <div className="max-w-2xl mx-auto pt-6">
@@ -498,12 +494,12 @@ export default function SignupPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex flex-col items-center  space-y-4 overflow-hidden rounded-full py-2">
-                  {src !== "" && isLoading ? (
+                  {isLoading == true ? (
                     <div className="relative w-60 h-60 flex items-center justify-center rounded-full">
                       {/* Captured face */}
                       <img
                         className="rounded-full w-55 h-55 object-cover blur-sm"
-                        src={src}
+                        src={imageBase64}
                         alt="Captured"
                       />
 
@@ -518,7 +514,10 @@ export default function SignupPage() {
                         ref={webcamRef}
                         screenshotFormat="image/jpeg"
                         videoConstraints={{ facingMode: "user" }}
-                        className="w-full h-full rounded-full object-cover border-2 border-gray-300 -scale-x-100"
+                        className={`w-full h-full rounded-full object-cover border-2 -scale-x-100  ${
+                          submissionSuccess === false && "border-red-500"
+                        } ${submissionSuccess === true && "border-green-400"} 
+                         ${submissionSuccess === null && "border-gray-400"}`}
                       />
 
                       {/* SVG overlay */}
@@ -528,13 +527,15 @@ export default function SignupPage() {
                         className="absolute inset-0 w-full h-full pointer-events-none mt-2"
                       >
                         <path
-                          style={{ stroke: "white" }}
+                          style={{
+                            stroke: "white",
+                          }}
                           fill="none"
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeDasharray="4 5"
-                          transform="scale(1.2) translate(-25 -0.1)" // 🔹 makes it bigger & recenters
+                          transform="scale(1.2) translate(-25 3)" // 🔹 makes it bigger & recenters
                           d="M72.2,95.9c0,5.5,4.1,9.9,9.1,9.9c0,0,0.1,0,0.2,0c1.9,26.2,22,52.4,46.5,52.4c24.5,0,44.6-26.2,46.5-52.4
                 c0,0,0.1,0,0.2,0c5,0,9.1-4.5,9.1-9.9c0-4.1-2.2-7.5-5.4-9.1c1.9-5.9,2.8-12.2,2.8-18.8C181.2,36,157.4,10,128,10
                 c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
@@ -548,16 +549,8 @@ export default function SignupPage() {
                   className="w-full mt-4 bg-slate-700"
                   disabled={isLoading}
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Бүртгэж байна...
-                    </>
-                  ) : (
-                    "Бүртгэлийг дуусгах"
-                  )}
+                  {isLoading ? <>Бүртгэж байна...</> : "Бүртгэлийг дуусгах"}
                 </Button>
-                {submissionMessage}
               </CardContent>
             </Card>
           )}

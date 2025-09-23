@@ -35,6 +35,8 @@ interface QRControlCenterProps {
   countdown: number;
   setCountdown: React.Dispatch<React.SetStateAction<number>>;
   qrData: string | null;
+  qrSec: number;
+  setQrSec: React.Dispatch<React.SetStateAction<number>>;
   setQrData: React.Dispatch<React.SetStateAction<string | null>>;
   qrImage: string | null;
   setQrImage: React.Dispatch<React.SetStateAction<string | null>>;
@@ -94,6 +96,11 @@ export function QRControlCenter({
   const [qrSec, setQrSec] = useState(5);
 
   // -----------------------------
+  // Storage Keys
+  // -----------------------------
+  const QR_SEC_STORAGE_KEY = "qr_generation_seconds";
+
+  // -----------------------------
   // Effects
   // -----------------------------
 
@@ -102,6 +109,22 @@ export function QRControlCenter({
     const storedId = localStorage.getItem("teacherId");
     if (storedId) setTeacherId(storedId);
   }, []);
+
+  // Load QR generation time from localStorage on component mount
+  useEffect(() => {
+    const storedQrSec = localStorage.getItem(QR_SEC_STORAGE_KEY);
+    if (storedQrSec) {
+      const parsedQrSec = parseInt(storedQrSec, 10);
+      if (!isNaN(parsedQrSec) && parsedQrSec > 0) {
+        setQrSec(parsedQrSec);
+      }
+    }
+  }, []);
+
+  // Save QR generation time to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(QR_SEC_STORAGE_KEY, qrSec.toString());
+  }, [qrSec]);
 
   // Fetch classrooms on teacherId load
   useEffect(() => {
@@ -255,7 +278,7 @@ export function QRControlCenter({
 
     // Fetch students for this classroom to check if empty
     try {
-      const res = await axiosInstance.get(`/teacher/classroom-students/${id}`);
+      const res = await axiosInstance.get(`teacher/classroom-students/${id}`);
 
       if (res.data.empty) {
         setStudents([]);
@@ -268,6 +291,26 @@ export function QRControlCenter({
     }
   };
 
+  // Enhanced QR seconds handler with validation
+  const handleQrSecChange = (newQrSec: number) => {
+    // Validate the input
+    if (isNaN(newQrSec) || newQrSec < 1 || newQrSec > 300) {
+      toast.error("QR шинэчлэх хугацаа 1-300 секундын хооронд байх ёстой!");
+      return;
+    }
+
+    setQrSec(newQrSec);
+
+    if (running && attendanceId) {
+      console.log(
+        `QR interval changed to ${newQrSec} seconds, restarting timer...`
+      );
+      startQRTimer(attendanceId);
+    }
+
+    toast.success(`QR шинэчлэх хугацаа ${newQrSec} секунд болж өөрчлөгдлөө`);
+  };
+
   const start = async () => {
     if (running || !selectedClassroomId) {
       toast.error("Ангийг сонгоно уу!");
@@ -278,7 +321,6 @@ export function QRControlCenter({
       toast.error("Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!");
       return;
     }
-
     setLoading(true);
 
     try {
@@ -305,7 +347,13 @@ export function QRControlCenter({
       startQRTimer(_id);
 
       // Poll attendance data - managed by parent's refs
+
       // pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
+
+      pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
+
+      //toast.success(`Ирц эхлэлээ! QR ${qrSec} секунд тутамд шинэчлэгдэнэ.`);
+
     } catch (err) {
       console.error("Error creating attendance:", err);
       alert("Ирц үүсгэхэд алдаа гарлаа");
@@ -320,6 +368,7 @@ export function QRControlCenter({
     try {
       await axiosInstance.put("attendance/end", { attendanceId });
       onStop();
+      toast.success("Ирц амжилттай дууслаа!");
     } catch (err) {
       console.error("Error ending attendance:", err);
       alert("Ирц дуусгахад алдаа гарлаа");
@@ -344,7 +393,7 @@ export function QRControlCenter({
         start={start}
         stop={stop}
         qrSec={qrSec}
-        setQrSec={setQrSec}
+        onQrSecChange={handleQrSecChange}
       />
 
       {running && qrData && qrImage && (
@@ -354,7 +403,8 @@ export function QRControlCenter({
           open={open}
           setOpen={setOpen}
           students={students}
-          countdown={countdown} // countdown ашиглах
+          countdown={countdown}
+          qrSec={qrSec} // Pass qrSec to QrAndAttendance for PiP updates
         />
       )}
     </div>

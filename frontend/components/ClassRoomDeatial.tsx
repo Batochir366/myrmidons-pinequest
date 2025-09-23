@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-
 import { z } from "zod";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { axiosInstance } from "@/lib/utils";
+import { toast } from "sonner";
 
 // ---------- Types ----------
 interface Student {
@@ -26,12 +27,19 @@ type ClassroomForm = z.infer<typeof classroomSchema>;
 // ---------- ClassRoomDetail ----------
 interface ClassRoomDetailProps {
   classroom: Student[] | null;
+  joinCode?: string;
+  classroomId?: string;
+  onDelete?: () => void;
 }
 
 export const ClassRoomDetail: React.FC<ClassRoomDetailProps> = ({
   classroom,
+  joinCode,
+  classroomId,
+  onDelete
 }) => {
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const filteredStudents = classroom?.filter(
     (student) =>
@@ -39,16 +47,78 @@ export const ClassRoomDetail: React.FC<ClassRoomDetailProps> = ({
       student.studentId.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleDelete = async () => {
+    if (!classroomId) {
+      toast.error("Ангийн ID олдсонгүй");
+      return;
+    }
+
+    const confirmDelete = window.confirm("Та энэ ангийг устгахдаа итгэлтэй байна уу?");
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+
+      // Make the delete request
+      const response = await axiosInstance.delete(`/teacher/delete-classroom/${classroomId}`);
+
+      // Check if the request was successful
+      if (response.status === 200 || response.status === 204) {
+        // Call the onDelete callback to refresh the parent component
+        // The parent will handle the success toast and navigation
+        if (onDelete) {
+          onDelete();
+        }
+      } else {
+        throw new Error(`Unexpected response status: ${response.status}`);
+      }
+
+    } catch (err: any) {
+      console.error("Delete classroom error:", err);
+
+      // More detailed error handling
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        const errorMessage = err.response.data?.message || err.response.data?.error || "Анги устгахад алдаа гарлаа";
+        toast.error(`Алдаа: ${errorMessage}`);
+        console.error("Response error:", err.response.data);
+      } else if (err.request) {
+        // The request was made but no response was received
+        toast.error("Сервертэй холбогдож чадсангүй");
+        console.error("Request error:", err.request);
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        toast.error("Анги устгахад алдаа гарлаа");
+        console.error("Error:", err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  console.log("joincode 2", joinCode);
+  console.log("classroomId:", classroomId); // Debug log
+
   return (
     <Card className="w-full">
       <CardContent className="space-y-4">
-        {/* Header */}
-        <h3 className="text-lg font-semibold flex items-center justify-between flex-wrap">
-          Оюутнуудын жагсаалт
-          <span className="flex items-center gap-2 text-lg text-gray-500 font-medium w-[120px]">
-            {classroom?.length ?? 0} оюутан
-          </span>
-        </h3>
+        <div className="flex items-center justify-between flex-wrap">
+          <h3 className="text-lg font-semibold">
+            Оюутнуудын жагсаалт
+          </h3>
+          <div className="flex flex-col items-end gap-1 text-lg text-gray-500 font-medium w-[150px]">
+            <span>{classroom?.length ?? 0} оюутан</span>
+            {joinCode && <span className="text-sm text-gray-400">Ангийн код: {joinCode}</span>}
+            <button
+              onClick={handleDelete}
+              disabled={loading || !classroomId}
+              className="mt-2 px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Устгаж байна..." : "Анги устгах"}
+            </button>
+          </div>
+        </div>
 
         {/* Search Field */}
         <input

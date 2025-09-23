@@ -36,7 +36,7 @@ export const captureAndVerify = async (
   body: { [key: string]: any },
   setMessage: (msg: string) => void,
   setIsRecognizing: (state: boolean) => void,
-  setRecognitionProgress: (progress: number) => void,
+
   onSuccess?: (name?: string) => void
 ): Promise<boolean> => {
   if (!videoRef.current || !canvasRef.current) return false;
@@ -76,14 +76,14 @@ export const captureAndVerify = async (
     } else {
       setMessage(data.message || "Царай таних амжилтгүй боллоо.");
       setIsRecognizing(false);
-      setRecognitionProgress(0);
+
       return false;
     }
   } catch (err) {
     console.error(err);
     setMessage("Сүлжээний алдаа, дахин оролдоно уу.");
     setIsRecognizing(false);
-    setRecognitionProgress(0);
+
     return false;
   }
 };

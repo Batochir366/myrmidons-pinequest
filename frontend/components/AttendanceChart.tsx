@@ -41,6 +41,7 @@ interface AttendanceRecord {
 interface AttendanceChartProps {
     data: { date: string; attendanceRate: number; presentStudents: number; totalStudents: number }[]
     attendanceData: AttendanceRecord[]
+    selectedLectureName?: string | null
 }
 
 const chartConfig = {
@@ -50,7 +51,7 @@ const chartConfig = {
     },
 } satisfies ChartConfig
 
-export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) {
+export function AttendanceChart({ data, attendanceData, selectedLectureName }: AttendanceChartProps) {
     const [selectedLecture, setSelectedLecture] = React.useState<string | null>(null)
 
     const uniqueLectures = React.useMemo(() => {
@@ -65,16 +66,15 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
 
     // attendanceData орж ирсний дараа эхний хичээлийг сонгоно
     React.useEffect(() => {
-        if (uniqueLectures.length > 0 && !selectedLecture) {
+        if (selectedLectureName) {
+            setSelectedLecture(selectedLectureName)
+        } else if (uniqueLectures.length > 0 && !selectedLecture) {
             setSelectedLecture(uniqueLectures[0])
         }
-    }, [uniqueLectures, selectedLecture])
+    }, [selectedLectureName, uniqueLectures])
 
     const chartData = React.useMemo(() => {
-        if (!selectedLecture) {
-            return []
-        }
-
+        if (!selectedLecture) return []
         return attendanceData
             .filter(record => record.lectureName === selectedLecture)
             .map(record => ({
@@ -86,9 +86,16 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     }, [selectedLecture, attendanceData])
 
+    if (uniqueLectures.length === 0) {
+        return (
+            <div className="w-full text-center py-12 text-muted-foreground">
+                Одоогоор ирцийн мэдээлэл алга байна.
+            </div>
+        )
+    }
+
     const chartTitle = `${selectedLecture} - Ирцийн график`
     const chartDescription = `${selectedLecture} хичээлийн бүх өдрийн ирцийн мэдээлэл`
-
 
     return (
         <Card>
@@ -109,19 +116,18 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
                                         onClick={() => setSelectedLecture(lectureName)}
                                         className={`rounded-full font-bold ${isSelected
                                             ? "bg-slate-700 text-white hover:bg-accent hover:text-black hover:border"
-                                            : " text-accent-foreground hover:bg-accent/80"
+                                            : "text-accent-foreground hover:bg-accent/80"
                                             }`}
                                     >
                                         {lectureName}
                                     </Button>
                                 )
                             })}
-
                         </div>
                     </div>
                 )}
             </CardHeader>
-            <CardContent >
+            <CardContent>
                 <ChartContainer
                     config={chartConfig}
                     className="aspect-auto h-[250px] w-full"
@@ -151,7 +157,11 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
                             orientation="left"
                             allowDecimals={false}
                             tickFormatter={(val) => `${val}`}
-                            label={{ value: 'Ирц өгсөн оюутны тоо', angle: -90, position: 'insideCenter' }}
+                            label={{
+                                value: "Ирц өгсөн оюутны тоо",
+                                angle: -90,
+                                position: "insideCenter",
+                            }}
                         />
                         <ChartTooltip
                             content={
@@ -165,11 +175,11 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
                                         })
                                     }
                                     formatter={(value, name) => {
-                                        if (name === 'presentStudents') {
+                                        if (name === "presentStudents") {
                                             const data = chartData.find(d => d.date === value) || chartData[0]
-                                            return [`${value}/${data?.totalStudents || 0}`, ' сурагч']
+                                            return [`${value}/${data?.totalStudents || 0}`, " сурагч"]
                                         }
-                                        return [`${value}%`, ' ирцтэй']
+                                        return [`${value}%`, " ирцтэй"]
                                     }}
                                 />
                             }
@@ -186,6 +196,6 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
                     </LineChart>
                 </ChartContainer>
             </CardContent>
-        </Card >
+        </Card>
     )
 }

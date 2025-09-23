@@ -50,6 +50,9 @@ export default function AttendanceDashboard() {
   const [selectedClassroomId, setSelectedClassroomId] = useState("");
   const [selectedLectureName, setSelectedLectureName] = useState("");
 
+  // QR generation interval (persistent)
+  const [qrSec, setQrSec] = useState(5);
+
   // Timer refs
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -57,7 +60,7 @@ export default function AttendanceDashboard() {
 
   const router = useRouter();
 
-  // Use the storage utilities
+  // Use the enhanced storage utilities
   const {
     saveState,
     restoreState,
@@ -66,12 +69,16 @@ export default function AttendanceDashboard() {
     getSessionDuration,
     updateActivity,
     saveSelectedClassroom,
+    getSelectedClassroom,
+    saveQrSettings,
+    getQrSettings,
     cleanupCorruptedEntries,
   } = useAttendanceStorage();
 
   useEffect(() => {
     cleanupCorruptedEntries();
 
+    // Load teacher info
     const storedName = localStorage.getItem("teacherName");
     const storedImage = localStorage.getItem("teacherImage");
     if (storedName) {
@@ -79,8 +86,14 @@ export default function AttendanceDashboard() {
       setTeacherImage(storedImage || "");
     }
 
+    // Load QR settings
+    const savedQrSec = getQrSettings();
+    setQrSec(savedQrSec);
+
+    // Load last selected classroom if no active session
     const savedState = restoreState();
     if (savedState && savedState.isRunning) {
+      // Restore active session
       isRestoringRef.current = true;
 
       setAttendanceId(savedState.attendanceId);
@@ -91,14 +104,27 @@ export default function AttendanceDashboard() {
       setCountdown(savedState.countdown);
       setQrData(savedState.qrData);
       setQrImage(savedState.qrImage);
+      setQrSec(savedState.qrSec);
 
       console.log(
         `Restored attendance session (${getSessionDuration()} minutes old):`,
         savedState.attendanceId
       );
+    } else {
+      // Load last selected classroom for convenience
+      const lastClassroom = getSelectedClassroom();
+      if (lastClassroom) {
+        setSelectedClassroomId(lastClassroom.classroomId);
+        setSelectedLectureName(lastClassroom.lectureName);
+        console.log(
+          "Restored last selected classroom:",
+          lastClassroom.lectureName
+        );
+      }
     }
   }, []);
 
+  // Save state whenever it changes
   useEffect(() => {
     if (running || attendanceId) {
       saveState({
@@ -110,6 +136,7 @@ export default function AttendanceDashboard() {
         countdown,
         qrData,
         qrImage,
+        qrSec,
         sessionStartTime:
           running && !isRestoringRef.current ? Date.now() : undefined,
       });
@@ -123,7 +150,13 @@ export default function AttendanceDashboard() {
     countdown,
     qrData,
     qrImage,
+    qrSec,
   ]);
+
+  // Save QR settings separately when changed
+  useEffect(() => {
+    saveQrSettings(qrSec);
+  }, [qrSec]);
 
   const logOut = () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -141,7 +174,7 @@ export default function AttendanceDashboard() {
     pollRef.current = null;
 
     setRunning(false);
-    setCountdown(5);
+    setCountdown(qrSec); // Reset to current QR interval
     setQrData(null);
     setQrImage(null);
     setAttendanceId(null);
@@ -164,6 +197,11 @@ export default function AttendanceDashboard() {
     setSelectedClassroomId(id);
     setSelectedLectureName(lectureName);
     saveSelectedClassroom(id, lectureName);
+    updateActivity();
+  };
+
+  const onQrSecChange = (newQrSec: number) => {
+    setQrSec(newQrSec);
     updateActivity();
   };
 
@@ -207,10 +245,10 @@ export default function AttendanceDashboard() {
                 onClick={() => setActiveView(item.id)}
                 variant={activeView === item.id ? "default" : "ghost"}
                 className={`w-full justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${activeView === item.id
-                  ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
+                  ? "bg-slate-700 text-white shadow-lg"
                   : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
                   }`}
-              >
+        >
                 <item.icon className="w-5 h-5" />
                 {item.label}
               </Button>
@@ -218,7 +256,7 @@ export default function AttendanceDashboard() {
           </div>
           <Button
             onClick={logOut}
-            className="w-full justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-md hover:scale-105 hover:shadow-lg"
+            className="w-full justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 text-white shadow-md hover:scale-105 hover:shadow-lg"
           >
             Системээс гарах
             <LogOut className="w-5 h-5" />
@@ -253,6 +291,8 @@ export default function AttendanceDashboard() {
             setSelectedLectureName={setSelectedLectureName}
             timerRef={timerRef}
             pollRef={pollRef}
+            qrSec={qrSec}
+            setQrSec={setQrSec}
             onStart={onStart}
             onStop={onStop}
             onClassroomChange={onClassroomChange}
@@ -275,7 +315,7 @@ export default function AttendanceDashboard() {
           <Sidebar className="hidden md:flex border-r border-border bg-white dark:bg-gray-900">
             <SidebarHeader className="h-[81px] p-6 border-b border-border bg-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center shadow-lg">
                   <QrCode className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -294,7 +334,7 @@ export default function AttendanceDashboard() {
                     <button
                       onClick={() => setActiveView(item.id)}
                       className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${activeView === item.id
-                        ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
+                        ? "bg-slate-700 text-white shadow-lg"
                         : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
                         }`}
                     >
@@ -306,7 +346,7 @@ export default function AttendanceDashboard() {
               </SidebarMenu>
               <Button
                 onClick={logOut}
-                className="w-full justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-md hover:scale-105 hover:shadow-lg"
+                className="w-full justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 text-white shadow-md hover:scale-105 hover:shadow-lg"
               >
                 Системээс гарах
                 <LogOut className="w-5 h-5" />
@@ -336,6 +376,7 @@ export default function AttendanceDashboard() {
                     <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                       <p className="hidden md:inline">Ирц авж байна...</p>
+                      <p className="md:hidden">{qrSec}s</p>
                     </div>
                   )}
                   <Avatar className="w-10 h-10">

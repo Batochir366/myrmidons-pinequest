@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createAttendance,
   createClassroom,
+  deleteClassroom,
   getClassroomsAndStudentsByTeacherId,
   getClassroomsByTeacherId,
   getOnlyClassroomsByTeacherId,
@@ -19,6 +20,7 @@ teacherRouter
   )
   .post("/create-classroom", createClassroom)
   .post("/create-attendance", createAttendance)
-  .get("/classroom-students/:classroomId", getStudentsByClassroomId);
+  .get("/classroom-students/:classroomId", getStudentsByClassroomId)
+  .delete("/delete-classroom/:classroomId", deleteClassroom);
 
 export default teacherRouter;
