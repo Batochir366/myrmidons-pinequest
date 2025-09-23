@@ -3,8 +3,9 @@
 # Start script for Railway deployment
 echo "Starting Face Attendance Service on Railway..."
 
-# Use fixed port 8080 (Railway will handle port mapping)
-echo "Using port: 8080"
+# Get port from environment variable or use default
+PORT=${PORT:-8080}
+echo "Using port: $PORT"
 
-# Start the application using fixed port 8080
-exec gunicorn --bind 0.0.0.0:8080 --workers 1 --timeout 60 --preload app:app
+# Start the application using the port from environment
+exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 30 --preload --max-requests 1000 --max-requests-jitter 100 app:app

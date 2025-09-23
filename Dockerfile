@@ -61,5 +61,8 @@ ENV MKL_NUM_THREADS=1
 # Expose the port
 EXPOSE 8080
 
+# Make start script executable
+RUN chmod +x start.sh
+
 # Use gunicorn with optimized settings for Railway
-CMD gunicorn --bind 0.0.0.0:8080 --workers 1 --timeout 30 --preload --max-requests 1000 --max-requests-jitter 100 app:app
+CMD gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 30 --preload --max-requests 1000 --max-requests-jitter 100 app:app

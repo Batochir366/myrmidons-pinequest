@@ -11,7 +11,7 @@ from math import radians, cos, sin, sqrt, atan2
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
 
-port = 8080
+port = int(os.environ.get('PORT', 8080))
 
 CORS(app, 
      supports_credentials=True,
