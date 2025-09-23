@@ -80,6 +80,38 @@ export const createClassroom = async (req, res) => {
   }
 };
 
+export const deleteClassroom = async (req, res) => {
+  try {
+    const { classroomId } = req.params;
+
+    if (!classroomId) {
+      return res.status(400).json({ message: "classroomId is required" });
+    }
+
+    const deletedClassroom = await ClassroomModel.findByIdAndDelete(
+      classroomId
+    );
+
+    if (!deletedClassroom) {
+      return res.status(404).json({ message: "Classroom not found" });
+    }
+
+    // Remove classroom reference from teacher
+    await TeacherModel.findByIdAndUpdate(deletedClassroom.teacher, {
+      $pull: { Classrooms: classroomId },
+    });
+
+    return res
+      .status(200)
+      .json({ message: "Classroom deleted successfully" });
+  } catch (error) {
+    console.error("❌ deleteClassroom error:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
+  }
+}
+
 export const getOnlyClassroomsByTeacherId = async (req, res) => {
   try {
     const { teacherId } = req.params;
@@ -235,6 +267,7 @@ export const getClassroomsAndStudentsByTeacherId = async (req, res) => {
       lectureDate: classroom.lectureDate,
       teacher: classroom.teacher,
       ClassroomStudents: classroom.ClassroomStudents,
+      joinCode: classroom.joinCode,
       joinLink: classroom.joinLink,
     }));
 
