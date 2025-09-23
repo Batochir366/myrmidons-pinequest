@@ -53,32 +53,31 @@ class AntiSpoofDetector:
             self.initialized = False
     
     def check_image_aspect_ratio(self, image: np.ndarray) -> bool:
-      height, width, _ = image.shape
-      ratio = width / height
-      expected_ratio = 3 / 4
-      tolerance = 0.05  
-       return abs(ratio - expected_ratio) < tolerance
+        height, width, _ = image.shape
+        ratio = width / height
+        expected_ratio = 3 / 4
+        tolerance = 0.05  
+        return abs(ratio - expected_ratio) < tolerance
 
     def resize_image_for_detection(self, image: np.ndarray) -> np.ndarray:
-      height, width = image.shape[:2]
-      desired_ratio = 3 / 4
-      current_ratio = width / height
+        height, width = image.shape[:2]
+        desired_ratio = 3 / 4
+        current_ratio = width / height
 
-      # Center crop to nearest 3:4 aspect ratio
-      if current_ratio > desired_ratio:
-        # Too wide, crop width
-        new_width = int(height * desired_ratio)
-        x_offset = (width - new_width) // 2
-        image = image[:, x_offset:x_offset + new_width]
-      elif current_ratio < desired_ratio:
-        # Too tall, crop height
-        new_height = int(width / desired_ratio)
-        y_offset = (height - new_height) // 2
-        image = image[y_offset:y_offset + new_height, :]
+        # Center crop to nearest 3:4 aspect ratio
+        if current_ratio > desired_ratio:
+            # Too wide, crop width
+            new_width = int(height * desired_ratio)
+            x_offset = (width - new_width) // 2
+            image = image[:, x_offset:x_offset + new_width]
+        elif current_ratio < desired_ratio:
+            # Too tall, crop height
+            new_height = int(width / desired_ratio)
+            y_offset = (height - new_height) // 2
+            image = image[y_offset:y_offset + new_height, :]
 
-      return image
+        return image
 
-    
     def detect_spoof(self, image: np.ndarray) -> Tuple[bool, float, str]:
         """
         Detect if the image is a spoof (fake) or real face
