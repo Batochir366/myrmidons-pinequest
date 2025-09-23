@@ -183,7 +183,7 @@ export function ViewReport({ lecture, onBack }: ViewReportProps) {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-4 font-medium">Оюутны нэр</th>
-                      <th className="text-left p-4 font-medium">Оюутны дугаар</th>
+                      <th className="text-left p-4 font-medium">Оюутны код</th>
                       <th className="text-left p-4 font-medium">Бүртгүүлсэн цаг</th>
                     </tr>
                   </thead>

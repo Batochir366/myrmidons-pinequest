@@ -87,7 +87,7 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
     }, [selectedLecture, attendanceData])
 
     const chartTitle = `${selectedLecture} - Ирцийн график`
-    const chartDescription = `${selectedLecture} хичээлийн өдөр бүрийн ирцийн хувь`
+    const chartDescription = `${selectedLecture} хичээлийн бүх өдрийн ирцийн мэдээлэл`
 
 
     return (
