@@ -68,7 +68,6 @@ export default function AttendanceControlPanel({
   qrSec,
   setQrSec,
 }: AttendanceControlPanelProps) {
-  const [showQr, setShowQr] = useState(false);
   const [inputValue, setInputValue] = useState(qrSec.toString());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

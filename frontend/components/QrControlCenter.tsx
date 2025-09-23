@@ -305,7 +305,7 @@ export function QRControlCenter({
       startQRTimer(_id);
 
       // Poll attendance data - managed by parent's refs
-      pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
+      // pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
     } catch (err) {
       console.error("Error creating attendance:", err);
       alert("Ирц үүсгэхэд алдаа гарлаа");
