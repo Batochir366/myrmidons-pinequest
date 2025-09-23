@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { QrCode, GraduationCap, User, Loader2 } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import Webcam from "react-webcam";
-import { PYTHON_BACKEND_URL } from "@/lib/utils";
+import { axiosInstance, PYTHON_BACKEND_URL } from "@/lib/utils";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -31,6 +31,7 @@ export default function SignupPage() {
   const [studentData, setStudentData] = useState({
     studentName: "",
     studentId: "",
+    joinCode: "",
   });
   const [teacherErrors, setTeacherErrors] = useState({
     teacherName: "",
@@ -39,6 +40,7 @@ export default function SignupPage() {
   const [studentErrors, setStudentErrors] = useState({
     studentName: "",
     studentId: "",
+    joinCode: "",
   });
   const webcamRef = useRef<Webcam>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -77,11 +79,15 @@ export default function SignupPage() {
         studentData.studentId.trim() === ""
           ? "Оюутны дугаар заавал бөглөх ёстой"
           : "",
+      joinCode:
+        studentData.joinCode.trim() !== "" && studentData.joinCode.length !== 6
+          ? "Ангийн код 6 оронтой тоо байх ёстой"
+          : "",
     };
 
     setStudentErrors(errors);
 
-    if (errors.studentName || errors.studentId) return;
+    if (errors.studentName || errors.studentId || errors.joinCode) return;
 
     console.log("Student details:", studentData);
     setStep("face");
@@ -104,66 +110,110 @@ export default function SignupPage() {
       return;
     }
 
-    let payload;
-    let endpoint;
-
-    if (userType === "student") {
-      if (!studentData.studentName || !studentData.studentId) {
-        setSubmissionSuccess(false);
-        setSubmissionMessage("Оюутны нэр болон дугаар заавал шаардлагатай.");
-        return;
-      }
-
-      payload = {
-        studentName: studentData.studentName,
-        studentId: studentData.studentId,
-        image_base64: imageBase64,
-      };
-
-      endpoint = `${PYTHON_BACKEND_URL}student/register`;
-    } else if (userType === "teacher") {
-      if (!teacherData.teacherName) {
-        setSubmissionSuccess(false);
-        setSubmissionMessage("Багшийн нэр заавал шаардлагатай.");
-        return;
-      }
-
-      payload = {
-        teacherName: teacherData.teacherName,
-        image_base64: imageBase64,
-      };
-      endpoint = `${PYTHON_BACKEND_URL}teacher/register`;
-    } else {
-      setSubmissionSuccess(false);
-      setSubmissionMessage("Хэрэглэгчийн төрөл буруу байна.");
-      return;
-    }
-
     setIsLoading(true);
     setSubmissionMessage("Бүртгэж байна...");
     setSubmissionSuccess(null);
 
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      if (userType === "student") {
+        const { studentName, studentId, joinCode } = studentData;
 
-      const data = await response.json();
+        if (!studentName || !studentId) {
+          setSubmissionSuccess(false);
+          setSubmissionMessage("Оюутны нэр болон дугаар заавал шаардлагатай.");
+          setIsLoading(false);
+          return;
+        }
 
-      if (response.ok) {
-        setSubmissionSuccess(true);
-        setSubmissionMessage(data.message || "Бүртгэл амжилттай үүслээ!");
+        // Step 1: Register student to Python backend
+        const payload = {
+          studentName,
+          studentId,
+          image_base64: imageBase64,
+        };
 
-        setTimeout(() => {
-          router.push("/");
-        }, 2000);
+        const response = await fetch(`${PYTHON_BACKEND_URL}student/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setSubmissionSuccess(false);
+          setSubmissionMessage(data.message || "Бүртгэл үүсэхэд алдаа гарлаа.");
+          setIsLoading(false);
+          return;
+        }
+
+        // Step 2: Once Python registration is successful, join the classroom if `joinCode` is provided
+        if (joinCode) {
+          try {
+            const joinRes = await axiosInstance.put("/student/joinbycode", {
+              studentId,
+              joinCode,
+            });
+
+            let message = data.message || "Бүртгэл амжилттай үүслээ!";
+            if (joinRes.data.message) {
+              message += ` Та "${
+                joinRes.data.classroom?.lectureName || "ангид"
+              }" ангид элслээ.`;
+            }
+
+            setSubmissionSuccess(true);
+            setSubmissionMessage(message);
+            setTimeout(() => router.push("/"), 2000);
+          } catch (joinError) {
+            console.error("⚠️ Ангид элсэхэд алдаа:", joinError);
+            setSubmissionSuccess(false);
+            setSubmissionMessage("Ангид элсэхэд алдаа гарлаа.");
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          setSubmissionSuccess(true);
+          setSubmissionMessage(data.message || "Бүртгэл амжилттай үүслээ!");
+          setTimeout(() => router.push("/"), 2000);
+        }
+      } else if (userType === "teacher") {
+        const { teacherName } = teacherData;
+
+        if (!teacherName) {
+          setSubmissionSuccess(false);
+          setSubmissionMessage("Багшийн нэр заавал шаардлагатай.");
+          setIsLoading(false);
+          return;
+        }
+
+        const payload = {
+          teacherName,
+          image_base64: imageBase64,
+        };
+
+        const response = await fetch(`${PYTHON_BACKEND_URL}teacher/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setSubmissionSuccess(true);
+          setSubmissionMessage(data.message || "Бүртгэл амжилттай.");
+          setTimeout(() => router.push("/"), 2000);
+        } else {
+          setSubmissionSuccess(false);
+          setSubmissionMessage(data.message || "Бүртгэл үүсэхэд алдаа гарлаа.");
+        }
       } else {
         setSubmissionSuccess(false);
-        setSubmissionMessage(data.message || "Бүртгэл үүсэхэд алдаа гарлаа.");
+        setSubmissionMessage("Хэрэглэгчийн төрөл буруу байна.");
       }
     } catch (error: any) {
+      console.error("❌ Error during registration:", error);
       setSubmissionSuccess(false);
       setSubmissionMessage(
         "Бүртгэл үүсэхэд алдаа гарлаа: " +
@@ -340,6 +390,33 @@ export default function SignupPage() {
                         {studentErrors.studentId}
                       </p>
                     )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="joinCode">Ангийн код (заавал биш)</Label>
+                    <Input
+                      id="joinCode"
+                      type="text"
+                      placeholder="6 оронтой код (жишээ: 123456)"
+                      value={studentData.joinCode}
+                      onChange={(e) =>
+                        setStudentData({
+                          ...studentData,
+                          joinCode: e.target.value,
+                        })
+                      }
+                      className={studentErrors.joinCode ? "border-red-500" : ""}
+                      disabled={isLoading}
+                      maxLength={6}
+                    />
+                    {studentErrors.joinCode && (
+                      <p className="text-sm text-red-500">
+                        {studentErrors.joinCode}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Хэрэв танд багшийн өгсөн ангийн код байгаа бол оруулна уу
+                    </p>
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading}>
