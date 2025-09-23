@@ -1,17 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  ChevronDown,
-  Play,
-  Square,
-  QrCode,
-  Copy,
-  EyeOff,
-  Eye,
-} from "lucide-react";
-import JoinLinkQrButton from "./JoinLinkQrButton";
+import { Play, Square, QrCode } from "lucide-react";
+
 import {
   Select,
   SelectContent,
@@ -19,7 +12,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { useState } from "react";
+
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+// -----------------------------
+// Interfaces
+// -----------------------------
 
 interface Classroom {
   _id: string;
@@ -38,7 +47,13 @@ interface AttendanceControlPanelProps {
   onClassroomChange: (id: string) => void;
   start: () => void;
   stop: () => void;
+  qrSec: number;
+  setQrSec: React.Dispatch<React.SetStateAction<number>>;
 }
+
+// -----------------------------
+// Component
+// -----------------------------
 
 export default function AttendanceControlPanel({
   classrooms,
@@ -50,12 +65,25 @@ export default function AttendanceControlPanel({
   onClassroomChange,
   start,
   stop,
+  qrSec,
+  setQrSec,
 }: AttendanceControlPanelProps) {
   const [showQr, setShowQr] = useState(false);
+  const [inputValue, setInputValue] = useState(qrSec.toString());
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
+
+  const handleSave = () => {
+    const sec = parseInt(inputValue, 10);
+    if (!isNaN(sec) && sec > 0) {
+      setQrSec(sec); // props-аас ирж байгаа setter ашиглаж байна
+    }
+  };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* Control Panel */}
+    <div className="flex flex-col gap-6 w-full lg:flex-row">
       <Card className="flex-1 rounded-2xl bg-white border shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-700">
@@ -64,68 +92,94 @@ export default function AttendanceControlPanel({
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="relative max-w-[376px] w-full">
-            <Select
-              value={selectedClassroomId}
-              onValueChange={(value) => onClassroomChange(value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Ангийг сонгоно уу" />
-              </SelectTrigger>
-              <SelectContent>
-                {classrooms.map((c) => (
-                  <SelectItem className="" key={c._id} value={c._id}>
-                    <div className="flex justify-between w-[320px]">
-                      <span>{c.lectureName}</span>
-                      <span className="text-muted-foreground">
-                        {c.lectureDate}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full">
+            {/* Ангийн сонголт */}
+            <div className="w-full sm:max-w-[376px]">
+              <Select
+                value={selectedClassroomId}
+                onValueChange={onClassroomChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Ангийг сонгоно уу" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classrooms.map((c) => (
+                    <SelectItem key={c._id} value={c._id}>
+                      <div className="flex justify-between w-[320px] sm:w-full">
+                        <span>{c.lectureName}</span>
+                        <span className="text-muted-foreground">
+                          {c.lectureDate}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={start}
-              disabled={!selectedLectureName || loading || running}
-              className="flex items-center gap-2 bg-slate-700 text-white"
-            >
-              <Play className="w-4 h-4" />
-              {loading ? "Хүлээнэ үү..." : "QR үүсгэх"}
-            </Button>
+            {/* Start / Stop / QR секунд */}
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full sm:w-auto">
+              <Button
+                onClick={start}
+                disabled={!selectedLectureName || loading || running}
+                className="flex-1 sm:flex-none flex items-center gap-2 bg-slate-700 text-white"
+              >
+                <Play className="w-4 h-4" />
+                {loading ? "Хүлээнэ үү..." : "QR үүсгэх"}
+              </Button>
 
-            <Button
-              onClick={stop}
-              disabled={!running}
-              variant="destructive"
-              className="flex items-center gap-2"
-            >
-              <Square className="w-4 h-4" />
-              Зогсоох
-            </Button>
+              <Button
+                onClick={stop}
+                disabled={!running}
+                variant="destructive"
+                className="flex-1 sm:flex-none flex items-center gap-2"
+              >
+                <Square className="w-4 h-4" />
+                Зогсоох
+              </Button>
 
-            {/* QR Toggle Button */}
-            <Button
-              onClick={() => setShowQr(!showQr)}
-              className="bg-slate-700 text-white gap-2"
-            >
-              {showQr ? (
-                <EyeOff className="w-4 h-4" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )}
-              {showQr ? "QR нуух" : "QR харуулах"}
-            </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex-1 sm:flex-none bg-black text-white"
+                  >
+                    QR шинэчлэх хугацаа
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>QR шинэчлэгдэх хугацаа</DialogTitle>
+                  </DialogHeader>
+
+                  <div className="grid gap-3">
+                    <Label htmlFor="qr-sec">
+                      Та QR шинэчлэгдэх секундээ бичнэ үү
+                    </Label>
+                    <Input
+                      id="qr-sec"
+                      type="number"
+                      value={inputValue}
+                      onChange={handleChange}
+                      min={1}
+                    />
+                  </div>
+
+                  <DialogFooter className="flex justify-end gap-2">
+                    <DialogClose asChild>
+                      <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+
+                    <DialogClose asChild>
+                      <Button onClick={handleSave}>Save</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </CardContent>
       </Card>
-
-      <div className="w-full lg:w-120 flex items-center justify-center rounded-2xl border">
-        <JoinLinkQrButton joinLinkQr={joinLinkQr} showQr={showQr} />
-      </div>
     </div>
   );
 }
