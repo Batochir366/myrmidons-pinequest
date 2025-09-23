@@ -71,10 +71,7 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
     }, [uniqueLectures, selectedLecture])
 
     const chartData = React.useMemo(() => {
-        if (!selectedLecture) {
-            return []
-        }
-
+        if (!selectedLecture) return []
         return attendanceData
             .filter(record => record.lectureName === selectedLecture)
             .map(record => ({
@@ -86,9 +83,16 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     }, [selectedLecture, attendanceData])
 
+    if (uniqueLectures.length === 0) {
+        return (
+            <div className="w-full text-center py-12 text-muted-foreground">
+                Одоогоор ирцийн мэдээлэл алга байна.
+            </div>
+        )
+    }
+
     const chartTitle = `${selectedLecture} - Ирцийн график`
     const chartDescription = `${selectedLecture} хичээлийн бүх өдрийн ирцийн мэдээлэл`
-
 
     return (
         <Card>
@@ -109,19 +113,18 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
                                         onClick={() => setSelectedLecture(lectureName)}
                                         className={`rounded-full font-bold ${isSelected
                                             ? "bg-slate-700 text-white hover:bg-accent hover:text-black hover:border"
-                                            : " text-accent-foreground hover:bg-accent/80"
+                                            : "text-accent-foreground hover:bg-accent/80"
                                             }`}
                                     >
                                         {lectureName}
                                     </Button>
                                 )
                             })}
-
                         </div>
                     </div>
                 )}
             </CardHeader>
-            <CardContent >
+            <CardContent>
                 <ChartContainer
                     config={chartConfig}
                     className="aspect-auto h-[250px] w-full"
@@ -151,7 +154,11 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
                             orientation="left"
                             allowDecimals={false}
                             tickFormatter={(val) => `${val}`}
-                            label={{ value: 'Ирц өгсөн оюутны тоо', angle: -90, position: 'insideCenter' }}
+                            label={{
+                                value: "Ирц өгсөн оюутны тоо",
+                                angle: -90,
+                                position: "insideCenter",
+                            }}
                         />
                         <ChartTooltip
                             content={
@@ -165,11 +172,11 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
                                         })
                                     }
                                     formatter={(value, name) => {
-                                        if (name === 'presentStudents') {
+                                        if (name === "presentStudents") {
                                             const data = chartData.find(d => d.date === value) || chartData[0]
-                                            return [`${value}/${data?.totalStudents || 0}`, ' сурагч']
+                                            return [`${value}/${data?.totalStudents || 0}`, " сурагч"]
                                         }
-                                        return [`${value}%`, ' ирцтэй']
+                                        return [`${value}%`, " ирцтэй"]
                                     }}
                                 />
                             }
@@ -186,6 +193,6 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
                     </LineChart>
                 </ChartContainer>
             </CardContent>
-        </Card >
+        </Card>
     )
 }
