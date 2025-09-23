@@ -278,7 +278,7 @@ export function QRControlCenter({
 
     // Fetch students for this classroom to check if empty
     try {
-      const res = await axiosInstance.get(`/teacher/classroom-students/${id}`);
+      const res = await axiosInstance.get(`teacher/classroom-students/${id}`);
 
       if (res.data.empty) {
         setStudents([]);
@@ -321,7 +321,6 @@ export function QRControlCenter({
       toast.error("Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!");
       return;
     }
-
     setLoading(true);
 
     try {
