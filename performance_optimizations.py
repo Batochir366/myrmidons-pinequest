@@ -9,6 +9,7 @@ import numpy as np
 import time
 from functools import lru_cache
 import threading
+from typing import Tuple
 
 # Global caches for performance
 _face_cascade_cache = None
