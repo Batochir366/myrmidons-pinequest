@@ -53,30 +53,22 @@ class AntiSpoofDetector:
             self.initialized = False
     
     def check_image_aspect_ratio(self, image: np.ndarray) -> bool:
-        height, width, _ = image.shape
+        """Check if image has correct 3:4 aspect ratio"""
+        height, width = image.shape[:2]
         ratio = width / height
         expected_ratio = 3 / 4
-        tolerance = 0.05  
+        tolerance = 0.1  # Increased tolerance
         return abs(ratio - expected_ratio) < tolerance
 
-    def resize_image_for_detection(self, image: np.ndarray) -> np.ndarray:
+    def prepare_image_for_detection(self, image: np.ndarray) -> np.ndarray:
+        """Prepare image for anti-spoof detection - resize to 3:4 ratio"""
         height, width = image.shape[:2]
-        desired_ratio = 3 / 4
-        current_ratio = width / height
-
-        # Center crop to nearest 3:4 aspect ratio
-        if current_ratio > desired_ratio:
-            # Too wide, crop width
-            new_width = int(height * desired_ratio)
-            x_offset = (width - new_width) // 2
-            image = image[:, x_offset:x_offset + new_width]
-        elif current_ratio < desired_ratio:
-            # Too tall, crop height
-            new_height = int(width / desired_ratio)
-            y_offset = (height - new_height) // 2
-            image = image[y_offset:y_offset + new_height, :]
-
-        return image
+        
+        # Resize image to have 3:4 width:height ratio like the working version
+        new_width = int(height * 3 / 4)
+        resized_image = cv2.resize(image, (new_width, height))
+        
+        return resized_image
 
     def detect_spoof(self, image: np.ndarray) -> Tuple[bool, float, str]:
         """
@@ -95,15 +87,16 @@ class AntiSpoofDetector:
             return True, 0.5, "Anti-spoof detection not available"
         
         try:
-            # Resize image to correct aspect ratio
-            resized_image = self.resize_image_for_detection(image)
+            # Prepare image with correct aspect ratio (like working version)
+            prepared_image = self.prepare_image_for_detection(image)
             
             # Check aspect ratio
-            if not self.check_image_aspect_ratio(resized_image):
-                return False, 0.0, "Invalid image aspect ratio"
+            if not self.check_image_aspect_ratio(prepared_image):
+                print(f"Image aspect ratio check failed. Image shape: {prepared_image.shape}")
+                return False, 0.0, "Image aspect ratio is not 3:4"
             
             # Get face bounding box
-            image_bbox = self.model_test.get_bbox(resized_image)
+            image_bbox = self.model_test.get_bbox(prepared_image)
             if image_bbox is None:
                 return False, 0.0, "No face detected"
             
@@ -119,12 +112,12 @@ class AntiSpoofDetector:
             if not model_files:
                 return True, 0.5, "No model files found"
             
-            # Process each model
+            # Process each model (exactly like working version)
             for model_name in model_files:
                 try:
                     h_input, w_input, model_type, scale = parse_model_name(model_name)
                     param = {
-                        "org_img": resized_image,
+                        "org_img": prepared_image,
                         "bbox": image_bbox,
                         "scale": scale,
                         "out_w": w_input,
@@ -142,16 +135,16 @@ class AntiSpoofDetector:
                     print(f"Error processing model {model_name}: {e}")
                     continue
             
-            # Get final prediction
+            # Get final prediction (exactly like working version)
             label = np.argmax(prediction)
             confidence = prediction[0][label] / 2
             
             # Determine result
             is_real = label == 1
             if is_real:
-                message = f"Real face detected (confidence: {confidence:.2f})"
+                message = f"Real face detected (score: {confidence:.2f})"
             else:
-                message = f"Fake face detected (confidence: {confidence:.2f})"
+                message = f"Бодит хүн биш байна,Хуурах гэж оролдох хэрэггүй шүү"
             
             print(f"Anti-spoof detection: {message}, Speed: {test_speed:.2f}s")
             return is_real, confidence, message
