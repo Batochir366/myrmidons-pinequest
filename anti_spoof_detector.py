@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Anti-Spoof Detection Module
-Integrates Silent Face Anti-Spoofing with a Python/Flask app
+Anti-Spoof Detection Module Integrates Silent Face Anti-Spoofing with a Python/Flask app
 """
 
 import os
@@ -9,6 +8,7 @@ import cv2
 import numpy as np
 import warnings
 from typing import Tuple
+import time
 
 # Suppress warnings
 warnings.filterwarnings("ignore")
@@ -52,14 +52,14 @@ class AntiSpoofDetector:
             if not os.path.exists(self.model_dir):
                 print(f"⚠️ Model directory {self.model_dir} not found")
                 return
-                
+
             files = os.listdir(self.model_dir)
             print(f"📄 Files in model directory: {files}")
-            
+
             # Check for both .onnx and .pth files
             model_files = [f for f in files if f.endswith(('.onnx', '.pth'))]
             print(f"🔍 Model files found: {model_files}")
-            
+
             if not model_files:
                 print("❌ No model files (.onnx or .pth) found!")
                 return
@@ -106,21 +106,25 @@ class AntiSpoofDetector:
             if not isinstance(image, np.ndarray):
                 print(f"❌ Invalid image type: {type(image)}")
                 return True, 0.5, "Invalid image format - access granted"
-                
+
             # Ensure image has correct shape
             if len(image.shape) != 3 or image.shape[2] != 3:
                 print(f"❌ Invalid image shape: {image.shape}")
                 return True, 0.5, "Invalid image shape - access granted"
 
-            prepared_image = self.prepare_image_for_detection(image)
+            # Resize image to 3:4 aspect ratio (like in the working test)
+            height, width = image.shape[:2]
+            new_width = int(height * 3 / 4)
+            resized_image = cv2.resize(image, (new_width, height))
 
-            if not self.check_image_aspect_ratio(prepared_image):
-                print("⚠️ Image aspect ratio not 3:4, allowing access")
+            # Check aspect ratio after resize
+            if not self.check_image_aspect_ratio(resized_image):
+                print("⚠️ Image aspect ratio is not 3:4 after resize")
                 return True, 0.6, "Image aspect ratio warning - access granted"
 
             # Get face bounding box
             try:
-                image_bbox = self.model_test.get_bbox(prepared_image)
+                image_bbox = self.model_test.get_bbox(resized_image)
                 if image_bbox is None:
                     print("⚠️ No face detected, denying access")
                     return False, 0.0, "No face detected"
@@ -128,25 +132,28 @@ class AntiSpoofDetector:
                 print(f"❌ Error getting face bbox: {bbox_error}")
                 return True, 0.5, "Face detection error - access granted"
 
-            # Load model files (both .onnx and .pth supported)
+            # Load model files
             model_files = [
-                f for f in os.listdir(self.model_dir) 
-                if f.endswith((".onnx", ".pth"))
+                f for f in os.listdir(self.model_dir)
+                if f.endswith(".pth")  # Only .pth files like in the working test
             ]
             if not model_files:
-                print(f"⚠️ No model files found in {self.model_dir}")
+                print(f"⚠️ No .pth model files found in {self.model_dir}")
                 print("Available files:", os.listdir(self.model_dir) if os.path.exists(self.model_dir) else "Directory not found")
                 return True, 0.5, "No model files found - access granted"
 
             print(f"🔍 Found {len(model_files)} model files: {model_files}")
-            prediction = None
+
+            # Initialize prediction like in the working test
+            prediction = np.zeros((1, 3))
+            test_speed = 0
             successful_predictions = 0
 
-            # Process each model
+            # Process each model (following the working test pattern)
             for model_name in model_files:
                 try:
                     print(f"🔄 Processing model: {model_name}")
-                    
+
                     # Parse model name to get parameters
                     parsed_result = parse_model_name(model_name)
                     if len(parsed_result) == 4:
@@ -154,53 +161,57 @@ class AntiSpoofDetector:
                     else:
                         print(f"❌ Unexpected parse result length: {len(parsed_result)}")
                         continue
-                    
+
+                    # Create parameters like in the working test
                     param = {
-                        "org_img": prepared_image,
+                        "org_img": resized_image,
                         "bbox": image_bbox,
                         "scale": scale,
                         "out_w": w_input,
                         "out_h": h_input,
-                        "crop": self.image_cropper,
+                        "crop": True,  # Boolean like in working test, not the cropper object
                     }
-                    
-                    # Make prediction
-                    model_path = os.path.join(self.model_dir, model_name)
-                    result = self.model_test.predict(model_path, param)
-                    
-                    # Handle different return formats
-                    if isinstance(result, tuple) and len(result) == 2:
-                        prediction_result, test_speed = result
-                    else:
-                        prediction_result = result
-                        test_speed = 0.0
-                    
-                    if prediction_result is not None:
-                        prediction = prediction_result if prediction is None else prediction + prediction_result
+
+                    # Handle scale None case like in working test
+                    if scale is None:
+                        param["crop"] = False
+
+                    # Crop the image first (like in working test)
+                    try:
+                        cropped_img = self.image_cropper.crop(**param)
+                        print(f"📏 Cropped image shape: {cropped_img.shape}")
+
+                        # Make prediction with cropped image and model path (like working test)
+                        model_path = os.path.join(self.model_dir, model_name)
+                        start_time = time.time()
+
+                        # Pass cropped image and model path (like working test)
+                        model_prediction = self.model_test.predict(cropped_img, model_path)
+                        test_speed += time.time() - start_time
+
+                        # Add to total prediction (like working test)
+                        prediction += model_prediction
                         successful_predictions += 1
                         print(f"✅ Processed model {model_name} successfully")
-                    else:
-                        print(f"⚠️ Model {model_name} returned None")
-                        
+
+                    except Exception as crop_error:
+                        print(f"❌ Error cropping/predicting for {model_name}: {crop_error}")
+                        continue
+
                 except Exception as e:
                     print(f"❌ Error processing model {model_name}: {e}")
-                    import traceback
-                    traceback.print_exc()
                     continue
 
-            if prediction is None or successful_predictions == 0:
+            if successful_predictions == 0:
                 print("⚠️ No successful model predictions, allowing access")
                 return True, 0.5, "Model prediction failed - access granted"
 
-            # Process final prediction
+            # Process final prediction (like working test)
             try:
-                if isinstance(prediction, list) and len(prediction) > 0:
-                    prediction = prediction[0] if isinstance(prediction[0], np.ndarray) else prediction
-                    
                 label = np.argmax(prediction)
-                confidence = float(prediction[label]) / successful_predictions if successful_predictions > 0 else 0.5
+                confidence = prediction[0][label] / 2  # Divide by 2 like in working test
                 is_real = label == 1
-                
+
                 message = (
                     f"Real face detected (score: {confidence:.2f})"
                     if is_real
@@ -208,16 +219,15 @@ class AntiSpoofDetector:
                 )
 
                 print(f"✅ Anti-spoof detection: {message}")
+                print(f"Prediction cost {test_speed:.2f} s")
                 return is_real, confidence, message
-                
+
             except Exception as pred_error:
                 print(f"❌ Error processing prediction: {pred_error}")
                 return True, 0.5, "Prediction processing error - access granted"
 
         except Exception as e:
             print(f"❌ Error in anti-spoof detection: {e}")
-            import traceback
-            traceback.print_exc()
             return True, 0.5, f"Detection error - access granted: {str(e)}"
 
     def is_available(self) -> bool:
