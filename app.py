@@ -52,7 +52,6 @@ try:
     logs_collection = db["logs"]
     teachers_collection = db["teachers"]
 
-
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}")
     print("Using fallback: No database connection")
@@ -80,26 +79,57 @@ except ImportError as e:
     print(f"⚠️ Anti-spoof detection not available: {e}")
     ANTI_SPOOF_AVAILABLE = False
 
-def recognize_face_with_liveness(frame, filter_student_ids=None, check_liveness=True):
+def verify_liveness_first(frame):
     """
-    Recognize face with optional liveness detection
-    
-    Args:
-        frame: OpenCV image frame
-        filter_student_ids: List of student IDs to filter by
-        check_liveness: Whether to perform anti-spoof detection
-        
-    Returns:
-        Tuple: (name, user_data, liveness_result)
-            - name: Recognized name or "unknown_person"
-            - user_data: User data if recognized, None otherwise
-            - liveness_result: (is_live, confidence, message) if check_liveness=True, None otherwise
+    Check liveness first before any face recognition
+    Returns: (is_live, confidence, message) or raises exception
     """
-    # First check liveness if requested
-    liveness_result = None
-    if check_liveness and ANTI_SPOOF_AVAILABLE:
+    if ANTI_SPOOF_AVAILABLE:
         try:
             is_live, confidence, message = check_face_liveness(frame)
+            print(f"Liveness check: is_live={is_live}, confidence={confidence:.2f}, message={message}")
+            return is_live, confidence, message
+        except Exception as e:
+            print(f"Liveness detection error: {e}")
+            raise Exception(f"Liveness check failed: {str(e)}")
+    else:
+        print("Anti-spoof detection not available, skipping liveness check")
+        return True, 0.5, "Liveness check skipped - not available"
+
+def recognize_face_with_liveness(frame, filter_student_ids=None, check_liveness=True):
+    """
+    Recognize face with mandatory liveness check first
+    """
+    liveness_result = None
+    
+    # Always check liveness first if requested
+    if check_liveness:
+        try:
+            is_live, confidence, message = verify_liveness_first(frame)
+            liveness_result = (is_live, confidence, message)
+            
+            # If spoof detected, return early - don't proceed with face recognition
+            if not is_live:
+                return "spoof_detected", None, liveness_result
+        except Exception as e:
+            print(f"Liveness detection error: {e}")
+            liveness_result = (False, 0.0, f"Liveness check failed: {str(e)}")
+            return "spoof_detected", None, liveness_result
+    
+    # Only proceed with face recognition if liveness passed
+    name, user_data = recognize_face(frame, filter_student_ids)
+    return name, user_data, liveness_result
+
+def recognize_teacher_with_liveness(frame, check_liveness=True):
+    """
+    Recognize teacher face with mandatory liveness check first
+    """
+    liveness_result = None
+    
+    # Always check liveness first if requested
+    if check_liveness:
+        try:
+            is_live, confidence, message = verify_liveness_first(frame)
             liveness_result = (is_live, confidence, message)
             
             # If spoof detected, return early
@@ -107,11 +137,12 @@ def recognize_face_with_liveness(frame, filter_student_ids=None, check_liveness=
                 return "spoof_detected", None, liveness_result
         except Exception as e:
             print(f"Liveness detection error: {e}")
-            liveness_result = (True, 0.5, f"Liveness check failed: {str(e)}")
+            liveness_result = (False, 0.0, f"Liveness check failed: {str(e)}")
+            return "spoof_detected", None, liveness_result
     
-    # Proceed with face recognition
-    name, user_data = recognize_face(frame, filter_student_ids)
-    return name, user_data, liveness_result
+    # Only proceed with teacher recognition if liveness passed
+    name, teacher_data = recognize_teacher_face(frame)
+    return name, teacher_data, liveness_result
 
 def recognize_face(frame, filter_student_ids=None):
     name = "unknown_person"
@@ -162,7 +193,11 @@ def recognize_teacher_face(frame):
     name = "unknown_teacher"
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     face_encodings = face_recognition.face_encodings(rgb_frame)
+    
+    print(f"🔍 Face encodings found: {len(face_encodings)}")
+    
     if not face_encodings:
+        print("❌ No face encodings found")
         return "no_persons_found", None
 
     encoding = face_encodings[0]
@@ -172,28 +207,35 @@ def recognize_teacher_face(frame):
     if teachers_collection is not None:
         try:
             teachers = list(teachers_collection.find())
+            print(f"🔍 Found {len(teachers)} teachers in database")
         except Exception as e:
-            print(f"Database error during teacher fetch: {e}")
+            print(f"❌ Database error during teacher fetch: {e}")
             teachers = []
     else:
-        print("Teachers collection is None")
+        print("❌ Teachers collection is None")
         teachers = []
 
-    for teacher in teachers:
+    for i, teacher in enumerate(teachers):
         try:
             if 'embedding' not in teacher:
+                print(f"⚠️ Teacher {i} has no embedding")
                 continue
+                
             stored_encoding = np.array(teacher['embedding'])
             distance = face_recognition.face_distance([stored_encoding], encoding)[0]
+            print(f"🔍 Teacher {teacher.get('teacherName', 'unknown')} - Distance: {distance:.4f}")
 
             if distance < best_match_distance:
                 best_match_distance = distance
                 best_match_teacher = teacher
                 name = teacher.get('teacherName', 'unknown_teacher')
+                print(f"✅ New best match: {name} with distance {distance:.4f}")
+                
         except Exception as e:
-            print(f"Error processing teacher record: {e}")
+            print(f"❌ Error processing teacher record {i}: {e}")
             continue
 
+    print(f"🔍 Final result - name: {name}, distance: {best_match_distance:.4f}")
     return name, best_match_teacher
 
 def recognize_classroom_face(frame, classroom_students):
@@ -233,6 +275,7 @@ def recognize_classroom_face(frame, classroom_students):
         return "unknown_person", None
 
     return name, best_match_user
+
 @app.route('/')
 def index():
     return jsonify({
@@ -250,7 +293,6 @@ def health():
         "database": "connected" if mongo_client else "disconnected",
         "timestamp": datetime.datetime.now().isoformat()
     })
-
 
 @app.route('/student/attend', methods=['POST', 'OPTIONS'])
 def attend_class():
@@ -303,7 +345,8 @@ def attend_class():
                 "verified": False,
                 "message": f"Та одоогоор ангидаа байхгүй байна. Сургуульдаа яваарай"
             }), 403
-       # 1. Decode image
+
+        # Decode image
         try:
             header, encoded = image_base64.split(",", 1)
             image_bytes = base64.b64decode(encoded)
@@ -314,39 +357,41 @@ def attend_class():
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-        # 2. Face Recognition with Liveness Detection
+
+        # Face Recognition with Liveness Detection (liveness checked first)
         name, matched_user, liveness_result = recognize_face_with_liveness(frame, filter_student_ids=[studentId], check_liveness=True)
         
-        # 3. Check for spoof detection
+        # Check for spoof detection
         if name == 'spoof_detected':
             is_live, confidence, message = liveness_result
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": f"Царай танилт амжилтгүй: {message}",
+                "message": f"{message}",
                 "liveness_check": {
-                    "is_live": is_live,
-                    "confidence": confidence,
-                    "message": message
+                    "is_live": bool(is_live),
+                    "confidence": float(confidence),
+                    "message": str(message)
                 }
             }), 401
             
-        # 4. No recognizable face in frame
+        # No recognizable face in frame
         if name in ['unknown_person', 'no_persons_found'] or not matched_user:
             return jsonify({
                 "success": False,
                 "verified": False,
                 "message": "Ангийн сурагчдын дунд царай танигдаагүй байна"
             }), 401
-        # 4. Face mismatch
+
+        # Face mismatch
         if matched_user.get('studentId') != studentId:
-            recognized_id = matched_user.get('studentId')
             return jsonify({
                 "success": False,
                 "verified": False,
                 "message": f"Таны бүртгүүлсэн царай болон дугаар таарахгүй байна"
             }), 403
-        # 5. Success
+
+        # Success
         response_data = {
             "success": True,
             "verified": True,
@@ -359,9 +404,9 @@ def attend_class():
         if liveness_result:
             is_live, confidence, message = liveness_result
             response_data["liveness_check"] = {
-                "is_live": is_live,
-                "confidence": confidence,
-                "message": message
+                "is_live": bool(is_live),
+                "confidence": float(confidence),
+                "message": str(message)
             }
         
         return jsonify(response_data), 200
@@ -371,19 +416,16 @@ def attend_class():
         traceback.print_exc()
         return jsonify({"success": False, "message": f"Internal Server Error: {str(e)}"}), 500
 
-
 @app.route('/student/join', methods=['POST', 'OPTIONS'])
 def student_join():
     if request.method == 'OPTIONS':
         return '', 204
         
     try:
-        # Extract data from the request
         data = request.json
         studentId = data.get('studentId')
         image_base64 = data.get('image_base64')
 
-        # Check if the necessary data (studentId, image_base64) is provided
         if not studentId:
             return jsonify({
                 "success": False,
@@ -418,8 +460,22 @@ def student_join():
         if frame is None:
             return jsonify({"success": False, "message": "Decoded image is empty or invalid"}), 400
 
-        # Attempt to verify the face
-        name, matched_user = recognize_face(frame, filter_student_ids=[studentId])
+        # Verify face with liveness check first
+        name, matched_user, liveness_result = recognize_face_with_liveness(frame, filter_student_ids=[studentId], check_liveness=True)
+
+        # Check for spoof detection
+        if name == 'spoof_detected':
+            is_live, confidence, message = liveness_result
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": f"{message}",
+                "liveness_check": {
+                    "is_live": bool(is_live),
+                    "confidence": float(confidence),
+                    "message": str(message)
+                }
+            }), 401
 
         # If no face is detected or recognized, handle the failure
         if name == 'no_persons_found':
@@ -457,9 +513,6 @@ def student_join():
             "success": False,
             "message": f"An error occurred: {str(e)}"
         }), 500
-
-
-
 
 @app.route('/student/register', methods=['POST', 'OPTIONS'])
 def register():
@@ -517,30 +570,32 @@ def register():
             print("Failed to decode image into frame")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Check for liveness (anti-spoof detection) during registration
-        if ANTI_SPOOF_AVAILABLE:
-            print(f"Frame shape: {frame.shape}")
+        # Check for liveness FIRST during registration
+        print(f"Frame shape: {frame.shape}")
+        try:
+            is_live, confidence, message = verify_liveness_first(frame)
+            if not is_live:
+                print(f"Liveness check failed: {message}")
+                return jsonify({
+                    "success": False,
+                    "message": f"{message}",
+                    "liveness_check": {
+                        "is_live": bool(is_live),
+                        "confidence": float(confidence),
+                        "message": str(message)
+                    }
+                }), 400
+            else:
+                print(f"Liveness check passed: {message}")
+        except Exception as e:
+            print(f"Liveness detection error during registration: {e}")
+            return jsonify({
+                "success": False,
+                "message": "Liveness detection failed. Please try again with a live camera feed.",
+                "error": str(e)
+            }), 500
 
-            try:
-                is_live, confidence, message = check_face_liveness(frame)
-                if not is_live:
-                    print(f"Liveness check failed: {message}")
-                    return jsonify({
-                        "success": False,
-                        "message": f"Царай танилт амжилтгүй: {message}",
-                        "liveness_check": {
-                            "is_live": is_live,
-                            "confidence": confidence,
-                            "message": message
-                        }
-                    }), 400
-                else:
-                    print(f"Liveness check passed: {message}")
-            except Exception as e:
-                print(f"Liveness detection error during registration: {e}")
-                # Don't fail registration if liveness check fails, just log it
-                pass
- 
+        # Only proceed with face encoding if liveness passed
         try:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             face_encodings = face_recognition.face_encodings(rgb_frame)
@@ -615,7 +670,6 @@ def register():
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
-
 @app.route('/teacher/register', methods=['POST','OPTIONS'])
 def register_teacher():
     if request.method == 'OPTIONS':
@@ -631,6 +685,7 @@ def register_teacher():
 
         if ',' not in image_base64:
             return jsonify({"success": False, "message": "Invalid image format"}), 400
+
         try:
             header, encoded = image_base64.split(",", 1)
             image_bytes = base64.b64decode(encoded)
@@ -643,6 +698,31 @@ def register_teacher():
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
+        # Check for liveness FIRST during teacher registration
+        try:
+            is_live, confidence, message = verify_liveness_first(frame)
+            if not is_live:
+                print(f"Teacher registration - Liveness check failed: {message}")
+                return jsonify({
+                    "success": False,
+                    "message": f"{message}",
+                    "liveness_check": {
+                        "is_live": bool(is_live),
+                        "confidence": float(confidence),
+                        "message": str(message)
+                    }
+                }), 400
+            else:
+                print(f"Teacher registration - Liveness check passed: {message}")
+        except Exception as e:
+            print(f"Teacher registration - Liveness detection error: {e}")
+            return jsonify({
+                "success": False,
+                "message": "Liveness detection failed. Please try again with a live camera feed.",
+                "error": str(e)
+            }), 500
+
+        # Only proceed with face encoding if liveness passed
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         face_encodings = face_recognition.face_encodings(rgb_frame)
 
@@ -703,8 +783,7 @@ def register_teacher():
 
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"success": False, "message": "Internal Server Error"}), 500 
-
+        return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
 @app.route('/teacher/login', methods=['POST', 'OPTIONS'])
 def login_teacher():
@@ -733,10 +812,25 @@ def login_teacher():
             print("❌ Frame is None after decoding")
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
-        # Face recognition
-        print("👤 Running face recognition...")
-        name, matched_teacher = recognize_teacher_face(frame)
-        print(f"👤 Face recognition result - name: {name}, matched_teacher: {bool(matched_teacher)}")
+        # Teacher login with liveness check first
+        print("👤 Running teacher login with liveness check...")
+        name, matched_teacher, liveness_result = recognize_teacher_with_liveness(frame, check_liveness=True)
+        print(f"👤 Teacher recognition result - name: {name}, matched_teacher: {bool(matched_teacher)}")
+
+        # Check for spoof detection
+        if name == 'spoof_detected':
+            is_live, confidence, message = liveness_result
+            print(f"❌ Teacher login - spoof detected")
+            return jsonify({
+                "success": False,
+                "verified": False,
+                "message": f"{message}",
+                "liveness_check": {
+                    "is_live": bool(is_live),
+                    "confidence": float(confidence),
+                    "message": str(message)
+                }
+            }), 401
 
         if name in ['unknown_teacher', 'no_persons_found']:
             print(f"❌ Face not recognized - returning 401")
@@ -757,68 +851,29 @@ def login_teacher():
             }), 403
 
         print(f"✅ Login successful for {teacherName}")
-        return jsonify({
+        response_data = {
             "success": True,
             "verified": True,
             "teacherId": str(matched_teacher['_id']), 
             "teacherName": matched_teacher['teacherName'],
             "message": f"Тавтай морил, {matched_teacher['teacherName']}!"
-        })
+        }
+
+        # Add liveness check results
+        if liveness_result:
+            is_live, confidence, message = liveness_result
+            response_data["liveness_check"] = {
+                "is_live": bool(is_live),
+                "confidence": float(confidence),
+                "message": str(message)
+            }
+
+        return jsonify(response_data)
 
     except Exception as e:
         print(f"❌ Exception in teacher login: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "message": "Internal Server Error"}), 500
-
-
-def recognize_teacher_face(frame):
-    name = "unknown_teacher"
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    face_encodings = face_recognition.face_encodings(rgb_frame)
-    
-    print(f"🔍 Face encodings found: {len(face_encodings)}")
-    
-    if not face_encodings:
-        print("❌ No face encodings found")
-        return "no_persons_found", None
-
-    encoding = face_encodings[0]
-    best_match_teacher = None
-    best_match_distance = 0.3
-
-    if teachers_collection is not None:
-        try:
-            teachers = list(teachers_collection.find())
-            print(f"🔍 Found {len(teachers)} teachers in database")
-        except Exception as e:
-            print(f"❌ Database error during teacher fetch: {e}")
-            teachers = []
-    else:
-        print("❌ Teachers collection is None")
-        teachers = []
-
-    for i, teacher in enumerate(teachers):
-        try:
-            if 'embedding' not in teacher:
-                print(f"⚠️ Teacher {i} has no embedding")
-                continue
-                
-            stored_encoding = np.array(teacher['embedding'])
-            distance = face_recognition.face_distance([stored_encoding], encoding)[0]
-            print(f"🔍 Teacher {teacher.get('teacherName', 'unknown')} - Distance: {distance:.4f}")
-
-            if distance < best_match_distance:
-                best_match_distance = distance
-                best_match_teacher = teacher
-                name = teacher.get('teacherName', 'unknown_teacher')
-                print(f"✅ New best match: {name} with distance {distance:.4f}")
-                
-        except Exception as e:
-            print(f"❌ Error processing teacher record {i}: {e}")
-            continue
-
-    print(f"🔍 Final result - name: {name}, distance: {best_match_distance:.4f}")
-    return name, best_match_teacher
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=port, debug=False)
