@@ -25,6 +25,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [src, setSrc] = useState("");
+  const [submissionSuccess, setSubmissionSuccess] = useState<boolean | null>(
+    null
+  );
   const webcamRef = useRef<Webcam>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -75,14 +78,13 @@ export default function LoginPage() {
         localStorage.setItem("teacherName", teacherName);
         localStorage.setItem("teacherImage", screenshot);
         localStorage.setItem("teacherId", data.teacherId);
-
-        router.push("/teacher");
-      } else if (data.message === "Unknown face or no face found") {
-        toast.error("Бүртгэлгүй царай эсвэл царай олдсонгүй");
-      } else if (data.message === "Face does not match provided teacher name") {
-        toast.error("Царай багшийн нэртэй тохирохгүй байна");
+        setSubmissionSuccess(true);
+        setTimeout(() => {
+          router.push("/teacher");
+        }, 1000);
       } else {
         toast.error(data.message || "Нэвтрэхэд алдаа гарлаа");
+        setSubmissionSuccess(false);
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -149,7 +151,13 @@ export default function LoginPage() {
                         ref={webcamRef}
                         screenshotFormat="image/jpeg"
                         videoConstraints={{ facingMode: "user" }}
-                        className="w-full h-full rounded-full object-cover border-2 border-gray-300 -scale-x-100"
+                        className={`w-full h-full rounded-full object-cover border-2 -scale-x-100  ${
+                          submissionSuccess === false && "border-red-500"
+                        } ${submissionSuccess === true && "border-green-400"} 
+                                              ${
+                                                submissionSuccess === null &&
+                                                "border-gray-400"
+                                              }`}
                       />
 
                       {/* SVG overlay */}
