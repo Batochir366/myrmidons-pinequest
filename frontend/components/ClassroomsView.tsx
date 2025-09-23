@@ -64,6 +64,7 @@ export const ClassroomsView = () => {
     null
   );
   const [selectedJoinCode, setSelectedJoinCode] = useState<string | undefined>(undefined);
+  const [selectedClassroomId, setSelectedClassroomId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [teacherId, setTeacherId] = useState("");
   useEffect(() => {
@@ -98,8 +99,8 @@ export const ClassroomsView = () => {
       });
 
       toast.success("Анги амжилттай үүсгэлээ!");
-      fetchClassrooms(); // update list
-      setOpen(false); // close dialog
+      fetchClassrooms();
+      setOpen(false);
       form.reset();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "❌ Алдаа гарлаа");
@@ -142,6 +143,7 @@ export const ClassroomsView = () => {
     },
   });
 
+  console.log("selectedJoinCode", selectedJoinCode);
   // ---------- Render ----------
   return (
     <div className="space-y-6 w-full">
@@ -289,6 +291,7 @@ export const ClassroomsView = () => {
                       setSelectedClassroom(classroom.ClassroomStudents);
                       setShowClassroom(true);
                       setSelectedJoinCode(classroom.joinCode);
+                      setSelectedClassroomId(classroom._id);
                     }}
                   >
                     {classroom.ClassroomStudents.length === 0
@@ -301,7 +304,7 @@ export const ClassroomsView = () => {
           ))}
 
         {/* ClassRoomDetail */}
-        {showClassroom && <ClassRoomDetail classroom={selectedClassroom} joinCode={selectedJoinCode} />}
+        {showClassroom && <ClassRoomDetail classroom={selectedClassroom} joinCode={selectedJoinCode} classroomId={selectedClassroomId} />}
       </div>
 
       {/* Empty State */}
