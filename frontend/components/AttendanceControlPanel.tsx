@@ -105,9 +105,9 @@ export default function AttendanceControlPanel({
                 <SelectContent>
                   {classrooms.map((c) => (
                     <SelectItem key={c._id} value={c._id}>
-                      <div className="flex justify-between w-[320px] sm:w-full">
-                        <span>{c.lectureName}</span>
-                        <span className="text-muted-foreground">
+                      <div className="flex justify-between items-center w-[320px] sm:w-full gap-x-2">
+                        <span className="font-medium">{c.lectureName}</span>
+                        <span className="text-muted-foreground text-sm">
                           {c.lectureDate}
                         </span>
                       </div>
