@@ -3,6 +3,7 @@
     "jwt-encode": "^1.0.1"
   },
   "devDependencies": {
+    "@railway/cli": "^4.8.0",
     "@types/jwt-encode": "^1.0.3"
   }
 }
