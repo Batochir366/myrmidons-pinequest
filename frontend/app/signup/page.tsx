@@ -2,8 +2,7 @@
 
 import type React from "react";
 
-import { useState, useRef } from "react";
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, GraduationCap, User, Loader2 } from "lucide-react";
+import { GraduationCap, User, Loader2, Camera, Info } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
 import Webcam from "react-webcam";
 import { axiosInstance, PYTHON_BACKEND_URL } from "@/lib/utils";
@@ -23,7 +22,7 @@ import { axiosInstance, PYTHON_BACKEND_URL } from "@/lib/utils";
 export default function SignupPage() {
   const router = useRouter();
   const [userType, setUserType] = useState<"teacher" | "student" | null>(null);
-  const [step, setStep] = useState<"details" | "face">("details");
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [teacherData, setTeacherData] = useState({
     teacherName: "",
   });
@@ -51,7 +50,7 @@ export default function SignupPage() {
     null
   );
   const [isLoading, setIsLoading] = useState(false);
-
+  const [src, setSrc] = useState("");
   const handleTeacherSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -64,7 +63,7 @@ export default function SignupPage() {
 
     if (errors.teacherName) return;
 
-    setStep("face");
+    setStep(3);
   };
 
   const handleStudentDetailsSubmit = (e: React.FormEvent) => {
@@ -90,13 +89,14 @@ export default function SignupPage() {
     if (errors.studentName || errors.studentId || errors.joinCode) return;
 
     console.log("Student details:", studentData);
-    setStep("face");
+    setStep(3);
   };
 
   const capture = () => {
     if (webcamRef.current) {
       const screenshot = webcamRef.current.getScreenshot();
       if (screenshot) {
+        setSrc(screenshot);
         setImageBase64(screenshot);
         setSubmissionMessage("Царай амжилттай авагдлаа.");
       }
@@ -104,6 +104,7 @@ export default function SignupPage() {
   };
 
   const handleFaceCaptureComplete = async () => {
+    capture();
     if (!imageBase64) {
       setSubmissionSuccess(false);
       setSubmissionMessage("Зураг авна уу.");
@@ -224,20 +225,84 @@ export default function SignupPage() {
     }
   };
 
+  const steps = [
+    { id: 1, label: "Төрөл сонгох", icon: User },
+    { id: 2, label: "Мэдээлэл оруулах", icon: Info },
+    { id: 3, label: "Царай таниулах", icon: Camera },
+  ];
+  useEffect(() => {
+    if (step === 1) {
+      setUserType(null);
+    }
+  }, [step]);
+  console.log(userType);
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      <div className="bg-white">
+        <div className="max-w-2xl mx-auto pt-6">
+          <div className="flex items-center justify-between  relative">
+            {steps.map((stepItem, index) => {
+              const Icon = stepItem.icon;
+              const isActive = step === stepItem.id;
+              const isCompleted = step > stepItem.id;
+              const isLast = index === steps.length - 1;
 
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] py-12">
-        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
-          <div className="flex flex-col space-y-2 text-center">
-            <QrCode className="mx-auto h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Бүртгэл үүсгэх
-            </h1>
+              // Allow clicking only on current or previous steps
+              const isClickable = stepItem.id <= step;
+
+              return (
+                <div
+                  key={stepItem.id}
+                  onClick={() => {
+                    if (isClickable) {
+                      setStep(stepItem.id as 1 | 2 | 3);
+                    }
+                  }}
+                  className={`flex-1 flex flex-col items-center relative ${
+                    isClickable ? "cursor-pointer" : "cursor-not-allowed"
+                  }`}
+                >
+                  {/* Connector line */}
+                  {!isLast && (
+                    <div
+                      className={`absolute top-6 left-1/2 w-full h-0.5 -translate-y-1/2 ${
+                        isCompleted ? "bg-slate-700" : "bg-gray-200"
+                      }`}
+                    />
+                  )}
+
+                  {/* Circle icon */}
+                  <div
+                    className={`z-10 w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${
+                      isActive || isCompleted
+                        ? "bg-slate-700 text-white"
+                        : "bg-gray-200 text-gray-400"
+                    }`}
+                  >
+                    <Icon size={20} />
+                  </div>
+
+                  {/* Label */}
+                  <span
+                    className={`text-sm font-medium hidden md:flex ${
+                      isActive || isCompleted
+                        ? "text-slate-700"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {stepItem.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-
-          {!userType && (
+        </div>
+      </div>
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
+          {!userType && step == 1 && (
             <Card>
               <CardHeader className="space-y-4 text-center">
                 <CardTitle className="text-xl">
@@ -249,25 +314,31 @@ export default function SignupPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button
-                  onClick={() => setUserType("teacher")}
+                  onClick={() => {
+                    setUserType("teacher");
+                    setStep(2);
+                  }}
                   variant="outline"
-                  className="w-full h-16 flex items-center justify-center space-x-3"
+                  className="w-full h-16 flex items-center justify-center space-x-3 shadow-sm"
                   disabled={isLoading}
                 >
                   <div className="flex justify-center items-center gap-3">
-                    <GraduationCap className="h-6 w-6 ml-2" />
+                    <GraduationCap className="h-6 w-6 text-teal-500" />
                     <div className="font-medium">Багш</div>
                   </div>
                 </Button>
 
                 <Button
-                  onClick={() => setUserType("student")}
+                  onClick={() => {
+                    setUserType("student");
+                    setStep(2);
+                  }}
                   variant="outline"
-                  className="w-full h-16 flex items-center justify-center space-x-3"
+                  className="w-full h-16 flex items-center justify-center space-x-3 shadow-sm"
                   disabled={isLoading}
                 >
                   <div className="flex justify-center items-center gap-3">
-                    <User className="h-6 w-6 ml-2" />
+                    <User className="h-6 w-6 text-blue-500" />
                     <div className="font-medium">Оюутан</div>
                   </div>
                 </Button>
@@ -275,12 +346,12 @@ export default function SignupPage() {
             </Card>
           )}
 
-          {userType === "teacher" && step !== "face" && (
+          {userType === "teacher" && step === 2 && (
             <Card>
               <CardHeader className="space-y-1 text-center">
-                <CardTitle className="text-xl">Багш бүртгүүлнэ үү</CardTitle>
+                <CardTitle className="text-xl">Багш бүртгэл</CardTitle>
                 <CardDescription>
-                  Оюутнуудад зориулсан QR код үүсгэхийн тулд дараахыг үүсгээрэй
+                  Оюутнуудад зориулсан QR код үүсгэхийн тулд дараахыг бөглөөрэй
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -310,26 +381,19 @@ export default function SignupPage() {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button
+                    type="submit"
+                    className="w-full bg-slate-700"
+                    disabled={isLoading}
+                  >
                     Үргэлжлүүлэх
                   </Button>
                 </form>
-
-                <div className="mt-4 text-center text-sm">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setUserType(null)}
-                    className="text-muted-foreground hover:text-foreground"
-                    disabled={isLoading}
-                  >
-                    ← Бүртгэлийн төрөл рүү буцах
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           )}
 
-          {userType === "student" && step === "details" && (
+          {userType === "student" && step == 2 && (
             <Card>
               <CardHeader className="space-y-1">
                 <CardTitle className="text-xl">Оюутны бүртгэл</CardTitle>
@@ -423,127 +487,80 @@ export default function SignupPage() {
                     Дараагийнх: Царай бүртгүүлэх
                   </Button>
                 </form>
-
-                <div className="mt-4 text-center text-sm">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setUserType(null)}
-                    className="text-muted-foreground hover:text-foreground"
-                    disabled={isLoading}
-                  >
-                    ← Бүртгэлийн төрөл рүү буцах
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           )}
 
-          {step === "face" && (
+          {step === 3 && (
             <Card>
               <CardHeader className="space-y-1 text-center">
                 <CardTitle className="text-xl">Царай бүртгүүлэх</CardTitle>
-                <CardDescription>
-                  2-р алхам: Цараагаа камер дээр тавиад зураг авна уу
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex flex-col items-center space-y-4">
-                  <Webcam
-                    audio={false}
-                    ref={webcamRef}
-                    screenshotFormat="image/jpeg"
-                    videoConstraints={{ facingMode: "user" }}
-                    style={{
-                      width: 240,
-                      height: 240,
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                      border: "2px solid #ccc",
-                      margin: "auto",
-                    }}
-                  />
+                <div className="flex flex-col items-center  space-y-4 overflow-hidden rounded-full py-2">
+                  {src !== "" && isLoading ? (
+                    <div className="relative w-60 h-60 flex items-center justify-center rounded-full">
+                      {/* Captured face */}
+                      <img
+                        className="rounded-full w-55 h-55 object-cover blur-sm"
+                        src={src}
+                        alt="Captured"
+                      />
 
-                  <Button
-                    className="mt-4"
-                    onClick={capture}
-                    variant="secondary"
-                    disabled={isLoading}
-                  >
-                    Царайн зураг авах
-                  </Button>
+                      {/* Spinner overlay */}
+                      <div className="absolute w-60 h-60 border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin rounded-full"></div>
+                    </div>
+                  ) : (
+                    <div className="relative w-60 h-60">
+                      <Webcam
+                        screenshotQuality={1}
+                        audio={false}
+                        ref={webcamRef}
+                        screenshotFormat="image/jpeg"
+                        videoConstraints={{ facingMode: "user" }}
+                        className="w-full h-full rounded-full object-cover border-2 border-gray-300 -scale-x-100"
+                      />
 
-                  {submissionMessage && (
-                    <p
-                      className={`text-sm ${
-                        submissionSuccess === false
-                          ? "text-red-500"
-                          : submissionSuccess === true
-                          ? "text-green-600"
-                          : "text-gray-800"
-                      }`}
-                    >
-                      {submissionMessage}
-                    </p>
+                      {/* SVG overlay */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 256 256"
+                        className="absolute inset-0 w-full h-full pointer-events-none mt-2"
+                      >
+                        <path
+                          style={{ stroke: "white" }}
+                          fill="none"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeDasharray="4 5"
+                          transform="scale(1.2) translate(-25 -0.1)" // 🔹 makes it bigger & recenters
+                          d="M72.2,95.9c0,5.5,4.1,9.9,9.1,9.9c0,0,0.1,0,0.2,0c1.9,26.2,22,52.4,46.5,52.4c24.5,0,44.6-26.2,46.5-52.4
+                c0,0,0.1,0,0.2,0c5,0,9.1-4.5,9.1-9.9c0-4.1-2.2-7.5-5.4-9.1c1.9-5.9,2.8-12.2,2.8-18.8C181.2,36,157.4,10,128,10
+                c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
+                        />
+                      </svg>
+                    </div>
                   )}
-
-                  <Button
-                    onClick={handleFaceCaptureComplete}
-                    className="w-full"
-                    disabled={!imageBase64 || isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Бүртгэж байна...
-                      </>
-                    ) : (
-                      "Бүртгэлийг дуусгах"
-                    )}
-                  </Button>
                 </div>
-
-                <div className="text-center text-sm mt-4">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setStep("details")}
-                    className="text-muted-foreground hover:text-foreground"
-                    disabled={isLoading}
-                  >
-                    ← Мэдээлэл рүү буцах
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => handleFaceCaptureComplete()}
+                  className="w-full mt-4 bg-slate-700"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Бүртгэж байна...
+                    </>
+                  ) : (
+                    "Бүртгэлийг дуусгах"
+                  )}
+                </Button>
+                {submissionMessage}
               </CardContent>
             </Card>
           )}
-
-          {userType === "teacher" && (
-            <>
-              <div className="mt-4 text-center text-sm">
-                Бүртгэлтэй юу?{" "}
-                <Link href="/login" className="text-primary hover:underline">
-                  Нэвтрэх
-                </Link>
-              </div>
-            </>
-          )}
-
-          <p className="px-8 text-center text-sm text-muted-foreground">
-            Бүртгэл үүсгэх товчлуурыг дарснаар та манай{" "}
-            <Link
-              href="#"
-              className="hover:text-primary underline underline-offset-4"
-            >
-              Үйлчилгээний нөхцөл
-            </Link>{" "}
-            болон{" "}
-            <Link
-              href="#"
-              className="hover:text-primary underline underline-offset-4"
-            >
-              Нууцлалын бодлого
-            </Link>
-            -той зөвшөөрч байна.
-          </p>
         </div>
       </div>
     </div>

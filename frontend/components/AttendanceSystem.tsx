@@ -13,6 +13,7 @@ import { getLocation } from "@/utils/getLocation";
 import { jwtDecode } from "jwt-decode";
 import { axiosInstance, PYTHON_BACKEND_URL } from "@/lib/utils";
 import Webcam from "react-webcam";
+import { Toaster } from "sonner";
 
 type Student = {
   studentId: string;
@@ -22,7 +23,7 @@ type Student = {
 
 const AttendanceSystem: React.FC = () => {
   const [studentId, setStudentId] = useState("");
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(2);
   const [message, setMessage] = useState("");
   const [recognitionProgress, setRecognitionProgress] = useState(0);
   const [isRecognizing, setIsRecognizing] = useState(false);
@@ -42,49 +43,49 @@ const AttendanceSystem: React.FC = () => {
   const [src, setSrc] = useState<string>("");
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  // useEffect(() => {
+  //   if (typeof window === "undefined") return;
 
-    const handleParams = () => {
-      const sp = new URLSearchParams(window.location.search);
-      const tokenValue = sp.get("token");
+  //   const handleParams = () => {
+  //     const sp = new URLSearchParams(window.location.search);
+  //     const tokenValue = sp.get("token");
 
-      if (!tokenValue) {
-        setIsInvalid(true);
-        return;
-      }
+  //     if (!tokenValue) {
+  //       setIsInvalid(true);
+  //       return;
+  //     }
 
-      try {
-        const decoded: {
-          attendanceId: string;
-          classroomId: string;
-          exp: number;
-        } = jwtDecode(tokenValue);
+  //     try {
+  //       const decoded: {
+  //         attendanceId: string;
+  //         classroomId: string;
+  //         exp: number;
+  //       } = jwtDecode(tokenValue);
 
-        const nowInSeconds = Math.floor(Date.now() / 1000);
+  //       const nowInSeconds = Math.floor(Date.now() / 1000);
 
-        if (decoded.exp < nowInSeconds) {
-          setIsInvalid(true);
-          return;
-        }
+  //       if (decoded.exp < nowInSeconds) {
+  //         setIsInvalid(true);
+  //         return;
+  //       }
 
-        setToken(tokenValue);
-        setClassroomId(decoded.classroomId);
-        setAttendanceId(decoded.attendanceId);
-        setExpiresAt(decoded.exp * 1000);
-        setIsInvalid(false);
-      } catch (err) {
-        console.error("Invalid token:", err);
-        setIsInvalid(true);
-      }
+  //       setToken(tokenValue);
+  //       setClassroomId(decoded.classroomId);
+  //       setAttendanceId(decoded.attendanceId);
+  //       setExpiresAt(decoded.exp * 1000);
+  //       setIsInvalid(false);
+  //     } catch (err) {
+  //       console.error("Invalid token:", err);
+  //       setIsInvalid(true);
+  //     }
 
-      setParamsLoaded(true);
-    };
+  //     setParamsLoaded(true);
+  //   };
 
-    handleParams();
-    window.addEventListener("popstate", handleParams);
-    return () => window.removeEventListener("popstate", handleParams);
-  }, []);
+  //   handleParams();
+  //   window.addEventListener("popstate", handleParams);
+  //   return () => window.removeEventListener("popstate", handleParams);
+  // }, []);
 
   console.log(classroomId, attendanceId);
 
@@ -316,33 +317,34 @@ const AttendanceSystem: React.FC = () => {
     { id: 3, label: "Амжилттай", icon: CheckCircle },
   ];
 
-  if (isInvalid) {
-    return <QRError />;
-  }
+  // if (isInvalid) {
+  //   return <QRError />;
+  // }
 
-  if (!paramsLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Түр хүлээнэ үү...</p>
-      </div>
-    );
-  }
+  // if (!paramsLoaded) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center">
+  //       <p className="text-gray-600">Түр хүлээнэ үү...</p>
+  //     </div>
+  //   );
+  // }
 
-  if (!attendanceId) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center">
-          <p className="text-gray-600">Attendance ID олдсонгүй.</p>
-        </div>
-      </div>
-    );
-  }
+  // if (!attendanceId) {
+  //   return (
+  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+  //       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center">
+  //         <p className="text-gray-600">Attendance ID олдсонгүй.</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Toaster position="top-center" />
       {/* Progress Indicator */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-2xl mx-auto px-6 py-6">
+      <div>
+        <div className="max-w-2xl mx-auto pt-4 ">
           <div className="flex items-center justify-between mb-4 relative">
             {steps.map((stepItem, index) => {
               const Icon = stepItem.icon;
@@ -403,7 +405,7 @@ const AttendanceSystem: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div className="flex-1 flex items-center justify-centers px-4">
         {/* Step 1: Student ID */}
         {step === 1 && (
           <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
@@ -449,7 +451,9 @@ const AttendanceSystem: React.FC = () => {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 Царай таних
               </h2>
-              <p className="text-gray-600">Камерт шууд харна уу</p>
+              <p className="text-gray-600">
+                Камерт луу хараад <b>царай таних</b> товч дарна уу
+              </p>
             </div>
 
             <div className="flex flex-col items-center space-y-4 overflow-hidden rounded-full py-2">
@@ -472,7 +476,7 @@ const AttendanceSystem: React.FC = () => {
                     screenshotFormat="image/jpeg"
                     screenshotQuality={1}
                     videoConstraints={{ facingMode: "user" }}
-                    className="w-full h-full rounded-full object-cover border-2 border-gray-300 -scale-x-100"
+                    className="w-full h-full rounded-full object-cover border-2 border-red-600 -scale-x-100"
                   />
                   {/* SVG overlay */}
                   <svg
@@ -481,7 +485,7 @@ const AttendanceSystem: React.FC = () => {
                     className="absolute inset-0 w-full h-full pointer-events-none mt-2"
                   >
                     <path
-                      style={{ stroke: "white" }}
+                      style={{ stroke: "red" }}
                       fill="none"
                       strokeWidth="2"
                       strokeLinecap="round"
@@ -548,7 +552,7 @@ c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
                       }
                     }
                   }}
-                  className="w-full bg-slate-700 text-white py-3 px-4 rounded-lg font-medium hover:bg-slate-800 transition-colors"
+                  className="w-full bg-slate-700 text-white py-2 px-4 rounded-lg font-medium hover:bg-slate-800 transition-colors mt-2"
                 >
                   Царай таних
                 </button>
