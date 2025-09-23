@@ -48,7 +48,7 @@ interface AttendanceControlPanelProps {
   start: () => void;
   stop: () => void;
   qrSec: number;
-  setQrSec: React.Dispatch<React.SetStateAction<number>>;
+  onQrSecChange: (newQrSec: number) => void;
 }
 
 // -----------------------------
@@ -66,22 +66,22 @@ export default function AttendanceControlPanel({
   start,
   stop,
   qrSec,
-  setQrSec,
+  onQrSecChange,
 }: AttendanceControlPanelProps) {
-  const [showQr, setShowQr] = useState(false);
   const [inputValue, setInputValue] = useState(qrSec.toString());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
-
   const handleSave = () => {
     const sec = parseInt(inputValue, 10);
-    if (!isNaN(sec) && sec > 0) {
-      setQrSec(sec); // props-аас ирж байгаа setter ашиглаж байна
+    if (!isNaN(sec) && sec >= 3) {
+      onQrSecChange(sec);
+    } else {
+      setInputValue("3");
+      onQrSecChange(3);
     }
   };
-
   return (
     <div className="flex flex-col gap-6 w-full lg:flex-row">
       <Card className="flex-1 rounded-2xl bg-white border shadow-none">
@@ -154,14 +154,15 @@ export default function AttendanceControlPanel({
 
                   <div className="grid gap-3">
                     <Label htmlFor="qr-sec">
-                      Та QR шинэчлэгдэх секундээ бичнэ үү
+                      Та QR шинэчлэгдэх хугацааг бичнэ үү (хамгийн багадаа 3
+                      секунд)
                     </Label>
                     <Input
                       id="qr-sec"
                       type="number"
                       value={inputValue}
                       onChange={handleChange}
-                      min={1}
+                      min={3}
                     />
                   </div>
 
