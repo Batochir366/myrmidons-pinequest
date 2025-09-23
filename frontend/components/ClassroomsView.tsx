@@ -67,13 +67,20 @@ export const ClassroomsView = () => {
   const [selectedClassroomId, setSelectedClassroomId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [teacherId, setTeacherId] = useState("");
+
   useEffect(() => {
     const storedId = localStorage.getItem("teacherId");
     if (storedId) {
       setTeacherId(storedId);
     }
-    fetchClassrooms();
+  }, []);
+
+  useEffect(() => {
+    if (teacherId) {
+      fetchClassrooms();
+    }
   }, [teacherId]);
+
   // ---------- Fetch classrooms ----------
   const fetchClassrooms = async () => {
     if (!teacherId) return;
@@ -84,22 +91,24 @@ export const ClassroomsView = () => {
       setData(res.data.classrooms);
     } catch (error) {
       console.error("Error fetching classrooms:", error);
+      toast.error("Ангиудыг татахад алдаа гарлаа");
     }
   };
+
   // ---------- Create classroom ----------
   const createClassroom = async (values: ClassroomForm) => {
     const formattedStartTime = values.startTime + " - " + values.endTime;
 
     try {
       setLoading(true);
-      await axiosInstance.post("teacher/create-classroom", {
+      await axiosInstance.post("/teacher/create-classroom", {
         lectureName: values.name,
         lectureDate: formattedStartTime,
         teacherId: teacherId,
       });
 
       toast.success("Анги амжилттай үүсгэлээ!");
-      fetchClassrooms();
+      await fetchClassrooms(); // Refresh the classroom list
       setOpen(false);
       form.reset();
     } catch (error: any) {
@@ -111,6 +120,20 @@ export const ClassroomsView = () => {
 
   const onSubmit = (values: ClassroomForm) => {
     createClassroom(values);
+  };
+
+  // ---------- Handle classroom deletion ----------
+  const handleClassroomDeleted = async () => {
+    // Refresh the classroom list
+    await fetchClassrooms();
+
+    // Go back to the classroom list view
+    setShowClassroom(false);
+    setSelectedClassroom(null);
+    setSelectedJoinCode(undefined);
+    setSelectedClassroomId(undefined);
+
+    toast.success("Анги амжилттай устгагдлаа");
   };
 
   // ---------- Copy link ----------
@@ -133,6 +156,14 @@ export const ClassroomsView = () => {
     }
   };
 
+  // ---------- Back button handler ----------
+  const handleBack = () => {
+    setShowClassroom(false);
+    setSelectedClassroom(null);
+    setSelectedJoinCode(undefined);
+    setSelectedClassroomId(undefined);
+  };
+
   // ---------- Form hook ----------
   const form = useForm<ClassroomForm>({
     resolver: zodResolver(classroomSchema),
@@ -144,10 +175,12 @@ export const ClassroomsView = () => {
   });
 
   console.log("selectedJoinCode", selectedJoinCode);
+
   // ---------- Render ----------
   return (
     <div className="space-y-6 w-full">
       <Toaster position="bottom-right" />
+
       {/* Create Classroom Button */}
       {showClassroom === false && (
         <div className="flex justify-end">
@@ -237,7 +270,7 @@ export const ClassroomsView = () => {
       {/* Back Button */}
       {showClassroom && (
         <Button
-          onClick={() => setShowClassroom(false)}
+          onClick={handleBack}
           className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 shadow-sm"
         >
           <Undo className="w-4 h-4" /> Буцах
@@ -304,11 +337,18 @@ export const ClassroomsView = () => {
           ))}
 
         {/* ClassRoomDetail */}
-        {showClassroom && <ClassRoomDetail classroom={selectedClassroom} joinCode={selectedJoinCode} classroomId={selectedClassroomId} />}
+        {showClassroom && (
+          <ClassRoomDetail
+            classroom={selectedClassroom}
+            joinCode={selectedJoinCode}
+            classroomId={selectedClassroomId}
+            onDelete={handleClassroomDeleted}
+          />
+        )}
       </div>
 
       {/* Empty State */}
-      {data.length === 0 && (
+      {data.length === 0 && !showClassroom && (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
