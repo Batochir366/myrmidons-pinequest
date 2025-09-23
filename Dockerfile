@@ -25,10 +25,10 @@ RUN cmake --version
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install Python dependencies with optimizations
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install PyTorch CPU version first
+# Install PyTorch CPU version first (optimized for Railway)
 RUN pip install --no-cache-dir torch==2.0.1+cpu torchvision==0.15.2+cpu --index-url https://download.pytorch.org/whl/cpu
 
 # Install dlib and face-recognition with build optimizations
@@ -52,8 +52,14 @@ RUN mkdir -p db
 RUN mkdir -p Silent_Face_Anti_Spoofing/resources/anti_spoof_models
 RUN mkdir -p Silent_Face_Anti_Spoofing/resources/detection_model
 
+# Set environment variables for optimization
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+
 # Expose the port
 EXPOSE 8080
 
-# Use gunicorn directly with fixed port 8080
-CMD gunicorn app:app --workers=1 --timeout=120 --bind 0.0.0.0:8080
+# Use gunicorn with optimized settings for Railway
+CMD gunicorn --bind 0.0.0.0:8080 --workers 1 --timeout 30 --preload --max-requests 1000 --max-requests-jitter 100 app:app

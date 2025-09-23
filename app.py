@@ -67,17 +67,40 @@ import face_recognition
 FACE_RECOGNITION_AVAILABLE = True
 print("✅ Face recognition libraries loaded successfully")
 
-# Import anti-spoof detection
+# Import optimized anti-spoof detection
 try:
-    from anti_spoof_detector import check_face_liveness, is_anti_spoof_available
+    from optimized_anti_spoof import check_face_liveness_fast, is_anti_spoof_available
     ANTI_SPOOF_AVAILABLE = is_anti_spoof_available()
     if ANTI_SPOOF_AVAILABLE:
-        print("✅ Anti-spoof detection loaded successfully")
+        print("✅ Optimized anti-spoof detection loaded successfully")
     else:
         print("⚠️ Anti-spoof detection not available")
 except ImportError as e:
     print(f"⚠️ Anti-spoof detection not available: {e}")
     ANTI_SPOOF_AVAILABLE = False
+
+# Import performance optimizations
+try:
+    from performance_optimizations import (
+        optimize_image_for_processing, 
+        preprocess_image_fast, 
+        validate_image_quality,
+        performance_monitor,
+        time_request
+    )
+    print("✅ Performance optimizations loaded successfully")
+except ImportError as e:
+    print(f"⚠️ Performance optimizations not available: {e}")
+    # Fallback functions
+    def optimize_image_for_processing(image, max_size=640):
+        return image
+    def preprocess_image_fast(image):
+        return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    def validate_image_quality(image):
+        return True, "OK"
+    def time_request(func):
+        return func
+    performance_monitor = None
 
 def verify_liveness_first(frame):
     """
@@ -86,7 +109,7 @@ def verify_liveness_first(frame):
     """
     if ANTI_SPOOF_AVAILABLE:
         try:
-            is_live, confidence, message = check_face_liveness(frame)
+            is_live, confidence, message = check_face_liveness_fast(frame, use_full_detection=False)
             print(f"Liveness check: is_live={is_live}, confidence={confidence:.2f}, message={message}")
             return is_live, confidence, message
         except Exception as e:
@@ -286,15 +309,52 @@ def index():
 
 @app.route('/health')
 def health():
-    return jsonify({
+    health_data = {
         "status": "healthy",
         "face_recognition": FACE_RECOGNITION_AVAILABLE,
         "anti_spoof_detection": ANTI_SPOOF_AVAILABLE,
         "database": "connected" if mongo_client else "disconnected",
         "timestamp": datetime.datetime.now().isoformat()
+    }
+    
+    # Add performance stats if available
+    if performance_monitor:
+        health_data["performance"] = performance_monitor.get_stats()
+    
+    return jsonify(health_data)
+
+@app.route('/performance')
+def performance_stats():
+    """Performance monitoring endpoint"""
+    if not performance_monitor:
+        return jsonify({"error": "Performance monitoring not available"}), 503
+    
+    stats = performance_monitor.get_stats()
+    return jsonify({
+        "performance_stats": stats,
+        "recommendations": get_performance_recommendations(stats)
     })
 
+def get_performance_recommendations(stats):
+    """Get performance recommendations based on stats"""
+    recommendations = []
+    
+    if stats["average"] > 10.0:
+        recommendations.append("Average response time is high (>10s). Consider optimizing image processing.")
+    
+    if stats["max"] > 30.0:
+        recommendations.append("Maximum response time is very high (>30s). Check for blocking operations.")
+    
+    if stats["count"] > 50 and stats["average"] > 5.0:
+        recommendations.append("High load detected. Consider scaling or caching.")
+    
+    if not recommendations:
+        recommendations.append("Performance looks good!")
+    
+    return recommendations
+
 @app.route('/student/attend', methods=['POST', 'OPTIONS'])
+@time_request
 def attend_class():
     if request.method == 'OPTIONS':
         return '', 204
@@ -357,6 +417,14 @@ def attend_class():
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
+        
+        # Optimize image for faster processing
+        frame = optimize_image_for_processing(frame, max_size=640)
+        
+        # Quick image quality validation
+        is_valid, validation_message = validate_image_quality(frame)
+        if not is_valid:
+            return jsonify({"success": False, "message": f"Image quality issue: {validation_message}"}), 400
 
         # Face Recognition with Liveness Detection (liveness checked first)
         name, matched_user, liveness_result = recognize_face_with_liveness(frame, filter_student_ids=[studentId], check_liveness=True)
