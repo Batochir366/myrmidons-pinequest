@@ -28,9 +28,10 @@ interface AttendanceRecord {
 interface ViewReportProps {
   lecture: AttendanceRecord
   onBack: () => void
+  calendarHeight?: number // Add calendarHeight prop
 }
 
-export function ViewReport({ lecture, onBack }: ViewReportProps) {
+export function ViewReport({ lecture, onBack, calendarHeight }: ViewReportProps) {
   const handlePrintReport = (lecture: AttendanceRecord) => {
     const printWindow = window.open("", "_blank")
     if (!printWindow) return
@@ -110,8 +111,11 @@ export function ViewReport({ lecture, onBack }: ViewReportProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card
+      className="flex flex-col"
+      style={{ height: calendarHeight ? `${calendarHeight}px` : "auto" }}
+    >
+      <CardHeader className="flex-shrink-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -127,7 +131,7 @@ export function ViewReport({ lecture, onBack }: ViewReportProps) {
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-y-auto">
         <div className="space-y-6">
           {/* Lecture Information Header */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -204,14 +208,6 @@ export function ViewReport({ lecture, onBack }: ViewReportProps) {
                           </td>
                           <td className="p-4 text-muted-foreground">{student.code}</td>
                           <td className="p-4 text-muted-foreground">{student.timestamp || "-"}</td>
-                          {/* <td
-                            className={`p-4 font-medium ${student.timestamp
-                                ? "text-green-600" // ирсэн
-                                : "text-red-600" // ирээгүй
-                              }`}
-                          >
-                            {student.timestamp || "Ирээгүй"}
-                          </td> */}
                         </tr>
                       ))}
                   </tbody>

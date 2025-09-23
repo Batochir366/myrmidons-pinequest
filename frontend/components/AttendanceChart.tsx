@@ -41,6 +41,7 @@ interface AttendanceRecord {
 interface AttendanceChartProps {
     data: { date: string; attendanceRate: number; presentStudents: number; totalStudents: number }[]
     attendanceData: AttendanceRecord[]
+    selectedLectureName?: string | null
 }
 
 const chartConfig = {
@@ -50,7 +51,7 @@ const chartConfig = {
     },
 } satisfies ChartConfig
 
-export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) {
+export function AttendanceChart({ data, attendanceData, selectedLectureName }: AttendanceChartProps) {
     const [selectedLecture, setSelectedLecture] = React.useState<string | null>(null)
 
     const uniqueLectures = React.useMemo(() => {
@@ -65,10 +66,12 @@ export function AttendanceChart({ data, attendanceData }: AttendanceChartProps) 
 
     // attendanceData орж ирсний дараа эхний хичээлийг сонгоно
     React.useEffect(() => {
-        if (uniqueLectures.length > 0 && !selectedLecture) {
+        if (selectedLectureName) {
+            setSelectedLecture(selectedLectureName)
+        } else if (uniqueLectures.length > 0 && !selectedLecture) {
             setSelectedLecture(uniqueLectures[0])
         }
-    }, [uniqueLectures, selectedLecture])
+    }, [selectedLectureName, uniqueLectures])
 
     const chartData = React.useMemo(() => {
         if (!selectedLecture) return []
