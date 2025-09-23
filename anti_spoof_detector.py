@@ -48,8 +48,20 @@ class AntiSpoofDetector:
     def _initialize(self):
         """Initialize the anti-spoof detection models."""
         try:
+            print(f"📁 Checking model directory: {self.model_dir}")
             if not os.path.exists(self.model_dir):
                 print(f"⚠️ Model directory {self.model_dir} not found")
+                return
+                
+            files = os.listdir(self.model_dir)
+            print(f"📄 Files in model directory: {files}")
+            
+            # Check for both .onnx and .pth files
+            model_files = [f for f in files if f.endswith(('.onnx', '.pth'))]
+            print(f"🔍 Model files found: {model_files}")
+            
+            if not model_files:
+                print("❌ No model files (.onnx or .pth) found!")
                 return
 
             self.model_test = AntiSpoofPredict(self.device_id)
@@ -86,25 +98,32 @@ class AntiSpoofDetector:
             Tuple[bool, float, str]: (is_real, confidence, message)
         """
         if not self.is_available():
-            return True, 0.5, "Anti-spoof detection not available"
+            print("⚠️ Anti-spoof detection not available, allowing access")
+            return True, 0.5, "Anti-spoof detection not available - access granted"
 
         try:
             prepared_image = self.prepare_image_for_detection(image)
 
             if not self.check_image_aspect_ratio(prepared_image):
-                return False, 0.0, "Image aspect ratio is not 3:4"
+                print("⚠️ Image aspect ratio not 3:4, allowing access")
+                return True, 0.6, "Image aspect ratio warning - access granted"
 
             # Get face bounding box
             image_bbox = self.model_test.get_bbox(prepared_image)
             if image_bbox is None:
+                print("⚠️ No face detected, denying access")
                 return False, 0.0, "No face detected"
 
-            # Load model files
+            # Load model files (both .onnx and .pth supported)
             model_files = [
-                f for f in os.listdir(self.model_dir) if f.endswith(".onnx")
+                f for f in os.listdir(self.model_dir) 
+                if f.endswith((".onnx", ".pth"))
             ]
             if not model_files:
-                return True, 0.5, "No model files found"
+                print(f"⚠️ No model files found in {self.model_dir}")
+                print("Available files:", os.listdir(self.model_dir) if os.path.exists(self.model_dir) else "Directory not found")
+                # In production, you might want to allow access when models are missing
+                return True, 0.5, "No model files found - access granted"
 
             prediction = None
 
@@ -124,9 +143,14 @@ class AntiSpoofDetector:
                         os.path.join(self.model_dir, model_name), param
                     )
                     prediction = result if prediction is None else prediction + result
+                    print(f"✅ Processed model {model_name} successfully")
                 except Exception as e:
-                    print(f"Error processing model {model_name}: {e}")
+                    print(f"❌ Error processing model {model_name}: {e}")
                     continue
+
+            if prediction is None:
+                print("⚠️ No successful model predictions, allowing access")
+                return True, 0.5, "Model prediction failed - access granted"
 
             label = np.argmax(prediction)
             confidence = prediction[0][label] / 2
@@ -137,12 +161,13 @@ class AntiSpoofDetector:
                 else "Бодит хүн биш байна, Хуурах гэж оролдох хэрэггүй шүү"
             )
 
-            print(f"Anti-spoof detection: {message}, Speed: {test_speed:.2f}s")
+            print(f"✅ Anti-spoof detection: {message}")
             return is_real, confidence, message
 
         except Exception as e:
-            print(f"Error in anti-spoof detection: {e}")
-            return True, 0.5, f"Detection error: {str(e)}"
+            print(f"❌ Error in anti-spoof detection: {e}")
+            # In case of errors, allow access (you can change this based on security requirements)
+            return True, 0.5, f"Detection error - access granted: {str(e)}"
 
     def is_available(self) -> bool:
         """Check if anti-spoof detection is available."""
