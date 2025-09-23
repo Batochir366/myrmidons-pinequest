@@ -16,7 +16,8 @@ const TINDER_FRONTEND_URL = "https://myrmidons-pinequest.vercel.app/";
 const LOCAL_BACKEND_URL = "http://localhost:5000/";
 const LOCAL_FRONTEND_URL = "http://localhost:3000/";
 
-export const PYTHON_BACKEND_URL = "http://127.0.0.1:8080/";
+export const PYTHON_BACKEND_URL =
+  "https://myrmidons-pinequest-production.up.railway.app/";
 
 export const axiosInstance = axios.create({
   baseURL: LOCAL_BACKEND_URL,
