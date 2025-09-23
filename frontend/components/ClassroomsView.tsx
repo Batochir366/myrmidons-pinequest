@@ -149,7 +149,7 @@ export const ClassroomsView = () => {
         <div className="flex justify-end">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-semibold rounded-md shadow hover:scale-105 transition-all duration-200">
+              <Button className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-md shadow hover:scale-105 transition-all duration-200">
                 Анги үүсгэх
                 <Plus className="w-4 h-4" />
               </Button>
@@ -218,9 +218,9 @@ export const ClassroomsView = () => {
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="w-full px-4 py-2 bg-gradient-to-r from-slate-700 to-slate-900 text-white font-semibold rounded-md shadow hover:scale-105 transition-all duration-200 disabled:opacity-60"
+                      className="w-full px-4 py-2 bg-slate-700 text-white font-semibold rounded-md shadow hover:scale-105 transition-all duration-200 disabled:opacity-60"
                     >
-                      {loading ? "⏳ Үүсгэж байна..." : "Үүсгэх"}
+                      {loading ? "Үүсгэж байна..." : "Үүсгэх"}
                     </Button>
                   </DialogFooter>
                 </form>

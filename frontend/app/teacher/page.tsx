@@ -218,7 +218,7 @@ export default function AttendanceDashboard() {
           </div>
           <Button
             onClick={logOut}
-            className="w-full justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-md hover:scale-105 hover:shadow-lg"
+            className="w-full justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 text-white shadow-md hover:scale-105 hover:shadow-lg"
           >
             Системээс гарах
             <LogOut className="w-5 h-5" />
@@ -306,7 +306,7 @@ export default function AttendanceDashboard() {
               </SidebarMenu>
               <Button
                 onClick={logOut}
-                className="w-full justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-md hover:scale-105 hover:shadow-lg"
+                className="w-full justify-center gap-3 px-4 py-3 rounded-xl bg-slate-700 text-white shadow-md hover:scale-105 hover:shadow-lg"
               >
                 Системээс гарах
                 <LogOut className="w-5 h-5" />
