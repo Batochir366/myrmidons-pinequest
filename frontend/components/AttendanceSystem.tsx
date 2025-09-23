@@ -23,9 +23,9 @@ type Student = {
 
 const AttendanceSystem: React.FC = () => {
   const [studentId, setStudentId] = useState("");
-  const [step, setStep] = useState<1 | 2 | 3>(2);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [message, setMessage] = useState("");
-  const [recognitionProgress, setRecognitionProgress] = useState(0);
+
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [isRecordingAttendance, setIsRecordingAttendance] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -43,49 +43,49 @@ const AttendanceSystem: React.FC = () => {
   const [src, setSrc] = useState<string>("");
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
 
-  // useEffect(() => {
-  //   if (typeof window === "undefined") return;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-  //   const handleParams = () => {
-  //     const sp = new URLSearchParams(window.location.search);
-  //     const tokenValue = sp.get("token");
+    const handleParams = () => {
+      const sp = new URLSearchParams(window.location.search);
+      const tokenValue = sp.get("token");
 
-  //     if (!tokenValue) {
-  //       setIsInvalid(true);
-  //       return;
-  //     }
+      if (!tokenValue) {
+        setIsInvalid(true);
+        return;
+      }
 
-  //     try {
-  //       const decoded: {
-  //         attendanceId: string;
-  //         classroomId: string;
-  //         exp: number;
-  //       } = jwtDecode(tokenValue);
+      try {
+        const decoded: {
+          attendanceId: string;
+          classroomId: string;
+          exp: number;
+        } = jwtDecode(tokenValue);
 
-  //       const nowInSeconds = Math.floor(Date.now() / 1000);
+        const nowInSeconds = Math.floor(Date.now() / 1000);
 
-  //       if (decoded.exp < nowInSeconds) {
-  //         setIsInvalid(true);
-  //         return;
-  //       }
+        if (decoded.exp < nowInSeconds) {
+          setIsInvalid(true);
+          return;
+        }
 
-  //       setToken(tokenValue);
-  //       setClassroomId(decoded.classroomId);
-  //       setAttendanceId(decoded.attendanceId);
-  //       setExpiresAt(decoded.exp * 1000);
-  //       setIsInvalid(false);
-  //     } catch (err) {
-  //       console.error("Invalid token:", err);
-  //       setIsInvalid(true);
-  //     }
+        setToken(tokenValue);
+        setClassroomId(decoded.classroomId);
+        setAttendanceId(decoded.attendanceId);
+        setExpiresAt(decoded.exp * 1000);
+        setIsInvalid(false);
+      } catch (err) {
+        console.error("Invalid token:", err);
+        setIsInvalid(true);
+      }
 
-  //     setParamsLoaded(true);
-  //   };
+      setParamsLoaded(true);
+    };
 
-  //   handleParams();
-  //   window.addEventListener("popstate", handleParams);
-  //   return () => window.removeEventListener("popstate", handleParams);
-  // }, []);
+    handleParams();
+    window.addEventListener("popstate", handleParams);
+    return () => window.removeEventListener("popstate", handleParams);
+  }, []);
 
   console.log(classroomId, attendanceId);
 
@@ -230,7 +230,7 @@ const AttendanceSystem: React.FC = () => {
             },
             setMessage,
             setIsRecognizing,
-            setRecognitionProgress,
+
             onFaceRecognitionSuccess
           );
           if (!verified) {
@@ -238,7 +238,7 @@ const AttendanceSystem: React.FC = () => {
               "❌ Face recognition failed - message should be displayed"
             );
             setIsRecognizing(false);
-            setRecognitionProgress(0);
+
             // Note: setMessage is already called inside captureAndVerify for error cases
           }
         }
@@ -256,7 +256,7 @@ const AttendanceSystem: React.FC = () => {
           console.log("ℹ️ Student already attended:", errorMessage);
           setMessage(errorMessage);
           setIsRecognizing(false);
-          setRecognitionProgress(0);
+
           return; // Stop here, don't proceed to face recognition
         }
 
@@ -273,7 +273,7 @@ const AttendanceSystem: React.FC = () => {
           );
           setMessage(errorMessage);
           setIsRecognizing(false);
-          setRecognitionProgress(0);
+
           return;
         }
 
@@ -290,7 +290,7 @@ const AttendanceSystem: React.FC = () => {
     } catch (error) {
       console.error("❌ Error in handleRecognitionComplete:", error);
       setIsRecognizing(false);
-      setRecognitionProgress(0);
+
       setMessage("Алдаа гарлаа. Дахин оролдоно уу.");
     } finally {
       // Always release processing lock
@@ -317,27 +317,27 @@ const AttendanceSystem: React.FC = () => {
     { id: 3, label: "Амжилттай", icon: CheckCircle },
   ];
 
-  // if (isInvalid) {
-  //   return <QRError />;
-  // }
+  if (isInvalid) {
+    return <QRError />;
+  }
 
-  // if (!paramsLoaded) {
-  //   return (
-  //     <div className="min-h-screen flex items-center justify-center">
-  //       <p className="text-gray-600">Түр хүлээнэ үү...</p>
-  //     </div>
-  //   );
-  // }
+  if (!paramsLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Түр хүлээнэ үү...</p>
+      </div>
+    );
+  }
 
-  // if (!attendanceId) {
-  //   return (
-  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-  //       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center">
-  //         <p className="text-gray-600">Attendance ID олдсонгүй.</p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (!attendanceId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md text-center">
+          <p className="text-gray-600">Attendance ID олдсонгүй.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -405,7 +405,7 @@ const AttendanceSystem: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-centers px-4">
+      <div className="flex-1 flex items-center justify-center px-4">
         {/* Step 1: Student ID */}
         {step === 1 && (
           <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
@@ -476,7 +476,7 @@ const AttendanceSystem: React.FC = () => {
                     screenshotFormat="image/jpeg"
                     screenshotQuality={1}
                     videoConstraints={{ facingMode: "user" }}
-                    className="w-full h-full rounded-full object-cover border-2 border-red-600 -scale-x-100"
+                    className="w-full h-full rounded-full object-cover border-2 border-gray-300 -scale-x-100"
                   />
                   {/* SVG overlay */}
                   <svg
@@ -485,7 +485,7 @@ const AttendanceSystem: React.FC = () => {
                     className="absolute inset-0 w-full h-full pointer-events-none mt-2"
                   >
                     <path
-                      style={{ stroke: "red" }}
+                      style={{ stroke: "white" }}
                       fill="none"
                       strokeWidth="2"
                       strokeLinecap="round"
@@ -501,38 +501,9 @@ c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
               )}
             </div>
 
-            {/* The rest: progress bar / message / buttons, replacing video‑based logic */}
-            {(isRecognizing || isRecordingAttendance) && (
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-700">
-                    {isRecordingAttendance ? "Ирц бүртгэж байна" : "Таних явц"}
-                  </span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {isRecordingAttendance ? "..." : `${recognitionProgress}%`}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      isRecordingAttendance
-                        ? "bg-blue-600 animate-pulse"
-                        : "bg-slate-700"
-                    }`}
-                    style={{
-                      width: isRecordingAttendance
-                        ? "100%"
-                        : `${recognitionProgress}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
             {!isRecognizing &&
               !isRecordingAttendance &&
               !isProcessing &&
-              recognitionProgress === 0 &&
               !message && (
                 <button
                   onClick={async () => {
@@ -555,28 +526,6 @@ c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
                   className="w-full bg-slate-700 text-white py-2 px-4 rounded-lg font-medium hover:bg-slate-800 transition-colors mt-2"
                 >
                   Царай таних
-                </button>
-              )}
-
-            {!isRecognizing &&
-              !isRecordingAttendance &&
-              !isProcessing &&
-              recognitionProgress === 0 &&
-              message &&
-              !message.includes("амжилттай") &&
-              !message.includes("Сайн байна уу") && (
-                <button
-                  onClick={() => {
-                    setMessage("");
-                    setRecognitionProgress(0);
-                    setStudentId("");
-                    setSrc("");
-                    stopCamera(streamRef); // optional
-                    setStep(1);
-                  }}
-                  className="w-full bg-gray-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-700 transition-colors"
-                >
-                  Буцаж оюутны ID оруулах
                 </button>
               )}
 
