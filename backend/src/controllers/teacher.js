@@ -235,6 +235,7 @@ export const getClassroomsAndStudentsByTeacherId = async (req, res) => {
       lectureDate: classroom.lectureDate,
       teacher: classroom.teacher,
       ClassroomStudents: classroom.ClassroomStudents,
+      joinCode: classroom.joinCode,
       joinLink: classroom.joinLink,
     }));
 
