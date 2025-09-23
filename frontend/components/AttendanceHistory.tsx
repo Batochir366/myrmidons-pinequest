@@ -262,7 +262,7 @@ export function AttendanceHistory() {
                               }}
                               className="flex items-center gap-2"
                             >
-                              {windowWidth < 768 || rightSectionWidth > 460 ? ( // 📱 mobile бол үргэлж текст харуулна
+                              {windowWidth < 768 || rightSectionWidth > 460 ? (
                                 <span>Дэлгэрэнгүй харах</span>
                               ) : (
                                 <Eye className="w-4 h-4" />
