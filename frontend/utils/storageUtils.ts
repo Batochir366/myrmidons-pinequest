@@ -1,288 +1,463 @@
-export const ATTENDANCE_STORAGE_KEYS = {
-  ATTENDANCE_ID: "attendance_id",
-  SELECTED_CLASSROOM: "selected_classroom_id",
-  SELECTED_LECTURE_NAME: "selected_lecture_name",
-  IS_RUNNING: "attendance_is_running",
-  STUDENTS: "attendance_students",
-  COUNTDOWN: "attendance_countdown",
-  QR_DATA: "attendance_qr_data",
-  QR_IMAGE: "attendance_qr_image",
-  SESSION_START_TIME: "attendance_session_start_time",
-  LAST_ACTIVITY: "attendance_last_activity",
-} as const;
+// Enhanced storage utilities with persistent QR timing and PiP state
 
-export interface AttendanceSessionState {
+interface AttendanceState {
   attendanceId: string | null;
   selectedClassroomId: string;
   selectedLectureName: string;
   isRunning: boolean;
-  students: Array<{
-    _id: string;
-    studentName: string;
-    studentId: string;
-    time: string;
-  }>;
+  students: any[];
   countdown: number;
   qrData: string | null;
   qrImage: string | null;
-  sessionStartTime: number | null;
-  lastActivity: number;
+  qrSec: number;
+  sessionStartTime?: number;
+  lastActivity?: number;
 }
 
-class AttendanceStorageManager {
-  private static instance: AttendanceStorageManager;
+interface PiPState {
+  isActive: boolean;
+  qrData?: string;
+  timestamp: number;
+  attendanceId: string;
+  qrSec: number;
+}
 
-  public static getInstance(): AttendanceStorageManager {
-    if (!AttendanceStorageManager.instance) {
-      AttendanceStorageManager.instance = new AttendanceStorageManager();
-    }
-    return AttendanceStorageManager.instance;
-  }
+interface Student {
+  _id: string;
+  studentName: string;
+  studentId: string;
+  time: string;
+}
 
-  private saveToStorage(key: string, value: any): void {
+const STORAGE_KEYS = {
+  ATTENDANCE_SESSION: "attendance_session_state",
+  QR_SEC: "qr_generation_seconds_v2", // Updated key for better persistence
+  SELECTED_CLASSROOM: "selected_classroom",
+  TEACHER_PREFERENCES: "teacher_preferences",
+  PIP_STATE: "pip_state_v2",
+} as const;
+
+const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // 8 hours
+const PIP_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+
+export const useAttendanceStorage = () => {
+  // Enhanced state saving with better error handling
+  const saveState = (state: Partial<AttendanceState>) => {
     try {
-      // Don't save undefined or null values
-      if (value === undefined || value === null) {
-        localStorage.removeItem(key);
-        return;
-      }
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      console.error("Error saving to localStorage:", error);
-    }
-  }
+      const currentState = restoreState() || {};
+      const newState = {
+        ...currentState,
+        ...state,
+        lastActivity: Date.now(),
+      };
 
-  private getFromStorage<T>(key: string, defaultValue: T): T {
-    try {
-      const item = localStorage.getItem(key);
-
-      // Check for null/undefined or invalid JSON strings
-      if (!item || item === "undefined" || item === "null") {
-        return defaultValue;
+      // Persist QR settings separately for global access
+      if (state.qrSec !== undefined && state.qrSec > 0 && state.qrSec <= 300) {
+        localStorage.setItem(STORAGE_KEYS.QR_SEC, state.qrSec.toString());
+        console.log(`QR generation time persisted globally: ${state.qrSec}s`);
       }
 
-      return JSON.parse(item);
+      localStorage.setItem(
+        STORAGE_KEYS.ATTENDANCE_SESSION,
+        JSON.stringify(newState)
+      );
+
+      console.log("Enhanced attendance state saved:", {
+        attendanceId: newState.attendanceId,
+        isRunning: newState.isRunning,
+        qrSec: newState.qrSec,
+        timestamp: new Date().toISOString(),
+      });
     } catch (error) {
-      console.error("Error reading from localStorage:", error);
-      // Clean up the corrupted item
+      console.error("Error saving attendance state:", error);
+      // Attempt to save critical data only
       try {
-        localStorage.removeItem(key);
-      } catch (cleanupError) {
-        console.error(
-          "Error cleaning up corrupted localStorage item:",
-          cleanupError
-        );
+        if (state.qrSec) {
+          localStorage.setItem(STORAGE_KEYS.QR_SEC, state.qrSec.toString());
+        }
+      } catch (fallbackError) {
+        console.error("Failed to save even critical data:", fallbackError);
       }
-      return defaultValue;
     }
-  }
+  };
 
-  public saveAttendanceState(state: Partial<AttendanceSessionState>): void {
-    Object.entries(state).forEach(([key, value]) => {
-      const storageKey = this.getStorageKeyByStateKey(key);
-      if (storageKey && value !== undefined) {
-        // Only save defined values
-        this.saveToStorage(storageKey, value);
+  const restoreState = (): AttendanceState | null => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.ATTENDANCE_SESSION);
+      if (!stored) return null;
+
+      const state = JSON.parse(stored) as AttendanceState;
+
+      // Check if session has expired
+      const now = Date.now();
+      const lastActivity = state.lastActivity || state.sessionStartTime || 0;
+
+      if (now - lastActivity > SESSION_TIMEOUT) {
+        console.log("Session expired, clearing stored state");
+        clearSession();
+        return null;
       }
-    });
 
-    // Always update last activity
-    this.saveToStorage(ATTENDANCE_STORAGE_KEYS.LAST_ACTIVITY, Date.now());
-  }
+      // Always load the latest QR settings
+      const globalQrSec = getQrSettings();
+      state.qrSec = globalQrSec;
 
-  public restoreAttendanceState(): AttendanceSessionState | null {
-    // Clean up any corrupted entries first
-    this.cleanupCorruptedEntries();
+      console.log("Attendance state restored:", {
+        attendanceId: state.attendanceId,
+        isRunning: state.isRunning,
+        qrSec: state.qrSec,
+        ageMinutes: Math.floor((now - lastActivity) / (1000 * 60)),
+      });
 
-    const sessionStartTime = this.getFromStorage(
-      ATTENDANCE_STORAGE_KEYS.SESSION_START_TIME,
-      null
-    );
-    // Fix: Provide a default value for lastActivity to ensure it's always a number
-    const lastActivity = this.getFromStorage(
-      ATTENDANCE_STORAGE_KEYS.LAST_ACTIVITY,
-      Date.now() // Default to current time if not found
-    );
-    const isRunning = this.getFromStorage(
-      ATTENDANCE_STORAGE_KEYS.IS_RUNNING,
-      false
-    );
-
-    // Check if session is still valid
-    const SESSION_TIMEOUT = 2 * 60 * 60 * 1000; // 2 hours
-    const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-
-    const now = Date.now();
-    const isSessionExpired =
-      sessionStartTime && now - sessionStartTime > SESSION_TIMEOUT;
-    const isInactive = lastActivity && now - lastActivity > INACTIVITY_TIMEOUT;
-
-    if (!isRunning || isSessionExpired || isInactive) {
-      if (isSessionExpired) {
-        console.log("Attendance session expired (2+ hours old)");
-      } else if (isInactive) {
-        console.log("Attendance session expired (30+ minutes inactive)");
-      }
-      this.clearAttendanceSession();
+      return state;
+    } catch (error) {
+      console.error("Error restoring attendance state:", error);
+      clearSession();
       return null;
     }
+  };
 
-    // Restore the session
-    return {
-      attendanceId: this.getFromStorage(
-        ATTENDANCE_STORAGE_KEYS.ATTENDANCE_ID,
-        null
-      ),
-      selectedClassroomId: this.getFromStorage(
-        ATTENDANCE_STORAGE_KEYS.SELECTED_CLASSROOM,
-        ""
-      ),
-      selectedLectureName: this.getFromStorage(
-        ATTENDANCE_STORAGE_KEYS.SELECTED_LECTURE_NAME,
-        ""
-      ),
-      isRunning: this.getFromStorage(ATTENDANCE_STORAGE_KEYS.IS_RUNNING, false),
-      students: this.getFromStorage(ATTENDANCE_STORAGE_KEYS.STUDENTS, []),
-      countdown: this.getFromStorage(ATTENDANCE_STORAGE_KEYS.COUNTDOWN, 5),
-      qrData: this.getFromStorage(ATTENDANCE_STORAGE_KEYS.QR_DATA, null),
-      qrImage: this.getFromStorage(ATTENDANCE_STORAGE_KEYS.QR_IMAGE, null),
-      sessionStartTime: sessionStartTime,
-      lastActivity: lastActivity, // This is now guaranteed to be a number
-    };
-  }
+  const clearSession = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.ATTENDANCE_SESSION);
+      console.log("Attendance session cleared");
+    } catch (error) {
+      console.error("Error clearing session:", error);
+    }
+  };
 
-  public clearAttendanceSession(): void {
-    Object.values(ATTENDANCE_STORAGE_KEYS).forEach((key) => {
-      try {
-        localStorage.removeItem(key);
-      } catch (error) {
-        console.error(`Error removing localStorage key ${key}:`, error);
-      }
-    });
-  }
+  const hasActiveSession = (): boolean => {
+    const state = restoreState();
+    return state?.isRunning === true;
+  };
 
-  // Clean up any corrupted entries
-  public cleanupCorruptedEntries(): void {
-    Object.values(ATTENDANCE_STORAGE_KEYS).forEach((key) => {
-      try {
-        const item = localStorage.getItem(key);
-        if (item === "undefined" || item === "null") {
-          console.log(`Cleaning up corrupted entry: ${key}`);
-          localStorage.removeItem(key);
-        }
-      } catch (error) {
-        console.error(
-          `Error checking/cleaning localStorage key ${key}:`,
-          error
+  const getSessionDuration = (): number => {
+    const state = restoreState();
+    if (!state?.sessionStartTime) return 0;
+    return Math.floor((Date.now() - state.sessionStartTime) / (1000 * 60));
+  };
+
+  const updateActivity = () => {
+    try {
+      const currentState = restoreState();
+      if (currentState) {
+        currentState.lastActivity = Date.now();
+        localStorage.setItem(
+          STORAGE_KEYS.ATTENDANCE_SESSION,
+          JSON.stringify(currentState)
         );
-        try {
-          localStorage.removeItem(key);
-        } catch (cleanupError) {
-          console.error(`Error removing corrupted key ${key}:`, cleanupError);
+      }
+    } catch (error) {
+      console.error("Error updating activity:", error);
+    }
+  };
+
+  // Enhanced QR Settings Management with validation
+  const saveQrSettings = (qrSec: number) => {
+    try {
+      // Validate input
+      if (isNaN(qrSec) || qrSec < 1 || qrSec > 300) {
+        console.error("Invalid QR seconds value:", qrSec);
+        return false;
+      }
+
+      localStorage.setItem(STORAGE_KEYS.QR_SEC, qrSec.toString());
+
+      // Also update current session if active
+      const currentState = restoreState();
+      if (currentState) {
+        currentState.qrSec = qrSec;
+        localStorage.setItem(
+          STORAGE_KEYS.ATTENDANCE_SESSION,
+          JSON.stringify(currentState)
+        );
+      }
+
+      console.log(`QR settings saved: ${qrSec} seconds`);
+      return true;
+    } catch (error) {
+      console.error("Error saving QR settings:", error);
+      return false;
+    }
+  };
+
+  const getQrSettings = (): number => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.QR_SEC);
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed) && parsed >= 1 && parsed <= 300) {
+          return parsed;
         }
       }
-    });
-  }
+    } catch (error) {
+      console.error("Error getting QR settings:", error);
+    }
 
-  public updateActivity(): void {
-    this.saveToStorage(ATTENDANCE_STORAGE_KEYS.LAST_ACTIVITY, Date.now());
-  }
+    // Return default and save it
+    const defaultValue = 5;
+    try {
+      localStorage.setItem(STORAGE_KEYS.QR_SEC, defaultValue.toString());
+    } catch (error) {
+      console.error("Error saving default QR settings:", error);
+    }
 
-  public getSelectedClassroom(): { id: string; name: string } {
-    return {
-      id: this.getFromStorage(ATTENDANCE_STORAGE_KEYS.SELECTED_CLASSROOM, ""),
-      name: this.getFromStorage(
-        ATTENDANCE_STORAGE_KEYS.SELECTED_LECTURE_NAME,
-        ""
-      ),
-    };
-  }
+    return defaultValue;
+  };
 
-  public saveSelectedClassroom(id: string, name: string): void {
-    this.saveToStorage(ATTENDANCE_STORAGE_KEYS.SELECTED_CLASSROOM, id);
-    this.saveToStorage(ATTENDANCE_STORAGE_KEYS.SELECTED_LECTURE_NAME, name);
-  }
+  // PiP State Management
+  const savePiPState = (
+    isActive: boolean,
+    additionalData?: Partial<PiPState>
+  ) => {
+    try {
+      const currentState = restoreState();
+      const pipState: PiPState = {
+        isActive,
+        timestamp: Date.now(),
+        attendanceId: currentState?.attendanceId || "",
+        qrSec: currentState?.qrSec || getQrSettings(),
+        ...additionalData,
+      };
 
-  private getStorageKeyByStateKey(stateKey: string): string | null {
-    const mapping: Record<string, string> = {
-      attendanceId: ATTENDANCE_STORAGE_KEYS.ATTENDANCE_ID,
-      selectedClassroomId: ATTENDANCE_STORAGE_KEYS.SELECTED_CLASSROOM,
-      selectedLectureName: ATTENDANCE_STORAGE_KEYS.SELECTED_LECTURE_NAME,
-      isRunning: ATTENDANCE_STORAGE_KEYS.IS_RUNNING,
-      students: ATTENDANCE_STORAGE_KEYS.STUDENTS,
-      countdown: ATTENDANCE_STORAGE_KEYS.COUNTDOWN,
-      qrData: ATTENDANCE_STORAGE_KEYS.QR_DATA,
-      qrImage: ATTENDANCE_STORAGE_KEYS.QR_IMAGE,
-      sessionStartTime: ATTENDANCE_STORAGE_KEYS.SESSION_START_TIME,
-    };
+      localStorage.setItem(STORAGE_KEYS.PIP_STATE, JSON.stringify(pipState));
+      console.log(`PiP state saved: ${isActive ? "active" : "inactive"}`);
 
-    return mapping[stateKey] || null;
-  }
+      return true;
+    } catch (error) {
+      console.error("Error saving PiP state:", error);
+      return false;
+    }
+  };
 
-  // Check if there's an active session
-  public hasActiveSession(): boolean {
-    const state = this.restoreAttendanceState();
-    return state !== null && state.isRunning;
-  }
+  const getPiPState = (): PiPState | null => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.PIP_STATE);
+      if (!stored) return null;
 
-  // Get session duration in minutes
-  public getSessionDuration(): number {
-    const sessionStartTime = this.getFromStorage(
-      ATTENDANCE_STORAGE_KEYS.SESSION_START_TIME,
-      null
-    );
-    if (!sessionStartTime) return 0;
+      const state = JSON.parse(stored) as PiPState;
 
-    return Math.floor((Date.now() - sessionStartTime) / (1000 * 60));
-  }
-}
+      // Check if PiP state is not too old
+      if (Date.now() - state.timestamp > PIP_TIMEOUT) {
+        console.log("PiP state expired, clearing");
+        clearPiPState();
+        return null;
+      }
 
-export const attendanceStorage = AttendanceStorageManager.getInstance();
-import { useEffect, useCallback } from "react";
+      // Ensure current QR settings are used
+      state.qrSec = getQrSettings();
 
-export function useAttendanceStorage() {
-  const updateActivity = useCallback(() => {
-    attendanceStorage.updateActivity();
-  }, []);
-  useEffect(() => {
-    const events = [
-      "mousedown",
-      "mousemove",
-      "keypress",
-      "scroll",
-      "touchstart",
-      "click",
-    ];
+      return state;
+    } catch (error) {
+      console.error("Error getting PiP state:", error);
+      clearPiPState();
+      return null;
+    }
+  };
 
-    const handleActivity = () => updateActivity();
+  const clearPiPState = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.PIP_STATE);
+      console.log("PiP state cleared");
+    } catch (error) {
+      console.error("Error clearing PiP state:", error);
+    }
+  };
 
-    events.forEach((event) => {
-      document.addEventListener(event, handleActivity, true);
-    });
+  // Classroom Selection Persistence
+  const saveSelectedClassroom = (classroomId: string, lectureName: string) => {
+    try {
+      const classroomData = {
+        classroomId,
+        lectureName,
+        lastSelected: Date.now(),
+      };
+      localStorage.setItem(
+        STORAGE_KEYS.SELECTED_CLASSROOM,
+        JSON.stringify(classroomData)
+      );
 
-    return () => {
-      events.forEach((event) => {
-        document.removeEventListener(event, handleActivity, true);
-      });
-    };
-  }, [updateActivity]);
+      // Update current session
+      const currentState = restoreState();
+      if (currentState) {
+        saveState({
+          selectedClassroomId: classroomId,
+          selectedLectureName: lectureName,
+        });
+      }
+    } catch (error) {
+      console.error("Error saving selected classroom:", error);
+    }
+  };
+
+  const getSelectedClassroom = (): {
+    classroomId: string;
+    lectureName: string;
+  } | null => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.SELECTED_CLASSROOM);
+      if (stored) {
+        const data = JSON.parse(stored);
+        // Check if selection is not too old (7 days)
+        if (Date.now() - data.lastSelected < 7 * 24 * 60 * 60 * 1000) {
+          return {
+            classroomId: data.classroomId,
+            lectureName: data.lectureName,
+          };
+        }
+      }
+    } catch (error) {
+      console.error("Error getting selected classroom:", error);
+    }
+    return null;
+  };
+
+  // Teacher Preferences
+  const saveTeacherPreferences = (preferences: Record<string, any>) => {
+    try {
+      const current = getTeacherPreferences();
+      const updated = { ...current, ...preferences, lastUpdated: Date.now() };
+      localStorage.setItem(
+        STORAGE_KEYS.TEACHER_PREFERENCES,
+        JSON.stringify(updated)
+      );
+    } catch (error) {
+      console.error("Error saving teacher preferences:", error);
+    }
+  };
+
+  const getTeacherPreferences = (): Record<string, any> => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.TEACHER_PREFERENCES);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error("Error getting teacher preferences:", error);
+    }
+    return {};
+  };
+
+  // Enhanced cleanup with better error handling
+  const cleanupCorruptedEntries = () => {
+    try {
+      const lastCleanup = localStorage.getItem("last_cleanup");
+      const now = Date.now();
+
+      if (!lastCleanup || now - parseInt(lastCleanup) > CLEANUP_INTERVAL) {
+        console.log("Starting cleanup process...");
+
+        // Clean up expired sessions
+        const state = restoreState();
+        if (state) {
+          const lastActivity =
+            state.lastActivity || state.sessionStartTime || 0;
+          if (now - lastActivity > SESSION_TIMEOUT) {
+            clearSession();
+            console.log("Cleaned up expired attendance session");
+          }
+        }
+
+        // Clean up expired PiP state
+        const pipState = getPiPState();
+        if (!pipState) {
+          clearPiPState();
+        }
+
+        // Clean up old classroom selections
+        const classroom = getSelectedClassroom();
+        if (!classroom) {
+          localStorage.removeItem(STORAGE_KEYS.SELECTED_CLASSROOM);
+        }
+
+        // Validate QR settings
+        const qrSec = getQrSettings();
+        if (qrSec < 1 || qrSec > 300) {
+          console.log("Invalid QR settings detected, resetting to default");
+          saveQrSettings(5);
+        }
+
+        localStorage.setItem("last_cleanup", now.toString());
+        console.log("Cleanup completed successfully");
+      }
+    } catch (error) {
+      console.error("Error during cleanup:", error);
+      // Force cleanup critical items
+      try {
+        const qrSec = parseInt(
+          localStorage.getItem(STORAGE_KEYS.QR_SEC) || "5"
+        );
+        if (isNaN(qrSec) || qrSec < 1 || qrSec > 300) {
+          localStorage.setItem(STORAGE_KEYS.QR_SEC, "5");
+        }
+      } catch (criticalError) {
+        console.error("Critical cleanup failed:", criticalError);
+      }
+    }
+  };
+
+  // Migration utilities for version updates
+  const migrateStorageVersion = () => {
+    try {
+      // Migrate old QR settings key if exists
+      const oldQrSec = localStorage.getItem("qr_generation_seconds");
+      if (oldQrSec && !localStorage.getItem(STORAGE_KEYS.QR_SEC)) {
+        localStorage.setItem(STORAGE_KEYS.QR_SEC, oldQrSec);
+        localStorage.removeItem("qr_generation_seconds");
+        console.log("Migrated QR settings to new version");
+      }
+
+      // Migrate old PiP state if exists
+      const oldPipState = localStorage.getItem("pip_state");
+      if (oldPipState && !localStorage.getItem(STORAGE_KEYS.PIP_STATE)) {
+        localStorage.removeItem("pip_state");
+        console.log("Cleared old PiP state");
+      }
+    } catch (error) {
+      console.error("Error during storage migration:", error);
+    }
+  };
+
+  // Initialize storage with migration
+  const initializeStorage = () => {
+    migrateStorageVersion();
+    cleanupCorruptedEntries();
+
+    // Ensure QR settings exist
+    const qrSec = getQrSettings();
+    console.log(`Storage initialized with QR interval: ${qrSec}s`);
+  };
 
   return {
-    saveState: attendanceStorage.saveAttendanceState.bind(attendanceStorage),
-    restoreState:
-      attendanceStorage.restoreAttendanceState.bind(attendanceStorage),
-    clearSession:
-      attendanceStorage.clearAttendanceSession.bind(attendanceStorage),
-    hasActiveSession:
-      attendanceStorage.hasActiveSession.bind(attendanceStorage),
-    getSessionDuration:
-      attendanceStorage.getSessionDuration.bind(attendanceStorage),
-    getSelectedClassroom:
-      attendanceStorage.getSelectedClassroom.bind(attendanceStorage),
-    saveSelectedClassroom:
-      attendanceStorage.saveSelectedClassroom.bind(attendanceStorage),
-    cleanupCorruptedEntries:
-      attendanceStorage.cleanupCorruptedEntries.bind(attendanceStorage),
+    // Core state management
+    saveState,
+    restoreState,
+    clearSession,
+    hasActiveSession,
+    getSessionDuration,
     updateActivity,
+
+    // Classroom management
+    saveSelectedClassroom,
+    getSelectedClassroom,
+
+    // QR settings (enhanced)
+    saveQrSettings,
+    getQrSettings,
+
+    // PiP management
+    savePiPState,
+    getPiPState,
+    clearPiPState,
+
+    // Teacher preferences
+    saveTeacherPreferences,
+    getTeacherPreferences,
+
+    // Maintenance
+    cleanupCorruptedEntries,
+    initializeStorage,
+    migrateStorageVersion,
   };
-}
+};

@@ -8,7 +8,7 @@ interface QrProps {
   className?: string;
   logoSrc?: string;
   logoSize?: number;
-  onQrReady?: (svg: string) => void; // QR SVG-г авах callback
+  onQrReady?: (svg: string) => void;
 }
 
 export default function Qr({
@@ -97,7 +97,7 @@ export default function Qr({
 
       {/* Overlay логотой */}
       <div
-        className="absolute rounded-full bg-white flex items-center justify-center overflow-hidden shadow-lg border-2 border-gray-200"
+        className="absolute bg-white flex items-center justify-center rounded-xl overflow-hidden"
         style={{
           width: logoSize,
           height: logoSize,
@@ -109,7 +109,7 @@ export default function Qr({
         <img
           src={logoSrc}
           alt="logo"
-          style={{ width: logoSize * 0.7, height: logoSize * 0.7 }}
+          className="w-[200px] h-[100px] object-contain"
         />
       </div>
     </div>
