@@ -1,113 +1,134 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { CalendarIcon, Eye, History } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "@/components/ui/calendar"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { ViewReport } from "./VIewReport"
-import { axiosInstance } from "@/lib/utils"
-import { AttendanceChart } from "./AttendanceChart"
-import { useRef, useLayoutEffect } from "react"
+import { useEffect, useState } from "react";
+import { CalendarIcon, Eye, History } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ViewReport } from "./VIewReport";
+import { axiosInstance } from "@/lib/utils";
+import { AttendanceChart } from "./AttendanceChart";
+import { useRef, useLayoutEffect } from "react";
+import { toast } from "sonner";
 
 interface AttendanceRecord {
-  id: number
-  lectureName: string
-  lectureDate: string
-  date: string
-  startTime: string
-  endTime: string
-  qrStartTime: string
-  qrEndTime: string
-  totalStudents: number
-  presentStudents: number
-  attendanceRate: number
+  id: number;
+  lectureName: string;
+  lectureDate: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  qrStartTime: string;
+  qrEndTime: string;
+  totalStudents: number;
+  presentStudents: number;
+  attendanceRate: number;
   students: {
-    id: number
-    name: string
-    code: string
-    photo: string
-    timestamp?: string
-  }[]
+    id: number;
+    name: string;
+    code: string;
+    photo: string;
+    timestamp?: string;
+  }[];
 }
 
 export function AttendanceHistory() {
-  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([])
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-  const [selectedLecture, setSelectedLecture] = useState<AttendanceRecord | null>(null)
-  const [showReport, setShowReport] = useState(false)
+  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
+  const [reloadFlag, setReloadFlag] = useState(0);
 
-  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 0)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    new Date()
+  );
+  const [selectedLecture, setSelectedLecture] =
+    useState<AttendanceRecord | null>(null);
+  const [showReport, setShowReport] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [windowWidth, setWindowWidth] = useState<number>(
+    typeof window !== "undefined" ? window.innerWidth : 0
+  );
 
   useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth)
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [])
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // calendar height measure
-  const calendarRef = useRef<HTMLDivElement>(null)
-  const [calendarHeight, setCalendarHeight] = useState<number | undefined>(undefined)
-
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const [calendarHeight, setCalendarHeight] = useState<number | undefined>(
+    undefined
+  );
+  const [saveStatus, setSaveStatus] = useState("");
   useLayoutEffect(() => {
     const measureHeight = () => {
       if (calendarRef.current) {
-        setCalendarHeight(calendarRef.current.offsetHeight)
+        setCalendarHeight(calendarRef.current.offsetHeight);
       }
-    }
-    measureHeight()
-    window.addEventListener("resize", measureHeight)
-    return () => window.removeEventListener("resize", measureHeight)
-  }, [])
+    };
+    measureHeight();
+    window.addEventListener("resize", measureHeight);
+    return () => window.removeEventListener("resize", measureHeight);
+  }, []);
 
-  const rightSectionRef = useRef<HTMLDivElement>(null)
-  const [rightSectionWidth, setRightSectionWidth] = useState<number>(0)
+  const rightSectionRef = useRef<HTMLDivElement>(null);
+  const [rightSectionWidth, setRightSectionWidth] = useState<number>(0);
 
   useEffect(() => {
-    if (!rightSectionRef.current) return
+    if (!rightSectionRef.current) return;
     const observer = new ResizeObserver((entries) => {
       for (let entry of entries) {
-        setRightSectionWidth(entry.contentRect.width)
+        setRightSectionWidth(entry.contentRect.width);
       }
-    })
-    observer.observe(rightSectionRef.current)
-    return () => observer.disconnect()
-  }, [])
+    });
+    observer.observe(rightSectionRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const getAttendanceForDate = (date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const day = String(date.getDate()).padStart(2, "0")
-    const dateString = `${year}-${month}-${day}`
-    return attendanceData.filter((record) => record.date === dateString)
-  }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const dateString = `${year}-${month}-${day}`;
+    return attendanceData.filter((record) => record.date === dateString);
+  };
 
-  const selectedDateAttendance = selectedDate ? getAttendanceForDate(selectedDate) : []
+  const selectedDateAttendance = selectedDate
+    ? getAttendanceForDate(selectedDate)
+    : [];
 
   const getLectureDays = () => {
-    return attendanceData.map((record) => new Date(record.date))
-  }
+    return attendanceData.map((record) => new Date(record.date));
+  };
 
   const transformApiData = (classrooms: any[]): AttendanceRecord[] => {
     return classrooms.flatMap((classroom) => {
       return classroom.attendanceHistory.map((history: any) => {
-        const dateObj = new Date(history.date)
-        const year = dateObj.getFullYear()
-        const month = String(dateObj.getMonth() + 1).padStart(2, "0")
-        const day = String(dateObj.getDate()).padStart(2, "0")
+        const dateObj = new Date(history.date);
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const day = String(dateObj.getDate()).padStart(2, "0");
 
         const students = classroom.ClassroomStudents.map((student: any) => {
           const attended = history.attendingStudents.find(
             (att: any) => att.student.studentId === student.studentId
-          )
+          );
           return {
             id: student._id,
             name: student.name,
             code: student.studentId,
-            timestamp: attended ? new Date(attended.attendedAt).toLocaleTimeString() : null,
-          }
-        })
+            timestamp: attended
+              ? new Date(attended.attendedAt).toLocaleTimeString()
+              : null,
+          };
+        });
 
         return {
           id: history._id,
@@ -115,43 +136,82 @@ export function AttendanceHistory() {
           lectureDate: classroom.lectureDate,
           date: `${year}-${month}-${day}`,
           qrStartTime: new Date(history.date).toLocaleTimeString(),
-          qrEndTime: history.endedAt ? new Date(history.endedAt).toLocaleTimeString() : "--",
+          qrEndTime: history.endedAt
+            ? new Date(history.endedAt).toLocaleTimeString()
+            : "--",
           totalStudents: classroom.ClassroomStudents.length,
-          presentStudents: history.totalAttending ?? history.attendingStudents.length,
+          presentStudents:
+            history.totalAttending ?? history.attendingStudents.length,
           attendanceRate: classroom.ClassroomStudents.length
             ? Math.round(
-              ((history.totalAttending ?? history.attendingStudents.length) /
-                classroom.ClassroomStudents.length) * 100
-            )
+                ((history.totalAttending ?? history.attendingStudents.length) /
+                  classroom.ClassroomStudents.length) *
+                  100
+              )
             : 0,
           students,
-        }
-      })
-    })
-  }
+        };
+      });
+    });
+  };
 
   useEffect(() => {
-    const teacherId = localStorage.getItem("teacherId")
-    if (!teacherId) return
+    const teacherId = localStorage.getItem("teacherId");
+    if (!teacherId) return;
 
     axiosInstance
       .get(`teacher/classrooms/${teacherId}`)
       .then((res) => {
-        const transformed = transformApiData(res.data.classrooms)
-        setAttendanceData(transformed)
+        const transformed = transformApiData(res.data.classrooms);
+        setAttendanceData(transformed);
       })
-      .catch((err) => console.error("Error fetching data:", err))
-  }, [])
+      .catch((err) => console.error("Error fetching data:", err));
+  }, [reloadFlag]); // 👈 reloadFlag солигдох болгонд fetch хийнэ
+
+  // handleSave дотор
+  const handleSave = async (attendanceId: string, studentId: string) => {
+    if (!studentId.trim()) {
+      setSaveStatus("Оюутны код оруулна уу");
+      return;
+    }
+
+    setLoading(true);
+    setSaveStatus("");
+
+    try {
+      await axiosInstance.put("/student/add", {
+        attendanceId,
+        studentId: studentId.trim(),
+      });
+
+      setSaveStatus("Амжилттай бүртгэгдлээ");
+
+      // 🔄 fetch trigger
+      setReloadFlag((prev) => prev + 1);
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setSaveStatus("Та бүртгэх эрхгүй байна");
+      } else if (err.response?.status === 404) {
+        setSaveStatus("Оюутан олдсонгүй");
+      } else if (err.response?.status === 400) {
+        toast.error("Та аль хэдийн ирц бүртгэгдсэн байна.");
+      } else {
+        toast.error(err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedDateAttendance.length > 0) {
-      setSelectedLecture(selectedDateAttendance[0])
-      setShowReport(false)
+      setSelectedLecture(selectedDateAttendance[0]);
+      setShowReport(false);
     } else {
-      setSelectedLecture(null)
-      setShowReport(false)
+      setSelectedLecture(null);
+      setShowReport(false);
     }
-  }, [selectedDate])
+  }, [selectedDate, reloadFlag]);
 
   return (
     <TooltipProvider>
@@ -174,9 +234,10 @@ export function AttendanceHistory() {
                   mode="single"
                   selected={selectedDate}
                   onSelect={(date) => {
-                    if (!date) return
-                    if (selectedDate?.toDateString() === date.toDateString()) return
-                    setSelectedDate(date)
+                    if (!date) return;
+                    if (selectedDate?.toDateString() === date.toDateString())
+                      return;
+                    setSelectedDate(date);
                   }}
                   className="
                     rounded-md border w-full [&_.rdp-day]:p-0
@@ -205,13 +266,16 @@ export function AttendanceHistory() {
             <ViewReport
               lecture={selectedLecture}
               onBack={() => setShowReport(false)}
-              calendarHeight={calendarHeight}
+              setSaveStatus={setSaveStatus}
+              handleSave={handleSave}
             />
           ) : (
             <div className="flex flex-col" ref={rightSectionRef}>
               <Card
                 className="flex flex-col"
-                style={{ height: calendarHeight ? `${calendarHeight}px` : "auto" }}
+                style={{
+                  height: calendarHeight ? `${calendarHeight}px` : "auto",
+                }}
               >
                 <CardHeader className="flex-shrink-0">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -252,18 +316,19 @@ export function AttendanceHistory() {
                           <div className="flex items-center gap-3 w-full sm:w-auto justify-between">
                             <div className="text-right sm:flex-initial">
                               <p className="text-xs text-muted-foreground mt-1">
-                                {lecture.presentStudents}/{lecture.totalStudents} сурагч
+                                {lecture.presentStudents}/
+                                {lecture.totalStudents} сурагч
                               </p>
                             </div>
                             <Button
                               variant="outline"
                               onClick={() => {
-                                setSelectedLecture(lecture)
-                                setShowReport(true)
+                                setSelectedLecture(lecture);
+                                setShowReport(true);
                               }}
                               className="flex items-center gap-2"
                             >
-                              {windowWidth < 768 || rightSectionWidth > 460 ? (
+                              {windowWidth < 768 || rightSectionWidth > 460 ? ( // 📱 mobile бол үргэлж текст харуулна
                                 <span>Дэлгэрэнгүй харах</span>
                               ) : (
                                 <Eye className="w-4 h-4" />
@@ -295,10 +360,9 @@ export function AttendanceHistory() {
               totalStudents: record.totalStudents,
             }))}
             attendanceData={attendanceData}
-            selectedLectureName={selectedLecture?.lectureName || null}
           />
         </div>
       </div>
     </TooltipProvider>
-  )
+  );
 }

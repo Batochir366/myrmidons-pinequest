@@ -1,40 +1,85 @@
-"use client"
+"use client";
 
-import { FileText, Printer, Undo } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { FileText, Printer, Undo } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+import { Input } from "@/components/ui/input";
+import { useState, useEffect } from "react";
+import { Label } from "./ui/label";
+import { axiosInstance } from "@/lib/utils";
+import { toast, Toaster } from "sonner";
+
+interface Student {
+  id: number;
+  name: string;
+  code: string;
+  photo: string;
+  timestamp?: string;
+}
 
 interface AttendanceRecord {
-  id: number
-  lectureName: string
-  date: string
-  startTime: string
-  endTime: string
-  qrStartTime: string
-  qrEndTime: string
-  totalStudents: number
-  presentStudents: number
-  attendanceRate: number
+  id: number;
+  lectureName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  qrStartTime: string;
+  qrEndTime: string;
+  totalStudents: number;
+  presentStudents: number;
+  attendanceRate: number;
   students: {
-    id: number
-    name: string
-    code: string
-    photo: string
-    timestamp?: string
-  }[]
+    id: number;
+    name: string;
+    code: string;
+    photo: string;
+    timestamp?: string;
+  }[];
 }
 
-interface ViewReportProps {
-  lecture: AttendanceRecord
-  onBack: () => void
-  calendarHeight?: number // Add calendarHeight prop
+export interface ViewReportProps {
+  lecture: AttendanceRecord;
+  onBack: () => void;
+  setSaveStatus: any;
+  handleSave: (attendanceId: string, studentId: string) => Promise<void>;
 }
 
-export function ViewReport({ lecture, onBack, calendarHeight }: ViewReportProps) {
+export function ViewReport({
+  lecture,
+  onBack,
+  setSaveStatus,
+  handleSave,
+}: ViewReportProps) {
+  const [studentId, setStudentId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const attendanceId = lecture.id.toString();
+
+  useEffect(() => {
+    if (!open) {
+      setSaveStatus("");
+      setStudentId("");
+    }
+  }, [open]);
   const handlePrintReport = (lecture: AttendanceRecord) => {
-    const printWindow = window.open("", "_blank")
-    if (!printWindow) return
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
 
     const printContent = `
       <!DOCTYPE html>
@@ -66,7 +111,9 @@ export function ViewReport({ lecture, onBack, calendarHeight }: ViewReportProps)
           <div class="info-grid">
             <div>
               <p><strong>Хичээлийн нэр:</strong> ${lecture.lectureName}</p>
-              <p><strong>Огноо:</strong> ${new Date(lecture.date).toLocaleDateString()}</p>
+              <p><strong>Огноо:</strong> ${new Date(
+                lecture.date
+              ).toLocaleDateString()}</p>
             </div>
             <div>
               <p><strong>QR эхлүүлсэн цаг:</strong> ${lecture.qrStartTime}</p>
@@ -74,7 +121,9 @@ export function ViewReport({ lecture, onBack, calendarHeight }: ViewReportProps)
             </div>
           </div>
 
-          <h3>Оюутны ирц (${lecture.presentStudents}/${lecture.totalStudents} оюутан ирсэн)</h3>
+          <h3>Оюутны ирц (${lecture.presentStudents}/${
+      lecture.totalStudents
+    } оюутан ирсэн)</h3>
           <table class="students-table">
             <thead>
               <tr>
@@ -85,37 +134,36 @@ export function ViewReport({ lecture, onBack, calendarHeight }: ViewReportProps)
             </thead>
             <tbody>
               ${lecture.students
-        .sort((a, b) => {
-          return a.name.localeCompare(b.name)
-        })
-        .map(
-          (student) => `
+                .sort((a, b) => {
+                  return a.name.localeCompare(b.name);
+                })
+                .map(
+                  (student) => `
                   <tr>
                     <td>${student.name}</td>
                     <td>${student.code}</td>
                     <td>${student.timestamp || "-"}</td>
                   </tr>
-                `,
-        )
-        .join("")}
+                `
+                )
+                .join("")}
             </tbody>
           </table>
         </body>
       </html>
-    `
+    `;
 
-    printWindow.document.write(printContent)
-    printWindow.document.close()
-    printWindow.focus()
-    printWindow.print()
-  }
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+  console.log(lecture.students);
 
   return (
-    <Card
-      className="flex flex-col"
-      style={{ height: calendarHeight ? `${calendarHeight}px` : "auto" }}
-    >
-      <CardHeader className="flex-shrink-0">
+    <Card>
+      <Toaster position="top-right" />
+      <CardHeader>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -126,97 +174,160 @@ export function ViewReport({ lecture, onBack, calendarHeight }: ViewReportProps)
               {lecture.lectureName} хичээлийн ирцийн мэдээлэл
             </CardDescription>
           </div>
-          <Button variant="outline" onClick={onBack} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={onBack}
+            className="w-full sm:w-auto"
+          >
             <Undo className="w-4 h-4" /> Түүх рүү буцах
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 overflow-y-auto">
-        <div className="space-y-6">
-          {/* Lecture Information Header */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg text-slate-700">Хичээлийн мэдээлэл</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Хичээлийн нэр:</span>
-                  <span className="font-medium text-right">{lecture.lectureName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Огноо:</span>
-                  <span className="font-medium">{new Date(lecture.date).toLocaleDateString()}</span>
-                </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg text-slate-700">QR код</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Эхлүүлсэн цаг:</span>
-                  <span className="font-medium">{lecture.qrStartTime}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Дуусгасан цаг:</span>
-                  <span className="font-medium">{lecture.qrEndTime}</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Print Button */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <h3 className="text-lg font-semibold">
-              Оюутны ирц ({lecture.presentStudents}/{lecture.totalStudents} оюутан ирсэн)
-            </h3>
-            <Button onClick={() => handlePrintReport(lecture)} className="gap-2 w-full sm:w-auto">
-              <Printer className="w-4 h-4" />
-              Тайлан хэвлэх
-            </Button>
-          </div>
-
-          {/* Students Table */}
+      <CardContent className="space-y-6">
+        {/* Lecture Info */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
-            <CardContent className="p-5">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-4 font-medium">Оюутны нэр</th>
-                      <th className="text-left p-4 font-medium">Оюутны код</th>
-                      <th className="text-left p-4 font-medium">Бүртгүүлсэн цаг</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lecture.students
-                      .sort((a, b) => {
-                        return a.name.localeCompare(b.name)
-                      })
-                      .map((student, index) => (
-                        <tr
-                          key={student.id}
-                          className={`border-b`}
-                        >
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <span className="font-medium">{student.name}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 text-muted-foreground">{student.code}</td>
-                          <td className="p-4 text-muted-foreground">{student.timestamp || "-"}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-slate-700">
+                Хичээлийн мэдээлэл
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Хичээлийн нэр:</span>
+                <span className="font-medium text-right">
+                  {lecture.lectureName}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Огноо:</span>
+                <span className="font-medium">
+                  {new Date(lecture.date).toLocaleDateString()}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-slate-700">QR код</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Эхлүүлсэн цаг:</span>
+                <span className="font-medium">{lecture.qrStartTime}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Дуусгасан цаг:</span>
+                <span className="font-medium">{lecture.qrEndTime}</span>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Actions */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h3 className="text-lg font-semibold">
+            Оюутны ирц ({lecture.presentStudents}/{lecture.totalStudents} оюутан
+            ирсэн)
+          </h3>
+
+          <div className="flex gap-2 flex-col sm:flex-row w-full sm:w-auto">
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-black text-white w-full sm:w-auto">
+                  Оюутны ирц нэмэх
+                </Button>
+              </DialogTrigger>
+
+              <DialogContent className="w-full max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>Оюутны код</DialogTitle>
+                </DialogHeader>
+
+                <div className="grid gap-3 mt-2">
+                  <Label htmlFor="studentId">Оюутны код</Label>
+                  <Input
+                    id="studentId"
+                    type="text"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value)}
+                    placeholder="Оюутны код оруулна уу"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !loading) {
+                        handleSave(attendanceId, studentId);
+                      }
+                    }}
+                  />
+                </div>
+
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4 items-start sm:items-center">
+                  <DialogClose asChild>
+                    <Button variant="outline" disabled={loading}>
+                      Болих
+                    </Button>
+                  </DialogClose>
+                  <Button
+                    onClick={() => handleSave(attendanceId, studentId)}
+                    disabled={loading}
+                  >
+                    Хадгалах
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Button
+              onClick={() => handlePrintReport(lecture)}
+              className="gap-2 w-full sm:w-auto"
+            >
+              <Printer className="w-4 h-4" />
+              Тайлан хэвлэх
+            </Button>
+          </div>
+        </div>
+
+        {/* Students Table */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-4 font-medium">Оюутны нэр</th>
+                    <th className="text-left p-4 font-medium">Оюутны код</th>
+                    <th className="text-left p-4 font-medium">
+                      Бүртгүүлсэн цаг
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lecture.students
+                    .sort((a, b) => {
+                      return a.name.localeCompare(b.name);
+                    })
+                    .map((student, index) => (
+                      <tr key={student.id} className={`border-b`}>
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <span className="font-medium">{student.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-muted-foreground">
+                          {student.code}
+                        </td>
+                        <td className="p-4 text-muted-foreground">
+                          {student.timestamp || "-"}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       </CardContent>
     </Card>
-  )
+  );
 }
