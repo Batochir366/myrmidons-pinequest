@@ -86,7 +86,7 @@ export const ClassroomsView = () => {
     if (!teacherId) return;
     try {
       const res = await axiosInstance.get(
-        `/teacher/classrooms-and-students/${teacherId}`
+        `teacher/classrooms-and-students/${teacherId}`
       );
       setData(res.data.classrooms);
     } catch (error) {
