@@ -205,6 +205,7 @@ export function AttendanceHistory() {
             <ViewReport
               lecture={selectedLecture}
               onBack={() => setShowReport(false)}
+              calendarHeight={calendarHeight}
             />
           ) : (
             <div className="flex flex-col" ref={rightSectionRef}>
@@ -294,6 +295,7 @@ export function AttendanceHistory() {
               totalStudents: record.totalStudents,
             }))}
             attendanceData={attendanceData}
+            selectedLectureName={selectedLecture?.lectureName || null}
           />
         </div>
       </div>
