@@ -1,21 +1,12 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "DOCKERFILE",
-    "dockerfilePath": "Dockerfile"
+    "builder": "DOCKERFILE"
   },
   "deploy": {
     "healthcheckPath": "/health",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 3,
-    "startCommand": "./start.sh",
-    "environment": {
-      "PYTHONUNBUFFERED": "1",
-      "PYTHONDONTWRITEBYTECODE": "1",
-      "OMP_NUM_THREADS": "2",
-      "MKL_NUM_THREADS": "2",
-      "WORKERS": "2"
-    }
+    "restartPolicyMaxRetries": 5
   }
 }

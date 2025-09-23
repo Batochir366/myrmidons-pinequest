@@ -7,15 +7,9 @@ from flask_cors import CORS
 import traceback
 import datetime
 from math import radians, cos, sin, sqrt, atan2
-import gc
-import psutil
-from performance_monitor import monitor_performance, performance_middleware, check_performance_thresholds
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
-
-# Add performance monitoring middleware
-performance_middleware(app)
 
 port = 8080
 
@@ -85,7 +79,6 @@ except ImportError as e:
     print(f"⚠️ Anti-spoof detection not available: {e}")
     ANTI_SPOOF_AVAILABLE = False
 
-@monitor_performance
 def verify_liveness_first(frame):
     """
     Check liveness first before any face recognition
@@ -151,7 +144,6 @@ def recognize_teacher_with_liveness(frame, check_liveness=True):
     name, teacher_data = recognize_teacher_face(frame)
     return name, teacher_data, liveness_result
 
-@monitor_performance
 def recognize_face(frame, filter_student_ids=None):
     name = "unknown_person"
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -294,42 +286,13 @@ def index():
 
 @app.route('/health')
 def health():
-    # Check performance thresholds
-    warnings = check_performance_thresholds()
-    
     return jsonify({
         "status": "healthy",
         "face_recognition": FACE_RECOGNITION_AVAILABLE,
         "anti_spoof_detection": ANTI_SPOOF_AVAILABLE,
         "database": "connected" if mongo_client else "disconnected",
-        "timestamp": datetime.datetime.now().isoformat(),
-        "performance_warnings": warnings,
-        "memory_usage": psutil.virtual_memory().percent,
-        "cpu_usage": psutil.cpu_percent(interval=1)
+        "timestamp": datetime.datetime.now().isoformat()
     })
-
-@app.route('/performance')
-def performance_stats():
-    """Get detailed performance statistics"""
-    try:
-        stats = {
-            "system": {
-                "cpu_percent": psutil.cpu_percent(interval=1),
-                "memory_total": psutil.virtual_memory().total / 1024 / 1024,  # MB
-                "memory_available": psutil.virtual_memory().available / 1024 / 1024,  # MB
-                "memory_percent": psutil.virtual_memory().percent,
-                "disk_usage": psutil.disk_usage('/').percent
-            },
-            "python": {
-                "memory_usage": psutil.Process().memory_info().rss / 1024 / 1024,  # MB
-                "cpu_percent": psutil.Process().cpu_percent(),
-                "num_threads": psutil.Process().num_threads()
-            },
-            "timestamp": datetime.datetime.now().isoformat()
-        }
-        return jsonify(stats)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 @app.route('/student/attend', methods=['POST', 'OPTIONS'])
 def attend_class():
@@ -445,9 +408,6 @@ def attend_class():
                 "confidence": float(confidence),
                 "message": str(message)
             }
-        
-        # Optimize memory after processing
-        gc.collect()
         
         return jsonify(response_data), 200
 
