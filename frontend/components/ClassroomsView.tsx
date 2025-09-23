@@ -42,6 +42,7 @@ interface Classroom {
   lectureDate: string;
   teacher: string;
   joinLink: string;
+  joinCode: string;
   ClassroomStudents: Student[];
 }
 
@@ -62,6 +63,7 @@ export const ClassroomsView = () => {
   const [selectedClassroom, setSelectedClassroom] = useState<Student[] | null>(
     null
   );
+  const [selectedJoinCode, setSelectedJoinCode] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [teacherId, setTeacherId] = useState("");
   useEffect(() => {
@@ -286,6 +288,7 @@ export const ClassroomsView = () => {
                     onClick={() => {
                       setSelectedClassroom(classroom.ClassroomStudents);
                       setShowClassroom(true);
+                      setSelectedJoinCode(classroom.joinCode);
                     }}
                   >
                     {classroom.ClassroomStudents.length === 0
@@ -298,7 +301,7 @@ export const ClassroomsView = () => {
           ))}
 
         {/* ClassRoomDetail */}
-        {showClassroom && <ClassRoomDetail classroom={selectedClassroom} />}
+        {showClassroom && <ClassRoomDetail classroom={selectedClassroom} joinCode={selectedJoinCode} />}
       </div>
 
       {/* Empty State */}

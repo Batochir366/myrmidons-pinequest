@@ -244,12 +244,11 @@ export default function AttendanceDashboard() {
                 key={item.id}
                 onClick={() => setActiveView(item.id)}
                 variant={activeView === item.id ? "default" : "ghost"}
-                className={`w-full justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${
-                  activeView === item.id
-                    ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
-                    : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
-                }`}
-              >
+                className={`w-full justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${activeView === item.id
+                  ? "bg-slate-700 text-white shadow-lg"
+                  : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
+                  }`}
+        >
                 <item.icon className="w-5 h-5" />
                 {item.label}
               </Button>
@@ -316,7 +315,7 @@ export default function AttendanceDashboard() {
           <Sidebar className="hidden md:flex border-r border-border bg-white dark:bg-gray-900">
             <SidebarHeader className="h-[81px] p-6 border-b border-border bg-white">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl flex items-center justify-center shadow-lg">
+                <div className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center shadow-lg">
                   <QrCode className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -334,11 +333,10 @@ export default function AttendanceDashboard() {
                   <SidebarMenuItem key={item.id}>
                     <button
                       onClick={() => setActiveView(item.id)}
-                      className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${
-                        activeView === item.id
-                          ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg"
-                          : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
-                      }`}
+                      className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${activeView === item.id
+                        ? "bg-slate-700 text-white shadow-lg"
+                        : "hover:bg-slate-100 hover:text-slate-700 hover:shadow-md text-slate-600"
+                        }`}
                     >
                       <item.icon className="w-5 h-5" />
                       {item.label}

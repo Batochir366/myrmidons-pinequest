@@ -26,10 +26,11 @@ type ClassroomForm = z.infer<typeof classroomSchema>;
 // ---------- ClassRoomDetail ----------
 interface ClassRoomDetailProps {
   classroom: Student[] | null;
+  joinCode?: string;
 }
 
 export const ClassRoomDetail: React.FC<ClassRoomDetailProps> = ({
-  classroom,
+  classroom, joinCode
 }) => {
   const [search, setSearch] = useState("");
 
@@ -45,10 +46,14 @@ export const ClassRoomDetail: React.FC<ClassRoomDetailProps> = ({
         {/* Header */}
         <h3 className="text-lg font-semibold flex items-center justify-between flex-wrap">
           Оюутнуудын жагсаалт
-          <span className="flex items-center gap-2 text-lg text-gray-500 font-medium w-[120px]">
-            {classroom?.length ?? 0} оюутан
+          <span className="flex flex-col items-end gap-1 text-lg text-gray-500 font-medium w-[150px]">
+            <span>{classroom?.length ?? 0} оюутан</span>
+            {/* {joinCode && ( */}
+            <span className="text-sm text-gray-400">Ангийн код: {joinCode}</span>
+            {/* )} */}
           </span>
         </h3>
+
 
         {/* Search Field */}
         <input
