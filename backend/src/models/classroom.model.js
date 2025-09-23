@@ -39,6 +39,7 @@ export const ClassroomSchema = new Schema(
       },
     ],
     joinLink: { type: String },
+    joinCode: { type: String, unique: true, required: true },
   },
   {
     timestamps: true,

@@ -19,9 +19,9 @@ const LOCAL_FRONTEND_URL = "http://localhost:3000/";
 export const PYTHON_BACKEND_URL = "http://127.0.0.1:8080/";
 
 export const axiosInstance = axios.create({
-  baseURL: BATAA_BACKEND_URL,
+  baseURL: LOCAL_BACKEND_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
-export const axiosInstanceFront = BATAA_FRONTEND_URL;
+export const axiosInstanceFront = LOCAL_FRONTEND_URL;

@@ -147,3 +147,72 @@ export const joinClassroom = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
+export const joinClassroomByCode = async (req, res) => {
+  try {
+    const { studentId, joinCode } = req.body;
+
+    if (!studentId || !joinCode) {
+      return res.status(400).json({
+        message: "studentId болон joinCode шаардлагатай",
+      });
+    }
+
+    // Find classroom by join code
+    const classroom = await ClassroomModel.findOne({ joinCode });
+    if (!classroom) {
+      return res.status(404).json({
+        message: "Ийм код бүхий анги олдсонгүй",
+      });
+    }
+
+    // Find student
+    const student = await UserModel.findOne({ studentId });
+    if (!student) {
+      return res.status(404).json({
+        message: "Оюутан олдсонгүй",
+      });
+    }
+
+    // Check if student already in classroom
+    const isAlreadyMember = classroom.ClassroomStudents.some(
+      (classroomStudent) => classroomStudent.studentId === studentId
+    );
+
+    if (isAlreadyMember) {
+      return res.status(409).json({
+        message: "Та энэ ангид аль хэдийн элссэн байна",
+        classroom: {
+          lectureName: classroom.lectureName,
+          classroomId: classroom._id,
+          lectureDate: classroom.lectureDate,
+        },
+      });
+    }
+    const classroomStudent = {
+      studentId: studentId,
+      name: student.name,
+      embedding: student.embedding,
+    };
+    await ClassroomModel.findByIdAndUpdate(classroom._id, {
+      $addToSet: { ClassroomStudents: classroomStudent },
+    });
+    await UserModel.findByIdAndUpdate(student._id, {
+      $addToSet: { Classrooms: classroom._id },
+    });
+
+    return res.status(200).json({
+      message: "Ангид амжилттай элслээ",
+      classroom: {
+        _id: classroom._id,
+        lectureName: classroom.lectureName,
+        lectureDate: classroom.lectureDate,
+      },
+    });
+  } catch (error) {
+    console.error("❌ joinClassroomByCode error:", error);
+    return res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};

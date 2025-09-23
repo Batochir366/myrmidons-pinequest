@@ -3,7 +3,11 @@ import { ClassroomModel } from "../models/classroom.model.js";
 import { TeacherModel } from "../models/teacher.model.js";
 import jwt from "jsonwebtoken";
 import { configDotenv } from "dotenv";
-import { UserModel } from "../models/user.model.js";
+import crypto from "crypto";
+
+const generateJoinCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 configDotenv();
 
 const SECRET_KEY = "pinequest-secret";
@@ -23,10 +27,22 @@ export const createClassroom = async (req, res) => {
       return res.status(404).json({ message: "Багш олдсонгүй" });
     }
 
+    let joinCode;
+    let isUnique = false;
+
+    while (!isUnique) {
+      joinCode = generateJoinCode();
+      const existingClassroom = await ClassroomModel.findOne({ joinCode });
+      if (!existingClassroom) {
+        isUnique = true;
+      }
+    }
+
     const newClassroom = new ClassroomModel({
       lectureName,
       lectureDate,
       teacher: teacherId,
+      joinCode,
       ClassroomStudents: [],
       attendanceHistory: [],
     });
@@ -41,7 +57,6 @@ export const createClassroom = async (req, res) => {
     };
 
     const token = jwt.sign(tokenPayload, SECRET_KEY, { expiresIn: "30d" });
-
     const joinLink = `${process.env.FRONT_END_URL}/join?token=${token}`;
 
     savedClassroom.joinLink = joinLink;
@@ -55,6 +70,7 @@ export const createClassroom = async (req, res) => {
       message: "Ангийг амжилттай үүсгэлээ",
       classroom: savedClassroom,
       joinLink,
+      joinCode,
     });
   } catch (error) {
     console.error("❌ createClassroom error:", error);
