@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-
 import { z } from "zod";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { axiosInstance } from "@/lib/utils";
+import { toast } from "sonner";
 
 // ---------- Types ----------
 interface Student {
@@ -27,12 +28,18 @@ type ClassroomForm = z.infer<typeof classroomSchema>;
 interface ClassRoomDetailProps {
   classroom: Student[] | null;
   joinCode?: string;
+  classroomId?: string;
+  onDelete?: () => void;
 }
 
 export const ClassRoomDetail: React.FC<ClassRoomDetailProps> = ({
-  classroom, joinCode
+  classroom,
+  joinCode,
+  classroomId,
+  onDelete
 }) => {
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const filteredStudents = classroom?.filter(
     (student) =>
@@ -40,20 +47,53 @@ export const ClassRoomDetail: React.FC<ClassRoomDetailProps> = ({
       student.studentId.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleDelete = async () => {
+    if (!classroomId) return;
+    const confirmDelete = window.confirm("Та энэ ангийг устгахдаа итгэлтэй байна уу?");
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+      await axiosInstance.delete(`teacher/delete-classroom/${classroomId}`);
+      alert("Анги амжилттай устгагдлаа");
+      if (onDelete) onDelete(); // Дараа нь эцсийн list-г шинэчлэх
+    } catch (err) {
+      console.error(err);
+      toast.error("Анги устгахад алдаа гарлаа");
+    } finally {
+      setLoading(false);
+    }
+  };
+  console.log("joincode 2", joinCode);
   return (
     <Card className="w-full">
       <CardContent className="space-y-4">
-        {/* Header */}
-        <h3 className="text-lg font-semibold flex items-center justify-between flex-wrap">
+
+        {/* <h3 className="text-lg font-semibold flex items-center justify-between flex-wrap">
           Оюутнуудын жагсаалт
           <span className="flex flex-col items-end gap-1 text-lg text-gray-500 font-medium w-[150px]">
             <span>{classroom?.length ?? 0} оюутан</span>
-            {/* {joinCode && ( */}
             <span className="text-sm text-gray-400">Ангийн код: {joinCode}</span>
-            {/* )} */}
           </span>
-        </h3>
+        </h3> 
+        */}
 
+        <div className="flex items-center justify-between flex-wrap">
+          <h3 className="text-lg font-semibold">
+            Оюутнуудын жагсаалт
+          </h3>
+          <div className="flex flex-col items-end gap-1 text-lg text-gray-500 font-medium w-[150px]">
+            <span>{classroom?.length ?? 0} оюутан</span>
+            {joinCode && <span className="text-sm text-gray-400">Ангийн код: {joinCode}</span>}
+            <button
+              onClick={handleDelete}
+              disabled={loading}
+              className="mt-2 px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 disabled:opacity-50"
+            >
+              {loading ? "Устгаж байна..." : "Анги устгах"}
+            </button>
+          </div>
+        </div>
 
         {/* Search Field */}
         <input
