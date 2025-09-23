@@ -102,6 +102,16 @@ class AntiSpoofDetector:
             return True, 0.5, "Anti-spoof detection not available - access granted"
 
         try:
+            # Ensure image is numpy array
+            if not isinstance(image, np.ndarray):
+                print(f"❌ Invalid image type: {type(image)}")
+                return True, 0.5, "Invalid image format - access granted"
+                
+            # Ensure image has correct shape
+            if len(image.shape) != 3 or image.shape[2] != 3:
+                print(f"❌ Invalid image shape: {image.shape}")
+                return True, 0.5, "Invalid image shape - access granted"
+
             prepared_image = self.prepare_image_for_detection(image)
 
             if not self.check_image_aspect_ratio(prepared_image):
@@ -109,10 +119,14 @@ class AntiSpoofDetector:
                 return True, 0.6, "Image aspect ratio warning - access granted"
 
             # Get face bounding box
-            image_bbox = self.model_test.get_bbox(prepared_image)
-            if image_bbox is None:
-                print("⚠️ No face detected, denying access")
-                return False, 0.0, "No face detected"
+            try:
+                image_bbox = self.model_test.get_bbox(prepared_image)
+                if image_bbox is None:
+                    print("⚠️ No face detected, denying access")
+                    return False, 0.0, "No face detected"
+            except Exception as bbox_error:
+                print(f"❌ Error getting face bbox: {bbox_error}")
+                return True, 0.5, "Face detection error - access granted"
 
             # Load model files (both .onnx and .pth supported)
             model_files = [
@@ -122,15 +136,25 @@ class AntiSpoofDetector:
             if not model_files:
                 print(f"⚠️ No model files found in {self.model_dir}")
                 print("Available files:", os.listdir(self.model_dir) if os.path.exists(self.model_dir) else "Directory not found")
-                # In production, you might want to allow access when models are missing
                 return True, 0.5, "No model files found - access granted"
 
+            print(f"🔍 Found {len(model_files)} model files: {model_files}")
             prediction = None
+            successful_predictions = 0
 
             # Process each model
             for model_name in model_files:
                 try:
-                    h_input, w_input, model_type, scale = parse_model_name(model_name)
+                    print(f"🔄 Processing model: {model_name}")
+                    
+                    # Parse model name to get parameters
+                    parsed_result = parse_model_name(model_name)
+                    if len(parsed_result) == 4:
+                        h_input, w_input, model_type, scale = parsed_result
+                    else:
+                        print(f"❌ Unexpected parse result length: {len(parsed_result)}")
+                        continue
+                    
                     param = {
                         "org_img": prepared_image,
                         "bbox": image_bbox,
@@ -139,34 +163,61 @@ class AntiSpoofDetector:
                         "out_h": h_input,
                         "crop": self.image_cropper,
                     }
-                    result, test_speed = self.model_test.predict(
-                        os.path.join(self.model_dir, model_name), param
-                    )
-                    prediction = result if prediction is None else prediction + result
-                    print(f"✅ Processed model {model_name} successfully")
+                    
+                    # Make prediction
+                    model_path = os.path.join(self.model_dir, model_name)
+                    result = self.model_test.predict(model_path, param)
+                    
+                    # Handle different return formats
+                    if isinstance(result, tuple) and len(result) == 2:
+                        prediction_result, test_speed = result
+                    else:
+                        prediction_result = result
+                        test_speed = 0.0
+                    
+                    if prediction_result is not None:
+                        prediction = prediction_result if prediction is None else prediction + prediction_result
+                        successful_predictions += 1
+                        print(f"✅ Processed model {model_name} successfully")
+                    else:
+                        print(f"⚠️ Model {model_name} returned None")
+                        
                 except Exception as e:
                     print(f"❌ Error processing model {model_name}: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
 
-            if prediction is None:
+            if prediction is None or successful_predictions == 0:
                 print("⚠️ No successful model predictions, allowing access")
                 return True, 0.5, "Model prediction failed - access granted"
 
-            label = np.argmax(prediction)
-            confidence = prediction[0][label] / 2
-            is_real = label == 1
-            message = (
-                f"Real face detected (score: {confidence:.2f})"
-                if is_real
-                else "Бодит хүн биш байна, Хуурах гэж оролдох хэрэггүй шүү"
-            )
+            # Process final prediction
+            try:
+                if isinstance(prediction, list) and len(prediction) > 0:
+                    prediction = prediction[0] if isinstance(prediction[0], np.ndarray) else prediction
+                    
+                label = np.argmax(prediction)
+                confidence = float(prediction[label]) / successful_predictions if successful_predictions > 0 else 0.5
+                is_real = label == 1
+                
+                message = (
+                    f"Real face detected (score: {confidence:.2f})"
+                    if is_real
+                    else "Бодит хүн биш байна, Хуурах гэж оролдох хэрэггүй шүү"
+                )
 
-            print(f"✅ Anti-spoof detection: {message}")
-            return is_real, confidence, message
+                print(f"✅ Anti-spoof detection: {message}")
+                return is_real, confidence, message
+                
+            except Exception as pred_error:
+                print(f"❌ Error processing prediction: {pred_error}")
+                return True, 0.5, "Prediction processing error - access granted"
 
         except Exception as e:
             print(f"❌ Error in anti-spoof detection: {e}")
-            # In case of errors, allow access (you can change this based on security requirements)
+            import traceback
+            traceback.print_exc()
             return True, 0.5, f"Detection error - access granted: {str(e)}"
 
     def is_available(self) -> bool:
