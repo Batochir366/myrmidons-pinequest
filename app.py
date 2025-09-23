@@ -67,12 +67,12 @@ import face_recognition
 FACE_RECOGNITION_AVAILABLE = True
 print("✅ Face recognition libraries loaded successfully")
 
-# Import optimized anti-spoof detection
+# Import anti-spoof detection
 try:
-    from optimized_anti_spoof import check_face_liveness_fast, is_anti_spoof_available
+    from anti_spoof_detector import check_face_liveness, is_anti_spoof_available
     ANTI_SPOOF_AVAILABLE = is_anti_spoof_available()
     if ANTI_SPOOF_AVAILABLE:
-        print("✅ Optimized anti-spoof detection loaded successfully")
+        print("✅ Anti-spoof detection loaded successfully")
     else:
         print("⚠️ Anti-spoof detection not available")
 except ImportError as e:
@@ -109,7 +109,7 @@ def verify_liveness_first(frame):
     """
     if ANTI_SPOOF_AVAILABLE:
         try:
-            is_live, confidence, message = check_face_liveness_fast(frame, use_full_detection=False)
+            is_live, confidence, message = check_face_liveness(frame)
             print(f"Liveness check: is_live={is_live}, confidence={confidence:.2f}, message={message}")
             return is_live, confidence, message
         except Exception as e:
@@ -426,7 +426,7 @@ def attend_class():
         if not is_valid:
             return jsonify({"success": False, "message": f"Image quality issue: {validation_message}"}), 400
 
-        # Face Recognition with Liveness Detection (liveness checked first)
+        # Face Recognition with Strict Liveness Detection
         name, matched_user, liveness_result = recognize_face_with_liveness(frame, filter_student_ids=[studentId], check_liveness=True)
         
         # Check for spoof detection

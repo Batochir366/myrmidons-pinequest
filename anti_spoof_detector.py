@@ -70,6 +70,56 @@ class AntiSpoofDetector:
         
         return resized_image
 
+    def _pre_check_spoof(self, image: np.ndarray) -> Tuple[bool, float, str]:
+        """Pre-check for obvious spoofs before running ML models"""
+        try:
+            # Check image size
+            height, width = image.shape[:2]
+            if width < 200 or height < 200:
+                return False, 0.1, "Image too small for reliable detection"
+            
+            # Convert to grayscale for analysis
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            
+            # Check for screen artifacts (horizontal lines)
+            horizontal_edges = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+            horizontal_lines = np.sum(np.abs(horizontal_edges) > 50)
+            if horizontal_lines > gray.shape[0] * 0.1:
+                return False, 0.1, "Screen refresh lines detected"
+            
+            # Check for pixelation (compressed images)
+            resized = cv2.resize(gray, (gray.shape[1]//4, gray.shape[0]//4))
+            upscaled = cv2.resize(resized, (gray.shape[1], gray.shape[0]))
+            mse = np.mean((gray.astype(float) - upscaled.astype(float)) ** 2)
+            if mse < 100:
+                return False, 0.2, "Pixelation detected - possible screen capture"
+            
+            # Check for color diversity (photos have less color variation)
+            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+            unique_colors = len(np.unique(hsv.reshape(-1, hsv.shape[2]), axis=0))
+            total_pixels = hsv.shape[0] * hsv.shape[1]
+            color_diversity = unique_colors / total_pixels
+            if color_diversity < 0.01:
+                return False, 0.3, "Low color diversity - possible compressed image"
+            
+            # Check for sharpness (photos are usually too sharp)
+            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+            if laplacian_var > 1000:
+                return False, 0.2, "Image too sharp - possible photo"
+            
+            # Check for lighting uniformity (photos have more uniform lighting)
+            mean_brightness = np.mean(gray)
+            std_brightness = np.std(gray)
+            lighting_uniformity = std_brightness / mean_brightness if mean_brightness > 0 else 0
+            if lighting_uniformity < 0.3:
+                return False, 0.3, "Uniform lighting - possible photo"
+            
+            return True, 0.8, "Pre-check passed"
+            
+        except Exception as e:
+            print(f"Pre-check error: {e}")
+            return True, 0.5, f"Pre-check failed: {str(e)}"
+
     def detect_spoof(self, image: np.ndarray) -> Tuple[bool, float, str]:
         """
         Detect if the image is a spoof (fake) or real face
@@ -85,6 +135,11 @@ class AntiSpoofDetector:
         """
         if not self.initialized or not ANTI_SPOOF_AVAILABLE:
             return True, 0.5, "Anti-spoof detection not available"
+        
+        # First run pre-checks for obvious spoofs
+        pre_check_result = self._pre_check_spoof(image)
+        if not pre_check_result[0]:
+            return pre_check_result
         
         try:
             # Prepare image with correct aspect ratio (like working version)
@@ -139,8 +194,10 @@ class AntiSpoofDetector:
             label = np.argmax(prediction)
             confidence = prediction[0][label] / 2
             
-            # Determine result
-            is_real = label == 1
+            # Much stricter result determination
+            # Require higher confidence for real faces
+            is_real = label == 1 and confidence > 0.6  # Increased threshold
+            
             if is_real:
                 message = f"Real face detected (score: {confidence:.2f})"
             else:
