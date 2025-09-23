@@ -519,6 +519,8 @@ def register():
 
         # Check for liveness (anti-spoof detection) during registration
         if ANTI_SPOOF_AVAILABLE:
+            print(f"Frame shape: {frame.shape}")
+
             try:
                 is_live, confidence, message = check_face_liveness(frame)
                 if not is_live:

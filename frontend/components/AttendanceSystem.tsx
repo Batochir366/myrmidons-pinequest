@@ -216,7 +216,31 @@ const AttendanceSystem: React.FC = () => {
         const attendanceCheckResponse = await axiosInstance.get(
           `/attendance/check/${attendanceId}/${studentId}`
         );
-
+        if (attendanceCheckResponse.data.already_attended == false) {
+          const verified = await captureAndVerify(
+            videoRef,
+            canvasRef,
+            `${PYTHON_BACKEND_URL}student/attend`,
+            {
+              studentId,
+              classroom_students: students,
+              latitude: location.latitude,
+              longitude: location.longitude,
+            },
+            setMessage,
+            setIsRecognizing,
+            setRecognitionProgress,
+            onFaceRecognitionSuccess
+          );
+          if (!verified) {
+            console.log(
+              "❌ Face recognition failed - message should be displayed"
+            );
+            setIsRecognizing(false);
+            setRecognitionProgress(0);
+            // Note: setMessage is already called inside captureAndVerify for error cases
+          }
+        }
         // If we get here, student can attend (200 response)
         console.log(
           "✅ Attendance check passed, proceeding with face recognition"
@@ -262,28 +286,6 @@ const AttendanceSystem: React.FC = () => {
       );
 
       // Call captureAndVerify with ONLY face recognition callback
-      const verified = await captureAndVerify(
-        videoRef,
-        canvasRef,
-        `${PYTHON_BACKEND_URL}student/attend`,
-        {
-          studentId,
-          classroom_students: students,
-          latitude: location.latitude,
-          longitude: location.longitude,
-        },
-        setMessage,
-        setIsRecognizing,
-        setRecognitionProgress,
-        onFaceRecognitionSuccess
-      );
-
-      if (!verified) {
-        console.log("❌ Face recognition failed - message should be displayed");
-        setIsRecognizing(false);
-        setRecognitionProgress(0);
-        // Note: setMessage is already called inside captureAndVerify for error cases
-      }
     } catch (error) {
       console.error("❌ Error in handleRecognitionComplete:", error);
       setIsRecognizing(false);

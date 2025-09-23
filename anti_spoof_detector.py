@@ -53,17 +53,31 @@ class AntiSpoofDetector:
             self.initialized = False
     
     def check_image_aspect_ratio(self, image: np.ndarray) -> bool:
-        """Check if image has correct 3:4 aspect ratio"""
-        height, width, channel = image.shape
-        if width/height != 3/4:
-            return False
-        return True
-    
+      height, width, _ = image.shape
+      ratio = width / height
+      expected_ratio = 3 / 4
+      tolerance = 0.05  
+       return abs(ratio - expected_ratio) < tolerance
+
     def resize_image_for_detection(self, image: np.ndarray) -> np.ndarray:
-        """Resize image to 3:4 aspect ratio for anti-spoof detection"""
-        height = image.shape[0]
-        new_width = int(height * 3 / 4)
-        return cv2.resize(image, (new_width, height))
+      height, width = image.shape[:2]
+      desired_ratio = 3 / 4
+      current_ratio = width / height
+
+      # Center crop to nearest 3:4 aspect ratio
+      if current_ratio > desired_ratio:
+        # Too wide, crop width
+        new_width = int(height * desired_ratio)
+        x_offset = (width - new_width) // 2
+        image = image[:, x_offset:x_offset + new_width]
+      elif current_ratio < desired_ratio:
+        # Too tall, crop height
+        new_height = int(width / desired_ratio)
+        y_offset = (height - new_height) // 2
+        image = image[y_offset:y_offset + new_height, :]
+
+      return image
+
     
     def detect_spoof(self, image: np.ndarray) -> Tuple[bool, float, str]:
         """
