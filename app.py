@@ -7,11 +7,17 @@ from flask_cors import CORS
 import traceback
 import datetime
 from math import radians, cos, sin, sqrt, atan2
+import gc
+import psutil
+from performance_monitor import monitor_performance, performance_middleware, check_performance_thresholds
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'FACE')
 
-port = int(os.environ.get('PORT', 8080))
+# Add performance monitoring middleware
+performance_middleware(app)
+
+port = 8080
 
 CORS(app, 
      supports_credentials=True,
@@ -79,29 +85,7 @@ except ImportError as e:
     print(f"⚠️ Anti-spoof detection not available: {e}")
     ANTI_SPOOF_AVAILABLE = False
 
-# Import performance optimizations
-try:
-    from performance_optimizations import (
-        optimize_image_for_processing, 
-        preprocess_image_fast, 
-        validate_image_quality,
-        performance_monitor,
-        time_request
-    )
-    print("✅ Performance optimizations loaded successfully")
-except ImportError as e:
-    print(f"⚠️ Performance optimizations not available: {e}")
-    # Fallback functions
-    def optimize_image_for_processing(image, max_size=640):
-        return image
-    def preprocess_image_fast(image):
-        return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    def validate_image_quality(image):
-        return True, "OK"
-    def time_request(func):
-        return func
-    performance_monitor = None
-
+@monitor_performance
 def verify_liveness_first(frame):
     """
     Check liveness first before any face recognition
@@ -167,6 +151,7 @@ def recognize_teacher_with_liveness(frame, check_liveness=True):
     name, teacher_data = recognize_teacher_face(frame)
     return name, teacher_data, liveness_result
 
+@monitor_performance
 def recognize_face(frame, filter_student_ids=None):
     name = "unknown_person"
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -309,52 +294,44 @@ def index():
 
 @app.route('/health')
 def health():
-    health_data = {
+    # Check performance thresholds
+    warnings = check_performance_thresholds()
+    
+    return jsonify({
         "status": "healthy",
         "face_recognition": FACE_RECOGNITION_AVAILABLE,
         "anti_spoof_detection": ANTI_SPOOF_AVAILABLE,
         "database": "connected" if mongo_client else "disconnected",
-        "timestamp": datetime.datetime.now().isoformat()
-    }
-    
-    # Add performance stats if available
-    if performance_monitor:
-        health_data["performance"] = performance_monitor.get_stats()
-    
-    return jsonify(health_data)
+        "timestamp": datetime.datetime.now().isoformat(),
+        "performance_warnings": warnings,
+        "memory_usage": psutil.virtual_memory().percent,
+        "cpu_usage": psutil.cpu_percent(interval=1)
+    })
 
 @app.route('/performance')
 def performance_stats():
-    """Performance monitoring endpoint"""
-    if not performance_monitor:
-        return jsonify({"error": "Performance monitoring not available"}), 503
-    
-    stats = performance_monitor.get_stats()
-    return jsonify({
-        "performance_stats": stats,
-        "recommendations": get_performance_recommendations(stats)
-    })
-
-def get_performance_recommendations(stats):
-    """Get performance recommendations based on stats"""
-    recommendations = []
-    
-    if stats["average"] > 10.0:
-        recommendations.append("Average response time is high (>10s). Consider optimizing image processing.")
-    
-    if stats["max"] > 30.0:
-        recommendations.append("Maximum response time is very high (>30s). Check for blocking operations.")
-    
-    if stats["count"] > 50 and stats["average"] > 5.0:
-        recommendations.append("High load detected. Consider scaling or caching.")
-    
-    if not recommendations:
-        recommendations.append("Performance looks good!")
-    
-    return recommendations
+    """Get detailed performance statistics"""
+    try:
+        stats = {
+            "system": {
+                "cpu_percent": psutil.cpu_percent(interval=1),
+                "memory_total": psutil.virtual_memory().total / 1024 / 1024,  # MB
+                "memory_available": psutil.virtual_memory().available / 1024 / 1024,  # MB
+                "memory_percent": psutil.virtual_memory().percent,
+                "disk_usage": psutil.disk_usage('/').percent
+            },
+            "python": {
+                "memory_usage": psutil.Process().memory_info().rss / 1024 / 1024,  # MB
+                "cpu_percent": psutil.Process().cpu_percent(),
+                "num_threads": psutil.Process().num_threads()
+            },
+            "timestamp": datetime.datetime.now().isoformat()
+        }
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/student/attend', methods=['POST', 'OPTIONS'])
-@time_request
 def attend_class():
     if request.method == 'OPTIONS':
         return '', 204
@@ -417,16 +394,8 @@ def attend_class():
 
         if frame is None:
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
-        
-        # Optimize image for faster processing
-        frame = optimize_image_for_processing(frame, max_size=640)
-        
-        # Quick image quality validation
-        is_valid, validation_message = validate_image_quality(frame)
-        if not is_valid:
-            return jsonify({"success": False, "message": f"Image quality issue: {validation_message}"}), 400
 
-        # Face Recognition with Strict Liveness Detection
+        # Face Recognition with Liveness Detection (liveness checked first)
         name, matched_user, liveness_result = recognize_face_with_liveness(frame, filter_student_ids=[studentId], check_liveness=True)
         
         # Check for spoof detection
@@ -476,6 +445,9 @@ def attend_class():
                 "confidence": float(confidence),
                 "message": str(message)
             }
+        
+        # Optimize memory after processing
+        gc.collect()
         
         return jsonify(response_data), 200
 
