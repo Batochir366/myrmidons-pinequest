@@ -90,6 +90,9 @@ export function QRControlCenter({
   const [sessionRestored, setSessionRestored] = useState(false);
   const [classroomStudents, setClassroomStudents] = useState<Student[]>([]);
 
+  // QR шинэчлэх секунд - багшаас тохируулсан эсвэл анхны утга
+  const [qrSec, setQrSec] = useState(5);
+
   // -----------------------------
   // Effects
   // -----------------------------
@@ -137,17 +140,7 @@ export function QRControlCenter({
       !pollRef.current
     ) {
       console.log("Resuming timers for restored session...");
-
-      // Resume QR generation timer
-      timerRef.current = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === 1) {
-            generateQr(attendanceId);
-            return 5;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      startQRTimer(attendanceId);
 
       // Resume polling
       pollRef.current = setInterval(
@@ -160,7 +153,37 @@ export function QRControlCenter({
         generateQr(attendanceId);
       }
     }
-  }, [isRestoringSession, running, attendanceId, qrImage, qrData]);
+  }, [isRestoringSession, running, attendanceId, qrImage, qrData, qrSec]);
+
+  // QR timer нь qrSec өөрчлөгдөхөд дахин эхлүүлэх
+  const startQRTimer = (attendanceId: string) => {
+    // Хуучин timer-ийг зогсоох
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    // Шинэ countdown тохируулах
+    setCountdown(qrSec);
+
+    // Шинэ timer эхлүүлэх
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev === 1) {
+          generateQr(attendanceId);
+          return qrSec; // qrSec ашиглах
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // qrSec өөрчлөгдөхөд timer дахин эхлүүлэх (зөвхөн running үед)
+  useEffect(() => {
+    if (running && attendanceId) {
+      startQRTimer(attendanceId);
+    }
+  }, [qrSec, running, attendanceId]);
 
   // -----------------------------
   // QR & Attendance Logic
@@ -191,7 +214,7 @@ export function QRControlCenter({
   };
 
   const generateQr = (attendanceId: string) => {
-    const expiresAt = Math.floor((Date.now() + 5000) / 1000); // Convert to seconds for JWT
+    const expiresAt = Math.floor((Date.now() + qrSec * 1000) / 1000); // qrSec ашиглах
 
     const payload = {
       attendanceId,
@@ -258,8 +281,6 @@ export function QRControlCenter({
 
     setLoading(true);
 
-    setLoading(true);
-
     try {
       const { latitude, longitude } = await getLocation();
 
@@ -277,20 +298,11 @@ export function QRControlCenter({
       setStudents([]);
       generateQr(_id);
 
-      setCountdown(5);
       setRunning(true);
       onStart(); // Notify parent
 
-      // QR Timer - managed by parent's refs
-      timerRef.current = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === 1) {
-            generateQr(_id);
-            return 5;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      // QR Timer эхлүүлэх
+      startQRTimer(_id);
 
       // Poll attendance data - managed by parent's refs
       pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
@@ -331,16 +343,18 @@ export function QRControlCenter({
         onClassroomChange={handleClassroomChange}
         start={start}
         stop={stop}
+        qrSec={qrSec}
+        setQrSec={setQrSec}
       />
 
       {running && qrData && qrImage && (
         <QrAndAttendance
           qrImage={qrImage}
           qrData={qrData}
-          countdown={countdown}
           open={open}
           setOpen={setOpen}
           students={students}
+          countdown={countdown} // countdown ашиглах
         />
       )}
     </div>
