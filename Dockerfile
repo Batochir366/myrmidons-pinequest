@@ -56,4 +56,4 @@ RUN mkdir -p Silent_Face_Anti_Spoofing/resources/detection_model
 EXPOSE 8080
 
 # Use gunicorn directly with fixed port 8080
-CMD ["gunicorn", "app:app", "--workers=1", "--timeout=120", "--bind=0.0.0.0:$PORT"]
+CMD gunicorn app:app --workers=1 --timeout=120 --bind 0.0.0.0:8080
