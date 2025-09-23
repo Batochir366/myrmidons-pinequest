@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { CalendarIcon, History } from "lucide-react"
+import { CalendarIcon, Eye, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { ViewReport } from "./VIewReport"
 import { axiosInstance } from "@/lib/utils"
 import { AttendanceChart } from "./AttendanceChart"
+import { useRef, useLayoutEffect } from "react"
 
 interface AttendanceRecord {
   id: number
@@ -36,6 +37,43 @@ export function AttendanceHistory() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedLecture, setSelectedLecture] = useState<AttendanceRecord | null>(null)
   const [showReport, setShowReport] = useState(false)
+
+  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 0)
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
+  // calendar height measure
+  const calendarRef = useRef<HTMLDivElement>(null)
+  const [calendarHeight, setCalendarHeight] = useState<number | undefined>(undefined)
+
+  useLayoutEffect(() => {
+    const measureHeight = () => {
+      if (calendarRef.current) {
+        setCalendarHeight(calendarRef.current.offsetHeight)
+      }
+    }
+    measureHeight()
+    window.addEventListener("resize", measureHeight)
+    return () => window.removeEventListener("resize", measureHeight)
+  }, [])
+
+  const rightSectionRef = useRef<HTMLDivElement>(null)
+  const [rightSectionWidth, setRightSectionWidth] = useState<number>(0)
+
+  useEffect(() => {
+    if (!rightSectionRef.current) return
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setRightSectionWidth(entry.contentRect.width)
+      }
+    })
+    observer.observe(rightSectionRef.current)
+    return () => observer.disconnect()
+  }, [])
 
   const getAttendanceForDate = (date: Date) => {
     const year = date.getFullYear()
@@ -118,9 +156,9 @@ export function AttendanceHistory() {
   return (
     <TooltipProvider>
       <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 overflow-y-auto min-h-screen">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Calendar Section */}
-          <div className="flex flex-col gap-1">
+          <div ref={calendarRef} className="flex flex-col">
             <Card className="h-fit">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -169,8 +207,11 @@ export function AttendanceHistory() {
               onBack={() => setShowReport(false)}
             />
           ) : (
-            <div className="flex flex-col">
-              <Card className="flex flex-col h-full">
+            <div className="flex flex-col" ref={rightSectionRef}>
+              <Card
+                className="flex flex-col"
+                style={{ height: calendarHeight ? `${calendarHeight}px` : "auto" }}
+              >
                 <CardHeader className="flex-shrink-0">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
@@ -181,18 +222,19 @@ export function AttendanceHistory() {
                       <CardDescription>
                         {selectedDateAttendance.length > 0
                           ? `${selectedDateAttendance.length} хичээл олдлоо`
-                          : "Энэ өдөрт хичээл олдсонгүй"}
+                          : "Энэ өдөр хичээл олдсонгүй"}
                       </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-hidden">
+                <CardContent className="flex-1 overflow-y-auto">
                   {selectedDateAttendance.length > 0 ? (
                     <div className="h-full overflow-y-auto space-y-4 pr-2">
                       {selectedDateAttendance.map((lecture) => (
                         <div
                           key={lecture.id}
                           className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors group gap-4"
+                          // className="flex items-center justify-between p-4 border rounded-lg"
                           title="View Report"
                         >
                           <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -218,8 +260,13 @@ export function AttendanceHistory() {
                                 setSelectedLecture(lecture)
                                 setShowReport(true)
                               }}
+                              className="flex items-center gap-2"
                             >
-                              <span>Дэлгэрэнгүй харах</span>
+                              {windowWidth < 768 || rightSectionWidth > 460 ? ( // 📱 mobile бол үргэлж текст харуулна
+                                <span>Дэлгэрэнгүй харах</span>
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
                             </Button>
                           </div>
                         </div>
@@ -228,7 +275,7 @@ export function AttendanceHistory() {
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center py-8 text-muted-foreground">
                       <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Энэ өдөрт хичээл олдсонгүй.</p>
+                      <p>Энэ өдөр хичээл олдсонгүй.</p>
                     </div>
                   )}
                 </CardContent>
