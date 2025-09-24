@@ -48,7 +48,7 @@ interface AttendanceControlPanelProps {
   start: () => void;
   stop: () => void;
   qrSec: number;
-  onQrSecChange: (newQrSec: number) => void;
+  handlesave: (newSec: number) => void;
 }
 
 // -----------------------------
@@ -61,27 +61,18 @@ export default function AttendanceControlPanel({
   selectedLectureName,
   loading,
   running,
-  joinLinkQr,
   onClassroomChange,
   start,
   stop,
   qrSec,
-  onQrSecChange,
+  handlesave,
 }: AttendanceControlPanelProps) {
   const [inputValue, setInputValue] = useState(qrSec.toString());
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
-  const handleSave = () => {
-    const sec = parseInt(inputValue, 10);
-    if (!isNaN(sec) && sec >= 3) {
-      onQrSecChange(sec);
-    } else {
-      setInputValue("3");
-      onQrSecChange(3);
-    }
-  };
+
   return (
     <div className="flex flex-col gap-6 w-full lg:flex-row">
       <Card className="flex-1 rounded-2xl bg-white border shadow-none">
@@ -122,7 +113,7 @@ export default function AttendanceControlPanel({
               <Button
                 onClick={start}
                 disabled={!selectedLectureName || loading || running}
-                className="flex-1 sm:flex-none flex items-center gap-2 bg-slate-700 text-white"
+                className="flex-1 w-[137px] sm:flex-none flex items-center gap-2 bg-slate-700 text-white"
               >
                 <Play className="w-4 h-4" />
                 {loading ? "Хүлээнэ үү..." : "QR үүсгэх"}
@@ -132,7 +123,7 @@ export default function AttendanceControlPanel({
                 onClick={stop}
                 disabled={!running}
                 variant="destructive"
-                className="flex-1 sm:flex-none flex items-center gap-2"
+                className="w-[137px] sm:flex-none flex items-center gap-2"
               >
                 <Square className="w-4 h-4" />
                 Зогсоох
@@ -144,7 +135,7 @@ export default function AttendanceControlPanel({
                     variant="outline"
                     className="flex-1 sm:flex-none bg-black text-white"
                   >
-                    QR шинэчлэх хугацаа
+                    QR-ын хугацаа
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
@@ -172,7 +163,9 @@ export default function AttendanceControlPanel({
                     </DialogClose>
 
                     <DialogClose asChild>
-                      <Button onClick={handleSave}>Save</Button>
+                      <Button onClick={() => handlesave(Number(inputValue))}>
+                        Save
+                      </Button>
                     </DialogClose>
                   </DialogFooter>
                 </DialogContent>
