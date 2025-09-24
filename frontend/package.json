@@ -25,6 +25,7 @@
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
     "jwt-encode": "^1.0.1",
+    "keen-slider": "^6.8.6",
     "lucide-react": "^0.544.0",
     "next": "15.5.3",
     "qr-code-styling": "^1.9.2",

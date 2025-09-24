@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+
 import {
   Card,
   CardDescription,
@@ -15,6 +14,9 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { Navigation } from "@/components/Navigation";
+import { Instructions } from "@/components/Instructions";
+
+
 
 export default function LandingPage() {
   return (
@@ -35,16 +37,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Hero Image */}
-        <div className="mt-16 flow-root sm:mt-24">
-          <div className="relative mx-auto max-w-5xl">
-            <img
-              src="https://media.istockphoto.com/id/1171806748/photo/aerial-phto-of-palma-de-mallorca-coastal-seaside.jpg?s=612x612&w=0&k=20&c=u2eOoY7cd_Q6eiML0GPUobEUVe3vixEhK3kUSwS0HNU="
-              alt="AttendanceTracker Dashboard"
-              className="rounded-xl shadow-2xl ring-1 ring-border w-full"
-            />
-          </div>
-        </div>
+      <Instructions /> 
       </section>
 
       {/* Features Section */}
