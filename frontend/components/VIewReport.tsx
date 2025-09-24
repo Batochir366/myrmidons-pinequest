@@ -22,8 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
 import { Label } from "./ui/label";
-import { axiosInstance } from "@/lib/utils";
-import { toast, Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 
 interface Student {
   id: number;

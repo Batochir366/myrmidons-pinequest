@@ -168,15 +168,13 @@ export function AttendanceHistory() {
       .catch((err) => console.error("Error fetching data:", err));
   }, [reloadFlag]); // 👈 reloadFlag солигдох болгонд fetch хийнэ
 
-  // handleSave дотор
   const handleSave = async (attendanceId: string, studentId: string) => {
     if (!studentId.trim()) {
-      setSaveStatus("Оюутны код оруулна уу");
+      toast.error("Оюутны код оруулна уу");
       return;
     }
 
     setLoading(true);
-    setSaveStatus("");
 
     try {
       await axiosInstance.put("/student/add", {
@@ -184,19 +182,18 @@ export function AttendanceHistory() {
         studentId: studentId.trim(),
       });
 
-      setSaveStatus("Амжилттай бүртгэгдлээ");
+      toast.success("Оюутны ирц амжилттай бүртгэгдлээ");
 
-      // 🔄 fetch trigger
       setReloadFlag((prev) => prev + 1);
     } catch (err: any) {
       if (err.response?.status === 403) {
-        setSaveStatus("Та бүртгэх эрхгүй байна");
+        toast.error("Бүртгүүлэх эрхгүй байна");
       } else if (err.response?.status === 404) {
-        setSaveStatus("Оюутан олдсонгүй");
+        toast.error("Оюутан олдсонгүй");
       } else if (err.response?.status === 400) {
-        toast.error("Та аль хэдийн ирц бүртгэгдсэн байна.");
+        toast.error("Аль хэдийн ирц бүртгэгдсэн байна.");
       } else {
-        toast.error(err.message);
+        toast.error(err.message || "Тодорхойгүй алдаа гарлаа");
       }
     } finally {
       setLoading(false);
