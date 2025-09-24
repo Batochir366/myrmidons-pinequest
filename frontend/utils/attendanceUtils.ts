@@ -30,27 +30,12 @@ export const stopCamera = (
 };
 
 export const captureAndVerify = async (
-  videoRef: React.RefObject<HTMLVideoElement | null>,
-  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+  imageBase64: string,
   endpoint: string,
   body: { [key: string]: any },
   setMessage: (msg: string) => void,
-  setIsRecognizing: (state: boolean) => void,
-
   onSuccess?: (name?: string) => void
 ): Promise<boolean> => {
-  if (!videoRef.current || !canvasRef.current) return false;
-
-  const canvas = canvasRef.current;
-  canvas.width = videoRef.current.videoWidth;
-  canvas.height = videoRef.current.videoHeight;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return false;
-
-  ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-  const imageBase64 = canvas.toDataURL("image/jpeg", 0.8);
-
   try {
     const res = await fetch(endpoint, {
       method: "POST",
@@ -74,16 +59,12 @@ export const captureAndVerify = async (
       }
       return true;
     } else {
-      setMessage(data.message || "Царай таних амжилтгүй боллоо.");
-      setIsRecognizing(false);
-
+      setMessage(data.message);
       return false;
     }
   } catch (err) {
     console.error(err);
     setMessage("Сүлжээний алдаа, дахин оролдоно уу.");
-    setIsRecognizing(false);
-
     return false;
   }
 };
@@ -112,8 +93,8 @@ export const recordAttendance = async (
       bodyPayload.longitude = longitude;
     }
 
-    const res = await axiosInstance.put("/student/add", bodyPayload);
-
+    const res = await axiosInstance.put("student/add", bodyPayload);
+    setMessage(res.data.message);
     return true;
   } catch (error: any) {
     console.error("❌ Error recording attendance:", error);
