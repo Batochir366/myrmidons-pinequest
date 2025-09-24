@@ -33,7 +33,7 @@ const AttendanceSystem: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [src, setSrc] = useState<string>("");
   const [isCapturing, setIsCapturing] = useState(false);
-  const [message, setMessage] = useState("");
+  const [err, setErr] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const webcamRef = useRef<Webcam>(null);
@@ -141,7 +141,7 @@ const AttendanceSystem: React.FC = () => {
   const handleRecognitionComplete = async () => {
     if (isProcessing) return;
     setIsProcessing(true);
-
+    setErr(null);
     try {
       // 1️⃣ Capture screenshot
       if (!webcamRef.current) {
@@ -169,29 +169,25 @@ const AttendanceSystem: React.FC = () => {
           classroom_students: students,
           latitude: location.latitude,
           longitude: location.longitude,
-        },
-        setMessage,
-        (name) =>
-          toast.success(
-            `Сайн байна уу, ${name || "Оюутан"}! Царай амжилттай танигдлаа.`
-          )
+        }
       );
 
       if (verified == false) {
-        return toast.error(message);
+        return setErr(false);
+      } else {
+        setErr(true);
       }
-      setMessage("");
+
       // 4️⃣ Record attendance
       const attendanceRecorded = await recordAttendance(
         attendanceId!,
         studentId,
-        setMessage,
         location.latitude,
         location.longitude
       );
 
       if (attendanceRecorded === false) {
-        return toast.error(message);
+        return;
       }
 
       stopCamera(streamRef);
@@ -205,6 +201,7 @@ const AttendanceSystem: React.FC = () => {
     } finally {
       setIsProcessing(false);
       setIsCapturing(false);
+      setSrc("");
     }
   };
 
@@ -343,26 +340,37 @@ const AttendanceSystem: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex flex-col items-center space-y-4 overflow-hidden rounded-full py-2">
+            <div className="flex flex-col items-center  space-y-4 overflow-hidden rounded-full py-2">
               {src !== "" && isCapturing ? (
                 <div className="relative w-60 h-60 flex items-center justify-center rounded-full">
+                  {/* Captured face */}
                   <img
                     className="rounded-full w-55 h-55 object-cover blur-sm"
                     src={src}
                     alt="Captured"
                   />
+
+                  {/* Spinner overlay */}
                   <div className="absolute w-60 h-60 border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin rounded-full"></div>
                 </div>
               ) : (
                 <div className="relative w-60 h-60">
                   <Webcam
+                    screenshotQuality={1}
                     audio={false}
                     ref={webcamRef}
                     screenshotFormat="image/jpeg"
-                    screenshotQuality={1}
                     videoConstraints={{ facingMode: "user" }}
-                    className="w-full h-full rounded-full object-cover border-2 border-gray-300 -scale-x-100"
+                    className={`w-full h-full rounded-full object-cover border-2 -scale-x-100  ${
+                      err === false && "border-red-500"
+                    } ${err === true && "border-green-400"} 
+                                                          ${
+                                                            err === null &&
+                                                            "border-gray-400"
+                                                          }`}
                   />
+
+                  {/* SVG overlay */}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 256 256"
@@ -375,16 +383,15 @@ const AttendanceSystem: React.FC = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeDasharray="4 5"
-                      transform="scale(1.2) translate(-25 -0.1)"
+                      transform="scale(1.2) translate(-25 -0.1)" // 🔹 makes it bigger & recenters
                       d="M72.2,95.9c0,5.5,4.1,9.9,9.1,9.9c0,0,0.1,0,0.2,0c1.9,26.2,22,52.4,46.5,52.4c24.5,0,44.6-26.2,46.5-52.4
-                      c0,0,0.1,0,0.2,0c5,0,9.1-4.5,9.1-9.9c0-4.1-2.2-7.5-5.4-9.1c1.9-5.9,2.8-12.2,2.8-18.8C181.2,36,157.4,10,128,10
-                      c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
+            c0,0,0.1,0,0.2,0c5,0,9.1-4.5,9.1-9.9c0-4.1-2.2-7.5-5.4-9.1c1.9-5.9,2.8-12.2,2.8-18.8C181.2,36,157.4,10,128,10
+            c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
                     />
                   </svg>
                 </div>
               )}
             </div>
-
             {!isProcessing && (
               <button
                 onClick={() => handleRecognitionComplete()}
@@ -406,7 +413,6 @@ const AttendanceSystem: React.FC = () => {
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 Ирц амжилттай бүртгэгдлээ!
               </h2>
-              <p className="text-gray-600">{message}</p>
             </div>
 
             <div className="space-y-4 mb-6">
@@ -429,7 +435,7 @@ const AttendanceSystem: React.FC = () => {
               <div className="flex justify-between items-center py-2">
                 <span className="text-gray-600">Төлөв:</span>
                 <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                  Батлагдсан
+                  ирц амжилттай
                 </span>
               </div>
             </div>

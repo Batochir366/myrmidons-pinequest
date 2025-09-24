@@ -2,6 +2,7 @@
 
 import { axiosInstance } from "@/lib/utils";
 import React from "react";
+import { toast } from "sonner";
 
 export const startCamera = async (
   videoRef: React.RefObject<HTMLVideoElement | null>,
@@ -32,9 +33,7 @@ export const stopCamera = (
 export const captureAndVerify = async (
   imageBase64: string,
   endpoint: string,
-  body: { [key: string]: any },
-  setMessage: (msg: string) => void,
-  onSuccess?: (name?: string) => void
+  body: { [key: string]: any }
 ): Promise<boolean> => {
   try {
     const res = await fetch(endpoint, {
@@ -50,21 +49,16 @@ export const captureAndVerify = async (
     const data = await res.json();
 
     if (data.success && data.verified) {
-      if (onSuccess) {
-        onSuccess(data.name);
-      } else {
-        setMessage(
-          `Сайн байна уу, ${data.name || "Оюутан"}! Царай амжилттай танигдлаа.`
-        );
-      }
+      toast.success(
+        `Сайн байна уу, ${data.name || "Оюутан"}! Царай амжилттай танигдлаа.`
+      );
       return true;
     } else {
-      setMessage(data.message);
+      toast.error(data.message);
       return false;
     }
   } catch (err) {
-    console.error(err);
-    setMessage("Сүлжээний алдаа, дахин оролдоно уу.");
+    toast.success("Сүлжээний алдаа, дахин оролдоно уу.");
     return false;
   }
 };
@@ -73,7 +67,6 @@ export const captureAndVerify = async (
 export const recordAttendance = async (
   attendanceId: string,
   studentId: string,
-  setMessage: (msg: string) => void,
   latitude?: number,
   longitude?: number
 ): Promise<boolean> => {
@@ -94,11 +87,9 @@ export const recordAttendance = async (
     }
 
     const res = await axiosInstance.put("student/add", bodyPayload);
-    setMessage(res.data.message);
+    toast.success(res.data.message);
     return true;
   } catch (error: any) {
-    console.error("❌ Error recording attendance:", error);
-
     // Check if error is due to duplicate attendance
     if (error.response?.status === 400) {
       const errorMessage = error.response?.data?.message || "";
@@ -114,7 +105,7 @@ export const recordAttendance = async (
 
     const errorMsg =
       error.response?.data?.message || "Ирц бүртгэхэд алдаа гарлаа.";
-    setMessage(errorMsg);
+    toast.error(errorMsg);
 
     return false;
   }
