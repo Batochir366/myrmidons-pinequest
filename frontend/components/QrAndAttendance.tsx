@@ -325,7 +325,6 @@ export default function QrAndAttendance({
       }
     };
   }, []);
-
   const closePiP = () => {
     if (document.pictureInPictureElement) {
       document.exitPictureInPicture().catch(console.error);

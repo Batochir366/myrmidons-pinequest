@@ -62,13 +62,6 @@ export const useAttendanceStorage = () => {
         STORAGE_KEYS.ATTENDANCE_SESSION,
         JSON.stringify(newState)
       );
-
-      console.log("Enhanced attendance state saved:", {
-        attendanceId: newState.attendanceId,
-        isRunning: newState.isRunning,
-        qrSec: newState.qrSec,
-        timestamp: new Date().toISOString(),
-      });
     } catch (error) {
       console.error("Error saving attendance state:", error);
       // Attempt to save critical data only
@@ -102,13 +95,6 @@ export const useAttendanceStorage = () => {
       // Always load the latest QR settings
       const globalQrSec = getQrSettings();
       state.qrSec = globalQrSec;
-
-      console.log("Attendance state restored:", {
-        attendanceId: state.attendanceId,
-        isRunning: state.isRunning,
-        qrSec: state.qrSec,
-        ageMinutes: Math.floor((now - lastActivity) / (1000 * 60)),
-      });
 
       return state;
     } catch (error) {
