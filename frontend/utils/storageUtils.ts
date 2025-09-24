@@ -71,13 +71,6 @@ export const useAttendanceStorage = () => {
         return null;
       }
 
-<<<<<<< HEAD
-      // Always load the latest QR settings
-      const globalQrSec = getQrSettings();
-      state.qrSec = globalQrSec;
-
-      return state;
-=======
       console.log("Attendance state restored:", {
         attendanceId: state.attendanceId,
         isRunning: state.isRunning,
@@ -87,7 +80,6 @@ export const useAttendanceStorage = () => {
         ...state,
         pipActive: state.pipActive ?? false,
       };
->>>>>>> 43846b5 (QR Persistent)
     } catch (error) {
       console.error("Error restoring attendance state:", error);
       clearSession();
