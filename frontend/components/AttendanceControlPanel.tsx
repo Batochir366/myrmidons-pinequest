@@ -87,23 +87,38 @@ export default function AttendanceControlPanel({
             {/* Ангийн сонголт */}
             <div className="w-full sm:max-w-[376px]">
               <Select
-                value={selectedClassroomId}
-                onValueChange={onClassroomChange}
+                value={
+                  classrooms.length === 0
+                    ? "no-classrooms"
+                    : selectedClassroomId
+                }
+                onValueChange={(value) => {
+                  if (value !== "no-classrooms") {
+                    onClassroomChange(value);
+                  }
+                }}
+                disabled={classrooms.length === 0}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Ангийг сонгоно уу" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classrooms.map((c) => (
-                    <SelectItem key={c._id} value={c._id}>
-                      <div className="flex justify-between items-center w-[320px] sm:w-full gap-x-2">
-                        <span className="font-medium">{c.lectureName}</span>
-                        <span className="text-muted-foreground text-sm">
-                          {c.lectureDate}
-                        </span>
-                      </div>
+                  {classrooms.length === 0 ? (
+                    <SelectItem value="no-classrooms" disabled>
+                      Одоогоор анги байхгүй байна
                     </SelectItem>
-                  ))}
+                  ) : (
+                    classrooms.map((c) => (
+                      <SelectItem key={c._id} value={c._id}>
+                        <div className="flex justify-between items-center w-[320px] sm:w-full gap-x-2">
+                          <span className="font-medium">{c.lectureName}</span>
+                          <span className="text-muted-foreground text-sm">
+                            {c.lectureDate}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -112,7 +127,13 @@ export default function AttendanceControlPanel({
             <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full sm:w-auto">
               <Button
                 onClick={start}
-                disabled={!selectedLectureName || loading || running}
+                disabled={
+                  !selectedLectureName ||
+                  !selectedClassroomId ||
+                  loading ||
+                  running ||
+                  classrooms.length === 0
+                }
                 className="flex-1 w-[137px] sm:flex-none flex items-center gap-2 bg-slate-700 text-white"
               >
                 <Play className="w-4 h-4" />

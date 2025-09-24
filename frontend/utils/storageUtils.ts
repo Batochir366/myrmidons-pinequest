@@ -45,12 +45,6 @@ export const useAttendanceStorage = () => {
         STORAGE_KEYS.ATTENDANCE_SESSION,
         JSON.stringify(newState)
       );
-
-      console.log("Attendance state saved:", {
-        attendanceId: newState.attendanceId,
-        isRunning: newState.isRunning,
-        timestamp: new Date().toISOString(),
-      });
     } catch (error) {
       console.error("Error saving attendance state:", error);
     }
@@ -66,16 +60,9 @@ export const useAttendanceStorage = () => {
       const lastActivity = state.lastActivity || state.sessionStartTime || 0;
 
       if (now - lastActivity > SESSION_TIMEOUT) {
-        console.log("Session expired, clearing stored state");
         clearSession();
         return null;
       }
-
-      console.log("Attendance state restored:", {
-        attendanceId: state.attendanceId,
-        isRunning: state.isRunning,
-        ageMinutes: Math.floor((now - lastActivity) / (1000 * 60)),
-      });
       return {
         ...state,
         pipActive: state.pipActive ?? false,
@@ -91,10 +78,8 @@ export const useAttendanceStorage = () => {
     try {
       if (pipProviderRef?.current?.closePiP) {
         pipProviderRef.current.closePiP();
-        console.log("PiP closed successfully");
       }
       localStorage.removeItem(STORAGE_KEYS.ATTENDANCE_SESSION);
-      console.log("Attendance session cleared");
     } catch (error) {
       console.error("Error clearing session:", error);
     }
@@ -206,8 +191,6 @@ export const useAttendanceStorage = () => {
       const now = Date.now();
 
       if (!lastCleanup || now - parseInt(lastCleanup) > CLEANUP_INTERVAL) {
-        console.log("Starting cleanup process...");
-
         // Clean up expired sessions
         const state = restoreState();
         if (state) {
@@ -215,7 +198,6 @@ export const useAttendanceStorage = () => {
             state.lastActivity || state.sessionStartTime || 0;
           if (now - lastActivity > SESSION_TIMEOUT) {
             clearSession();
-            console.log("Cleaned up expired attendance session");
           }
         }
 
@@ -226,7 +208,6 @@ export const useAttendanceStorage = () => {
         }
 
         localStorage.setItem("last_cleanup", now.toString());
-        console.log("Cleanup completed successfully");
       }
     } catch (error) {
       console.error("Error during cleanup:", error);

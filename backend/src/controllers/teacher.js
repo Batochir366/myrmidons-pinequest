@@ -88,29 +88,41 @@ export const deleteClassroom = async (req, res) => {
       return res.status(400).json({ message: "classroomId is required" });
     }
 
-    const deletedClassroom = await ClassroomModel.findByIdAndDelete(
-      classroomId
-    );
+    // Find classroom first (to get teacher and students)
+    const classroom = await ClassroomModel.findById(classroomId);
 
-    if (!deletedClassroom) {
+    if (!classroom) {
       return res.status(404).json({ message: "Classroom not found" });
     }
 
+    // Delete attendance history linked to this classroom (if stored separately)
+    await AttendanceModel.deleteMany({ classroomId });
+
+    // Remove classroom reference from each student in ClassroomStudents
+    const studentIds = classroom.ClassroomStudents.map(
+      (student) => student._id
+    );
+    await StudentModel.updateMany(
+      { _id: { $in: studentIds } },
+      { $pull: { Classrooms: classroomId } }
+    );
+
     // Remove classroom reference from teacher
-    await TeacherModel.findByIdAndUpdate(deletedClassroom.teacher, {
+    await TeacherModel.findByIdAndUpdate(classroom.teacher, {
       $pull: { Classrooms: classroomId },
     });
 
-    return res
-      .status(200)
-      .json({ message: "Classroom deleted successfully" });
+    // Finally delete the classroom
+    await ClassroomModel.findByIdAndDelete(classroomId);
+
+    return res.status(200).json({ message: "Classroom deleted successfully" });
   } catch (error) {
     console.error("❌ deleteClassroom error:", error);
     return res
       .status(500)
       .json({ message: "Server error", error: error.message });
   }
-}
+};
 
 export const getOnlyClassroomsByTeacherId = async (req, res) => {
   try {

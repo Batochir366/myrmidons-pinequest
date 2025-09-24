@@ -86,8 +86,6 @@ export default function SignupPage() {
     setStudentErrors(errors);
 
     if (errors.studentName || errors.studentId || errors.joinCode) return;
-
-    console.log("Student details:", studentData);
     setStep(3);
   };
 
@@ -230,7 +228,6 @@ export default function SignupPage() {
       setUserType(null);
     }
   }, [step]);
-  console.log(userType);
 
   return (
     <div className="min-h-screen bg-background">

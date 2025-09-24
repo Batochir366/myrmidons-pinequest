@@ -157,8 +157,6 @@ export function ViewReport({
     printWindow.focus();
     printWindow.print();
   };
-  console.log(lecture.students);
-
   return (
     <Card>
       <Toaster position="top-right" />

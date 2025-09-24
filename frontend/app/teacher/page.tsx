@@ -118,20 +118,12 @@ export default function AttendanceDashboard() {
       if (savedState.pipActive && pipProviderRef.current) {
         pipProviderRef.current.openPiP();
       }
-      console.log(
-        `Restored attendance session (${getSessionDuration()} minutes old):`,
-        savedState.attendanceId
-      );
     } else {
       // Load last selected classroom for convenience
       const lastClassroom = getSelectedClassroom();
       if (lastClassroom) {
         setSelectedClassroomId(lastClassroom.classroomId);
         setSelectedLectureName(lastClassroom.lectureName);
-        console.log(
-          "Restored last selected classroom:",
-          lastClassroom.lectureName
-        );
       }
     }
   }, []);
@@ -232,7 +224,6 @@ export default function AttendanceDashboard() {
       !timerRef.current &&
       !pollRef.current
     ) {
-      console.log("Resuming timers for restored session...");
       startQRTimer(attendanceId);
       pollRef.current = setInterval(
         () => pollAttendanceData(attendanceId),
@@ -245,16 +236,12 @@ export default function AttendanceDashboard() {
   // Update QR timer when qrSec changes (even if on different view)
   useEffect(() => {
     if (running && attendanceId) {
-      console.log("QR timer updated due to qrSec change");
       startQRTimer(attendanceId);
     }
   }, [qrSec, running, attendanceId, startQRTimer]);
 
   // CRITICAL: Keep timers running regardless of active view
   const handleViewChange = (newView: string) => {
-    console.log(
-      `Switching to view: ${newView}, keeping timers active: ${running}`
-    );
     setActiveView(newView);
   };
   const logOut = () => {
@@ -264,7 +251,6 @@ export default function AttendanceDashboard() {
 
     if (pipProviderRef.current?.isActive) {
       pipProviderRef.current?.closePiP();
-      console.log("PiP closed on logOut");
     }
 
     clearSession();
@@ -316,47 +302,63 @@ export default function AttendanceDashboard() {
   };
 
   const start = async () => {
-    if (running || !selectedClassroomId) {
+    if (running || !selectedClassroomId || !selectedLectureName) {
       toast.error("Ангийг сонгоно уу!");
-      return;
-    }
-
-    if (students.length === 0) {
-      toast.error("Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!");
       return;
     }
 
     setLoading(true);
 
     try {
+      const res = await axiosInstance.get(
+        `/classroom-students/${selectedClassroomId}`
+      );
+
+      const { students = [], empty, message } = res.data;
+
+      if (empty || students.length === 0) {
+        toast.error(
+          message || "нэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!"
+        );
+        setLoading(false);
+        return;
+      }
+
+      setStudents(
+        students.map((s: any) => ({
+          _id: s._id,
+          studentName: s.studentName,
+          studentId: s.studentId,
+          time: new Date().toISOString(),
+        }))
+      );
+
       const { latitude, longitude } = await getLocation();
 
-      const res = await axiosInstance.post("teacher/create-attendance", {
-        classroomId: selectedClassroomId,
-        latitude,
-        longitude,
-      });
+      const attendanceRes = await axiosInstance.post(
+        "teacher/create-attendance",
+        {
+          classroomId: selectedClassroomId,
+          latitude,
+          longitude,
+        }
+      );
 
-      const { _id } = res.data;
+      const { _id } = attendanceRes.data;
 
       if (!_id) throw new Error("Attendance ID алга");
 
       setAttendanceId(_id);
-      setStudents([]);
-
       setRunning(true);
-      onStart(); // Notify parent
+      onStart();
 
-      // Start QR Timer
       startQRTimer(_id);
-
-      // Start polling attendance data
       pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
 
       toast.success(`Ирц эхлэлээ! QR ${qrSec} секунд тутамд шинэчлэгдэнэ.`);
     } catch (err) {
-      console.error("Error creating attendance:", err);
-      alert("Ирц үүсгэхэд алдаа гарлаа");
+      console.error("Error starting attendance:", err);
+      toast.error("Ирц эхлүүлэхэд алдаа гарлаа");
     } finally {
       setLoading(false);
     }
@@ -381,7 +383,6 @@ export default function AttendanceDashboard() {
     { id: "classrooms", label: "Ангийн жагсаалт", icon: Users },
   ];
 
-  // PiP state to pass to child components
   const pipState = pipActive
     ? {
         isActive: true,
@@ -553,13 +554,11 @@ export default function AttendanceDashboard() {
     }
   };
   const onPiPStart = () => {
-    console.log("PiP started");
     setPipActive(true);
     isPiPActiveRef.current = true;
   };
 
   const onPiPStop = () => {
-    console.log("PiP stopped");
     setPipActive(false);
     isPiPActiveRef.current = false;
   };
@@ -689,6 +688,7 @@ export default function AttendanceDashboard() {
                           onClick={() => setActiveView("attendance")}
                           className="ml-1 text-green-600 hover:text-green-800 underline text-xs"
                         >
+                          /classroom-students/${selectedClassroomId}
                           харах
                         </button>
                       )}

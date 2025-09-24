@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, BookOpen, Plus, Link, Undo } from "lucide-react";
+import { Users, BookOpen, Plus, Link, Undo, BookCopy } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -63,8 +63,12 @@ export const ClassroomsView = () => {
   const [selectedClassroom, setSelectedClassroom] = useState<Student[] | null>(
     null
   );
-  const [selectedJoinCode, setSelectedJoinCode] = useState<string | undefined>(undefined);
-  const [selectedClassroomId, setSelectedClassroomId] = useState<string | undefined>(undefined);
+  const [selectedJoinCode, setSelectedJoinCode] = useState<string | undefined>(
+    undefined
+  );
+  const [selectedClassroomId, setSelectedClassroomId] = useState<
+    string | undefined
+  >(undefined);
   const [loading, setLoading] = useState(false);
   const [teacherId, setTeacherId] = useState("");
 
@@ -137,22 +141,31 @@ export const ClassroomsView = () => {
   };
 
   // ---------- Copy link ----------
-  const handleCopy = async (link: string) => {
+  const handleCopy = async (text: string) => {
     try {
       if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(link);
+        await navigator.clipboard.writeText(text);
       } else {
         const textarea = document.createElement("textarea");
-        textarea.value = link;
+        textarea.value = text;
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand("copy");
         document.body.removeChild(textarea);
       }
-      setCopiedId(link);
+      const isLink = text.startsWith("http://") || text.startsWith("https://");
+
+      if (isLink) {
+        toast.success("Холбоос амжилттай хуулагдлаа!");
+      } else {
+        toast.success("Код амжилттай хуулагдлаа!");
+      }
+
+      setCopiedId(text);
       setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       console.error("Copy failed:", err);
+      toast.error("Кодыг хуулахад алдаа гарлаа");
     }
   };
 
@@ -173,8 +186,6 @@ export const ClassroomsView = () => {
       endTime: "",
     },
   });
-
-  console.log("selectedJoinCode", selectedJoinCode);
 
   // ---------- Render ----------
   return (
@@ -293,6 +304,16 @@ export const ClassroomsView = () => {
                   <p className="text-sm text-muted-foreground">
                     {classroom.lectureDate}
                   </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-[12px]">Ангийн код:</p>{" "}
+                  <div className="flex justify-center items-center gap-1">
+                    <p>{classroom.joinCode}</p>
+                    <BookCopy
+                      onClick={() => handleCopy(classroom.joinCode)}
+                      className="size-4 cursor-pointer hover:text-gray-600"
+                    />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
