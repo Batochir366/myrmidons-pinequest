@@ -343,7 +343,7 @@ def attend_class():
             return jsonify({
                 "success": False,
                 "verified": False,
-                "message": f"Та одоогоор ангидаа байхгүй байна. Сургуульдаа яваарай"
+                "message": f"Та одоогоор ангидаа байхгүй байна. Сургуульдаа яваарай (Settings-ээсээ location зөвшөөрөл өгсөн эсэхээ шалгана уу)"
             }), 403
 
         # Decode image

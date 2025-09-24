@@ -265,6 +265,7 @@ export function AttendanceHistory() {
               onBack={() => setShowReport(false)}
               setSaveStatus={setSaveStatus}
               handleSave={handleSave}
+              calendarheight={calendarHeight}
             />
           ) : (
             <div className="flex flex-col" ref={rightSectionRef}>

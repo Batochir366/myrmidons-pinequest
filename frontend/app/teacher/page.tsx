@@ -682,17 +682,6 @@ export default function AttendanceDashboard() {
                     <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                       <p className="hidden md:inline">Ирц авж байна...</p>
-                      <p className="md:hidden">{countdown}s</p>
-                      {/* Add click to go back to attendance view */}
-                      {activeView !== "attendance" && (
-                        <button
-                          onClick={() => setActiveView("attendance")}
-                          className="ml-1 text-green-600 hover:text-green-800 underline text-xs"
-                        >
-                          /classroom-students/${selectedClassroomId}
-                          харах
-                        </button>
-                      )}
                     </div>
                   )}
                   <Avatar className="w-10 h-10">

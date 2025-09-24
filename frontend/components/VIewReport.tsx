@@ -56,6 +56,7 @@ export interface ViewReportProps {
   lecture: AttendanceRecord;
   onBack: () => void;
   setSaveStatus: any;
+  calendarheight?: number;
   handleSave: (attendanceId: string, studentId: string) => Promise<void>;
 }
 
@@ -64,6 +65,7 @@ export function ViewReport({
   onBack,
   setSaveStatus,
   handleSave,
+  calendarheight,
 }: ViewReportProps) {
   const [studentId, setStudentId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -158,9 +160,12 @@ export function ViewReport({
     printWindow.print();
   };
   return (
-    <Card>
+    <Card
+      className="flex flex-col"
+      style={{ height: calendarheight ? `${calendarheight}px` : "auto" }}
+    >
       <Toaster position="top-right" />
-      <CardHeader>
+      <CardHeader className="flex-shrink-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
@@ -181,7 +186,7 @@ export function ViewReport({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="flex-1 overflow-y-auto">
         {/* Lecture Info */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card>
