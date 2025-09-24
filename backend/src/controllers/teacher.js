@@ -3,7 +3,7 @@ import { ClassroomModel } from "../models/classroom.model.js";
 import { TeacherModel } from "../models/teacher.model.js";
 import jwt from "jsonwebtoken";
 import { configDotenv } from "dotenv";
-import crypto from "crypto";
+import { UserModel } from "../models/user.model.js";
 
 const generateJoinCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -87,34 +87,23 @@ export const deleteClassroom = async (req, res) => {
     if (!classroomId) {
       return res.status(400).json({ message: "classroomId is required" });
     }
-
-    // Find classroom first (to get teacher and students)
     const classroom = await ClassroomModel.findById(classroomId);
 
     if (!classroom) {
       return res.status(404).json({ message: "Classroom not found" });
     }
-
-    // Delete attendance history linked to this classroom (if stored separately)
     await AttendanceModel.deleteMany({ classroomId });
-
-    // Remove classroom reference from each student in ClassroomStudents
     const studentIds = classroom.ClassroomStudents.map(
       (student) => student._id
     );
-    await StudentModel.updateMany(
+    await UserModel.updateMany(
       { _id: { $in: studentIds } },
       { $pull: { Classrooms: classroomId } }
     );
-
-    // Remove classroom reference from teacher
     await TeacherModel.findByIdAndUpdate(classroom.teacher, {
       $pull: { Classrooms: classroomId },
     });
-
-    // Finally delete the classroom
     await ClassroomModel.findByIdAndDelete(classroomId);
-
     return res.status(200).json({ message: "Classroom deleted successfully" });
   } catch (error) {
     console.error("❌ deleteClassroom error:", error);

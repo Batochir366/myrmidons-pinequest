@@ -311,14 +311,15 @@ export default function AttendanceDashboard() {
 
     try {
       const res = await axiosInstance.get(
-        `/classroom-students/${selectedClassroomId}`
+        `teacher/classroom-students/${selectedClassroomId}`
       );
 
       const { students = [], empty, message } = res.data;
 
       if (empty || students.length === 0) {
         toast.error(
-          message || "нэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!"
+          message ||
+            "Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!"
         );
         setLoading(false);
         return;

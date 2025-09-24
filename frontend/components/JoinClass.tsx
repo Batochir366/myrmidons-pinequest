@@ -30,7 +30,9 @@ interface TokenPayload {
 const JoinClassPage = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
-
+  const [submissionSuccess, setSubmissionSuccess] = useState<boolean | null>(
+    null
+  );
   const [classroomId, setClassroomId] = useState("");
   const [lectureName, setLectureName] = useState("...");
   const [teacherName, setTeacherName] = useState("...");
@@ -39,6 +41,7 @@ const JoinClassPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [message, setMessage] = useState("");
+
   const [src, setSrc] = useState("");
   const webcamRef = useRef<Webcam>(null);
 
@@ -63,6 +66,7 @@ const JoinClassPage = () => {
   }
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmissionSuccess(null);
 
     if (studentId.trim() === "") {
       setStudentIdError("Оюутны ID заавал бөглөх ёстой");
@@ -82,6 +86,7 @@ const JoinClassPage = () => {
     setSrc(screenshot!);
     if (!screenshot) {
       toast.error("Царай авахад алдаа гарлаа. Дахин оролдоно уу.");
+      setSubmissionSuccess(false);
       setIsCapturing(false);
       setIsLoading(false);
       return;
@@ -103,12 +108,14 @@ const JoinClassPage = () => {
 
       if (!contentType || !contentType.includes("application/json")) {
         toast.error("Сервертэй холбогдоход алдаа гарлаа");
+        setSubmissionSuccess(false);
         return;
       }
 
       const data = JSON.parse(rawText);
 
       if (response.ok) {
+        setSubmissionSuccess(true);
         try {
           const result = await joinClassroom(
             classroomId,
@@ -123,6 +130,8 @@ const JoinClassPage = () => {
             );
             if (!result.alreadyJoined)
               toast.success("Хичээлд амжилттай нэгдлээ");
+            setSubmissionSuccess(true);
+
             setTimeout(() => {
               router.push("/");
             }, 3000);
@@ -133,12 +142,16 @@ const JoinClassPage = () => {
         }
       } else if (data.message === "Unknown face or no face found") {
         toast.error("Царай олдсонгүй эсвэл бүртгэлгүй байна");
+        setSubmissionSuccess(false);
       } else if (data.message === "Face does not match student ID") {
         toast.error("Царай оюутны ID-тай тохирохгүй байна");
+        setSubmissionSuccess(false);
       } else {
         toast.error(data.message || "Нэгдэхэд алдаа гарлаа");
+        setSubmissionSuccess(false);
       }
     } catch (error: any) {
+      setSubmissionSuccess(false);
       console.error("Join error:", error);
       toast.error(error.message || "Сүлжээний алдаа.");
     } finally {
@@ -205,7 +218,14 @@ const JoinClassPage = () => {
                         ref={webcamRef}
                         screenshotFormat="image/jpeg"
                         videoConstraints={{ facingMode: "user" }}
-                        className="w-full h-full rounded-full object-cover border-2 border-gray-300 -scale-x-100"
+                        className={`w-full h-full rounded-full object-cover border-2 -scale-x-100  ${
+                          submissionSuccess === false && "border-red-500"
+                        } ${submissionSuccess === true && "border-green-400"} 
+                                                            ${
+                                                              submissionSuccess ===
+                                                                null &&
+                                                              "border-gray-400"
+                                                            }`}
                       />
 
                       {/* SVG overlay */}
@@ -221,16 +241,15 @@ const JoinClassPage = () => {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeDasharray="4 5"
-                          transform="scale(1.2) translate(-25 -0.1)" // 🔹 makes it bigger & recenters
+                          transform="scale(1.2) translate(-25 -0.1)"
                           d="M72.2,95.9c0,5.5,4.1,9.9,9.1,9.9c0,0,0.1,0,0.2,0c1.9,26.2,22,52.4,46.5,52.4c24.5,0,44.6-26.2,46.5-52.4
-c0,0,0.1,0,0.2,0c5,0,9.1-4.5,9.1-9.9c0-4.1-2.2-7.5-5.4-9.1c1.9-5.9,2.8-12.2,2.8-18.8C181.2,36,157.4,10,128,10
-c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
+              c0,0,0.1,0,0.2,0c5,0,9.1-4.5,9.1-9.9c0-4.1-2.2-7.5-5.4-9.1c1.9-5.9,2.8-12.2,2.8-18.8C181.2,36,157.4,10,128,10
+              c-29.4,0-53.2,26-53.2,58.1c0,6.6,1,12.9,2.9,18.8C74.4,88.4,72.2,91.8,72.2,95.9z"
                         />
                       </svg>
                     </div>
                   )}
                 </div>
-
                 <Button
                   type="submit"
                   className="w-full"
