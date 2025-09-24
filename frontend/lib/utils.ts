@@ -25,4 +25,4 @@ export const axiosInstance = axios.create({
     "Content-Type": "application/json",
   },
 });
-export const axiosInstanceFront = LOCAL_FRONTEND_URL;
+export const axiosInstanceFront = BATAA_FRONTEND_URL;
