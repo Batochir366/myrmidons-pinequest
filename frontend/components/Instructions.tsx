@@ -24,17 +24,17 @@ const teacherSteps = [
   {
     title: "Sign up,Login",
     desc: "Багш бүртгүүлнэ.",
-    video: "SignupTeacher.MOV",
+    video: "/SignupTeacher.MOV",
   },
   {
     title: "Using QR PIP",
     desc: "PIP горимд ашиглаж, багш өөр таб руу шилжсэн ч QR кодыг харуулна.",
-    video: "/TeacherQRPIP.MOV",
+    video: "/Qrpip.MOV",
   },
   {
     title: "See attendance history",
     desc: "Өнгөрсөн ирцийн мэдээллээ харах боломжтой.",
-    video: "See.MOV",
+    video: "/See.MOV",
   },
 ];
 
@@ -42,12 +42,12 @@ const studentSteps = [
   {
     title: "Sign up & Join classroom",
     desc: "Оюутан бүртгүүлээд ангидаа нэгдэнэ.",
-    video: "Joinshuud.MOV",
+    video: "/Joinshuud.MOV",
   },
   {
     title: "Sign up only",
     desc: "Зөвхөн бүртгүүлээд дараа ангидаа нэгдэх боломжтой.",
-    video: "join.MOV",
+    video: "/join.MOV",
   },
   {
     title: "Trying to spoof",
@@ -212,7 +212,7 @@ const CustomCarousel: React.FC<CustomCarouselProps> = ({ steps, type }) => {
       <button
         onClick={prevSlide}
         disabled={isTransitioning}
-        className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 p-2 sm:p-3 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 z-10 disabled:opacity-50"
+        className="absolute cursor-pointer left-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 p-2 sm:p-3 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 z-10 disabled:opacity-50"
         aria-label="Previous slide"
       >
         <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -221,7 +221,7 @@ const CustomCarousel: React.FC<CustomCarouselProps> = ({ steps, type }) => {
       <button
         onClick={nextSlide}
         disabled={isTransitioning}
-        className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 p-2 sm:p-3 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 z-10 disabled:opacity-50"
+        className="absolute cursor-pointer right-2 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 p-2 sm:p-3 rounded-full shadow-lg hover:bg-white dark:hover:bg-gray-800 transition-all duration-200 z-10 disabled:opacity-50"
         aria-label="Next slide"
       >
         <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
