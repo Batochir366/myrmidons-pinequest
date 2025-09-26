@@ -1,4 +1,5 @@
-
+import { Instructions } from "@/components/Instructions";
+import { Navigation } from "@/components/Navigation";
 import {
   Card,
   CardDescription,
@@ -12,11 +13,10 @@ import {
   Shield,
   Clock,
   CheckCircle,
+  Mail,
+  Phone,
+  MapPin,
 } from "lucide-react";
-import { Navigation } from "@/components/Navigation";
-import { Instructions } from "@/components/Instructions";
-
-
 
 export default function LandingPage() {
   return (
@@ -37,7 +37,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-      <Instructions /> 
+        <Instructions />
       </section>
 
       {/* Features Section */}
@@ -120,6 +120,66 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="w-full bg-muted/50 border-t mt-20">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 justify-items-center text-center">
+            {/* Company Info */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">A +</h3>
+              <p className="text-sm text-muted-foreground">
+                Орчин үеийн технологийн тусламжтайгаар ирцийн бүртгэлийг
+                хялбарчилсан шийдэл.
+              </p>
+            </div>
+
+            {/* Contact Info */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Холбоо барих</h3>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center justify-center gap-2">
+                  <Mail className="h-4 w-4" />
+                  <span>info@qr-attendance.mn</span>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  <span>+976 1234 5678</span>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  <span>Улаанбаатар хот, Монгол улс</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Холбоос</h3>
+              <div className="space-y-2 text-sm">
+                <a
+                  href=""
+                  className="block text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Тусламж
+                </a>
+                <a
+                  href=""
+                  className="block text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Нууцлалын бодлого
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-8 border-t border-border">
+            <div className="text-center text-sm text-muted-foreground">
+              © 2025 A+. Бүх эрх хуулиар хамгаалагдсан.
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
