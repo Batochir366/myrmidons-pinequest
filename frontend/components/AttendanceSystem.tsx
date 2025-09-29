@@ -14,7 +14,7 @@ import { jwtDecode } from "jwt-decode";
 import { axiosInstance, PYTHON_BACKEND_URL } from "@/lib/utils";
 import Webcam from "react-webcam";
 import { Toaster, toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Student = {
   studentId: string;
@@ -38,13 +38,10 @@ const AttendanceSystem: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const webcamRef = useRef<Webcam>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
   // Load params from token
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const sp = new URLSearchParams(window.location.search);
-    const token = sp.get("token");
-
     if (!token) {
       setIsInvalid(true);
       return;
