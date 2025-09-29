@@ -4,6 +4,7 @@ import teacherRouter from "./src/routes/teacher.js";
 import { connectToDB } from "./src/config/connect-to-db.js";
 import studentRouter from "./src/routes/student.js";
 import { attendanceRouter } from "./src/routes/attendance.js";
+import Imagerouter from "./src/routes/image.js";
 
 connectToDB();
 
@@ -37,6 +38,7 @@ app.use(
 app.use("/teacher", teacherRouter);
 app.use("/student", studentRouter);
 app.use("/attendance", attendanceRouter);
+app.use("/image", Imagerouter);
 app.get("/", (req, res) => {
   res.send("welcome to Pinequest backend");
 });

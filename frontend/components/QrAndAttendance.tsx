@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Qr from "./Qr";
 import { PiPProviderHandle } from "@/utils/PiPProvider";
+import { Users } from "lucide-react";
+
 interface Student {
   _id: string;
   studentName: string;
   studentId: string;
   time: string;
+  faceImage?: string | null; 
 }
 
 interface QrAndAttendanceProps {
@@ -56,7 +59,7 @@ export default function QrAndAttendance({
           </div>
 
           {/* PiP status indicator */}
-          {pipActive && ( // Use pipActive to conditionally render the status indicator
+          {pipActive && (
             <div className="absolute top-[-10px] left-[-10px] bg-green-600/90 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
               <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
               PiP
@@ -84,7 +87,7 @@ export default function QrAndAttendance({
           {!pipActive ? (
             <Button
               onClick={() => pipProviderRef.current?.openPiP()}
-              className="bg-gray-700 text-white ..."
+              className="bg-gray-700 text-white"
               disabled={!qrData}
             >
               QR PiP нээх
@@ -92,7 +95,7 @@ export default function QrAndAttendance({
           ) : (
             <Button
               onClick={() => pipProviderRef.current?.closePiP()}
-              className="bg-red-600 text-white ..."
+              className="bg-red-600 text-white"
             >
               QR PiP хаах
             </Button>
@@ -100,7 +103,7 @@ export default function QrAndAttendance({
         </div>
       </div>
 
-      {/* Ирцийн жагсаалт */}
+      {/* Ирцийн жагсаалт with Face Images */}
       <Card className="flex-1">
         <CardContent className="p-5">
           <div className="flex justify-between items-center mb-4">
@@ -111,49 +114,62 @@ export default function QrAndAttendance({
               Нийт: {students.length} оюутан
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-4 pl-3 font-medium">Оюутны нэр</th>
-                  <th className="text-left p-4 font-medium">Оюутны код</th>
-                  <th className="text-left p-4 font-medium">Бүртгүүлсэн цаг</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.length > 0 ? (
-                  students.map((student, index) => (
-                    <tr
-                      key={student._id}
-                      className={`border-b hover:bg-muted/30 transition-colors ${
-                        index % 2 === 0 ? "bg-background" : "bg-muted/20"
-                      }`}
-                    >
-                      <td className="p-4 font-medium">{student.studentName}</td>
-                      <td className="p-4 text-muted-foreground">
-                        {student.studentId}
-                      </td>
-                      <td className="p-4 text-muted-foreground">
-                        {new Date(student.time).toLocaleTimeString("mn-MN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={3}
-                      className="text-center py-20 text-muted-foreground"
-                    >
-                      Одоогоор ирц бүртгэгдээгүй байна
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          
+          <div className="max-h-[600px] overflow-y-auto space-y-2">
+            {students.length > 0 ? (
+              students.map((student) => (
+                <div
+                  key={student._id}
+                  className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors hover:shadow-sm"
+                >
+                  {/* Face Image */}
+                  <div className="relative w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 flex-shrink-0 shadow-sm">
+                    {student.faceImage ? (
+                      <img
+                        src={student.faceImage}
+                        alt={student.studentName}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-600 text-lg font-bold">
+                        {student.studentName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    {/* Online indicator */}
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                  </div>
+                  
+                  {/* Student Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 truncate text-sm">
+                      {student.studentName}
+                    </p>
+                    <p className="text-xs text-gray-500 font-medium">
+                      {student.studentId}
+                    </p>
+                  </div>
+                  
+                  {/* Time Badge */}
+                  <div className="flex flex-col items-end">
+                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded">
+                      Ирсэн
+                    </span>
+                    <span className="text-xs text-gray-400 mt-1">
+                      {new Date(student.time).toLocaleTimeString('mn-MN', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-20 text-gray-400">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>Одоогоор ирц бүртгэгдээгүй байна</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

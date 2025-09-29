@@ -19,6 +19,7 @@ interface Student {
   studentName: string;
   studentId: string;
   time: string;
+  faceImage?: string | null;
 }
 
 interface QRControlCenterProps {

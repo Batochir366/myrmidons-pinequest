@@ -38,6 +38,7 @@ interface Student {
   studentName: string;
   studentId: string;
   time: string;
+  faceImage?: string | null;
 }
 
 export default function AttendanceDashboard() {
@@ -61,6 +62,7 @@ export default function AttendanceDashboard() {
   const [qrSvg, setQrSvg] = useState<string>("");
   const [pipActive, setPipActive] = useState(false);
   const qrCode = useRef<QRCodeStyling | null>(null);
+const faceImageCacheRef = useRef<Map<string, string | null>>(new Map());
 
   useEffect(() => {
     // Update qrSvg state when qrSvgRef changes
@@ -128,6 +130,16 @@ export default function AttendanceDashboard() {
     }
   }, []);
 
+
+  const fetchFaceImage = async (studentId: string): Promise<string | null> => {
+  try {
+    const imageRes = await axiosInstance.get(`/image/get/${studentId}`);
+    return imageRes.data.image || null;
+  } catch (err) {
+    console.warn(`No face image found for student ${studentId}`);
+    return null;
+  }
+};
   // In your saveState calls, make sure you're saving PiP state
   useEffect(() => {
     if (running || attendanceId) {
@@ -197,24 +209,43 @@ export default function AttendanceDashboard() {
     [qrSec, generateQr]
   );
 
-  const pollAttendanceData = useCallback((attendanceId: string) => {
-    axiosInstance
-      .get(`attendance/live/${attendanceId}`)
-      .then((res) => {
-        const attendingStudents = res.data.attendance?.attendingStudents || [];
+const pollAttendanceData = useCallback(async (attendanceId: string) => {
+  try {
+    const res = await axiosInstance.get(`attendance/live/${attendanceId}`);
+    const attendingStudents = res.data.attendance?.attendingStudents || [];
 
-        setStudents(
-          attendingStudents.map((s: any) => ({
-            _id: s._id,
-            studentName: s.studentName,
-            studentId: s.studentId,
-            time: s.time || new Date().toISOString(),
-          }))
-        );
-      })
-      .catch((err) => console.error("Error polling attendance data:", err));
-  }, []);
+    const currentCache = faceImageCacheRef.current;
 
+    const newStudentIds = attendingStudents
+      .map((s: any) => s.studentId)
+      .filter((id: string) => !currentCache.has(id));
+
+    if (newStudentIds.length > 0) {
+      const newImages = await Promise.all(
+        newStudentIds.map(async (studentId: string) => {
+          const image = await fetchFaceImage(studentId);
+          return { studentId, image };
+        })
+      );
+
+      newImages.forEach(({ studentId, image }) => {
+        currentCache.set(studentId, image);
+      });
+    }
+
+    const studentsWithImages = attendingStudents.map((s: any) => ({
+      _id: s._id,
+      studentName: s.studentName,
+      studentId: s.studentId,
+      time: s.time || new Date().toISOString(),
+      faceImage: currentCache.get(s.studentId) ?? null,
+    }));
+
+    setStudents(studentsWithImages);
+  } catch (err) {
+    console.error("Error polling attendance data:", err);
+  }
+}, []); 
   // Resume timers if session is being restored
   useEffect(() => {
     if (
@@ -258,31 +289,30 @@ export default function AttendanceDashboard() {
     router.push("/");
   };
 
-  const stopTimer = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (pollRef.current) clearInterval(pollRef.current);
-    if (updateIntervalRef.current) clearInterval(updateIntervalRef.current);
+const stopTimer = () => {
+  if (timerRef.current) clearInterval(timerRef.current);
+  if (pollRef.current) clearInterval(pollRef.current);
+  if (updateIntervalRef.current) clearInterval(updateIntervalRef.current);
 
-    // Close PiP properly
-    if (pipProviderRef.current?.isActive) {
-      pipProviderRef.current?.closePiP();
-    }
+  if (pipProviderRef.current?.isActive) {
+    pipProviderRef.current?.closePiP();
+  }
 
-    // Reset all refs and state
-    timerRef.current = null;
-    pollRef.current = null;
-    updateIntervalRef.current = null;
+  timerRef.current = null;
+  pollRef.current = null;
+  updateIntervalRef.current = null;
 
-    setRunning(false);
-    setPipActive(false);
-    setCountdown(qrSec);
-    setQrData(null);
-    setAttendanceId(null);
-    setStudents([]);
-    setQrSvg("");
+  setRunning(false);
+  setPipActive(false);
+  setCountdown(qrSec);
+  setQrData(null);
+  setAttendanceId(null);
+  setStudents([]);
+  setQrSvg("");
+  faceImageCacheRef.current = new Map();; 
 
-    clearSession();
-  };
+  clearSession();
+};
 
   const onStart = () => {
     setRunning(true);
@@ -301,69 +331,62 @@ export default function AttendanceDashboard() {
     updateActivity();
   };
 
-  const start = async () => {
-    if (running || !selectedClassroomId || !selectedLectureName) {
-      toast.error("Ангийг сонгоно уу!");
-      return;
-    }
+const start = async () => {
+  if (running || !selectedClassroomId || !selectedLectureName) {
+    toast.error("Ангийг сонгоно уу!");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const res = await axiosInstance.get(
-        `teacher/classroom-students/${selectedClassroomId}`
+  try {
+    const res = await axiosInstance.get(
+      `teacher/classroom-students/${selectedClassroomId}`
+    );
+
+    const { students = [], empty, message } = res.data;
+
+    if (empty || students.length === 0) {
+      toast.error(
+        message ||
+          "Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!"
       );
-
-      const { students = [], empty, message } = res.data;
-
-      if (empty || students.length === 0) {
-        toast.error(
-          message ||
-            "Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!"
-        );
-        setLoading(false);
-        return;
-      }
-
-      setStudents(
-        students.map((s: any) => ({
-          _id: s._id,
-          studentName: s.studentName,
-          studentId: s.studentId,
-          time: new Date().toISOString(),
-        }))
-      );
-
-      const { latitude, longitude } = await getLocation();
-
-      const attendanceRes = await axiosInstance.post(
-        "teacher/create-attendance",
-        {
-          classroomId: selectedClassroomId,
-          latitude,
-          longitude,
-        }
-      );
-
-      const { _id } = attendanceRes.data;
-
-      if (!_id) throw new Error("Attendance ID алга");
-
-      setAttendanceId(_id);
-      setRunning(true);
-      onStart();
-
-      startQRTimer(_id);
-      pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
-
-      toast.success(`Ирц эхлэлээ! QR ${qrSec} секунд тутамд шинэчлэгдэнэ.`);
-    } catch (err) {
-      console.error("Error starting attendance:", err);
-      toast.error("Ирц эхлүүлэхэд алдаа гарлаа");
-    } finally {
       setLoading(false);
-    }
-  };
+      return;
+    }    
+    const { latitude, longitude } = await getLocation();
+
+    const attendanceRes = await axiosInstance.post(
+      "teacher/create-attendance",
+      {
+        classroomId: selectedClassroomId,
+        latitude,
+        longitude,
+      }
+    );
+
+    const { _id } = attendanceRes.data;
+
+    if (!_id) throw new Error("Attendance ID алга");
+
+    setAttendanceId(_id);
+    setRunning(true);
+    onStart();
+
+    // Start with empty students list - polling will populate it
+    setStudents([]);
+
+    startQRTimer(_id);
+    pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
+
+    toast.success(`Ирц эхлэлээ! QR ${qrSec} секунд тутамд шинэчлэгдэнэ.`);
+  } catch (err) {
+    console.error("Error starting attendance:", err);
+    toast.error("Ирц эхлүүлэхэд алдаа гарлаа");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const stop = async () => {
     if (!attendanceId) return;
