@@ -312,8 +312,14 @@ def attend_class():
         teacher_latitude = data.get('teacher_latitude')
         teacher_longitude = data.get('teacher_longitude')
 
-        # Check for required fields
-        if not all([studentId, image_base64, latitude, longitude, teacher_latitude, teacher_longitude]) or not classroom_students:
+        # # Check for required fields
+        # if not all([studentId, image_base64, latitude, longitude, teacher_latitude, teacher_longitude]) or not classroom_students:
+        #     return jsonify({
+        #         "success": False, 
+        #         "message": "Байршлын мэдээллийн зөвшөөрлийг өгнө үү"
+        #     }), 400
+        
+        if not all([studentId, image_base64, latitude, longitude]) or not classroom_students:
             return jsonify({
                 "success": False, 
                 "message": "Байршлын мэдээллийн зөвшөөрлийг өгнө үү"
@@ -409,7 +415,7 @@ def attend_class():
             "message": "Student verified successfully",
             "studentId": studentId,
             "name": matched_user.get('name', name),
-            "distance_from_teacher": round(distance, 2)  # Optional: include distance in response
+            # "distance_from_teacher": round(distance, 2)  # Optional: include distance in response
         }
         
         # Add liveness check results if available
