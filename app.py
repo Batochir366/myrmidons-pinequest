@@ -304,12 +304,20 @@ def attend_class():
         image_base64 = data.get('image_base64')
         classroom_students = data.get('classroom_students') 
         
+        # Student location
         longitude = data.get('longitude')
         latitude = data.get('latitude')
+        
+        # Teacher location (passed from frontend)
+        teacher_latitude = data.get('teacher_latitude')
+        teacher_longitude = data.get('teacher_longitude')
 
         # Check for required fields
-        if not all([studentId, image_base64, latitude, longitude]) or not classroom_students:
-            return jsonify({"success": False, "message": "Байршлын мэдээллийн зөвшөөрлийг өгнө үү"}), 400
+        if not all([studentId, image_base64, latitude, longitude, teacher_latitude, teacher_longitude]) or not classroom_students:
+            return jsonify({
+                "success": False, 
+                "message": "Байршлын мэдээллийн зөвшөөрлийг өгнө үү"
+            }), 400
 
         # Extract student IDs for membership check
         student_ids = [student.get('studentId') for student in classroom_students if isinstance(student, dict)]
@@ -322,12 +330,9 @@ def attend_class():
                 "message": f"Та ангид байхгүй байна. Та эхлээд ангидаа элсээрэй"
             }), 403
 
-        # Location check
-        teacher_lat = 47.91417544200054
-        teacher_lon = 106.91655931106844
-
+        # Location check with dynamic teacher location
         def haversine(lat1, lon1, lat2, lon2):
-            R = 6371000
+            R = 6371000  # Earth radius in meters
             try:
                 phi1, phi2 = radians(lat1), radians(lat2)
                 delta_phi = radians(lat2 - lat1)
@@ -338,7 +343,9 @@ def attend_class():
             except Exception:
                 return float('inf')
 
-        distance = haversine(teacher_lat, teacher_lon, latitude, longitude)
+        distance = haversine(teacher_latitude, teacher_longitude, latitude, longitude)
+        
+        # Allow 100 meter radius from teacher's location
         if distance > 100:
             return jsonify({
                 "success": False,
@@ -359,7 +366,11 @@ def attend_class():
             return jsonify({"success": False, "message": "Failed to decode image"}), 400
 
         # Face Recognition with Liveness Detection (liveness checked first)
-        name, matched_user, liveness_result = recognize_face_with_liveness(frame, filter_student_ids=[studentId], check_liveness=True)
+        name, matched_user, liveness_result = recognize_face_with_liveness(
+            frame, 
+            filter_student_ids=[studentId], 
+            check_liveness=True
+        )
         
         # Check for spoof detection
         if name == 'spoof_detected':
@@ -398,6 +409,7 @@ def attend_class():
             "message": "Student verified successfully",
             "studentId": studentId,
             "name": matched_user.get('name', name),
+            "distance_from_teacher": round(distance, 2)  # Optional: include distance in response
         }
         
         # Add liveness check results if available
@@ -414,7 +426,10 @@ def attend_class():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "message": f"Internal Server Error: {str(e)}"}), 500
+        return jsonify({
+            "success": False, 
+            "message": f"Internal Server Error: {str(e)}"
+        }), 500
 
 @app.route('/student/join', methods=['POST', 'OPTIONS'])
 def student_join():
