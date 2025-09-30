@@ -131,16 +131,15 @@ export default function AttendanceDashboard() {
     }
   }, []);
 
-
   const fetchFaceImage = async (studentId: string): Promise<string | null> => {
-  try {
-    const imageRes = await axiosInstance.get(`/image/get/${studentId}`);
-    return imageRes.data.image || null;
-  } catch (err) {
-    console.warn(`No face image found for student ${studentId}`);
-    return null;
-  }
-};
+    try {
+      const imageRes = await axiosInstance.get(`/image/get/${studentId}`);
+      return imageRes.data.image || null;
+    } catch (err) {
+      console.warn(`No face image found for student ${studentId}`);
+      return null;
+    }
+  };
   // In your saveState calls, make sure you're saving PiP state
   useEffect(() => {
     if (running || attendanceId) {
@@ -184,8 +183,6 @@ export default function AttendanceDashboard() {
       const secret = "FACE";
       const token = jwtEncode(payload, secret);
       const url = `${axiosInstanceFront}student?token=${token}`;
-console.log(url);
-
       setQrData(url);
     },
     [qrSec, selectedClassroomId]
@@ -211,43 +208,43 @@ console.log(url);
     [qrSec, generateQr]
   );
 
-const pollAttendanceData = useCallback(async (attendanceId: string) => {
-  try {
-    const res = await axiosInstance.get(`attendance/live/${attendanceId}`);
-    const attendingStudents = res.data.attendance?.attendingStudents || [];
+  const pollAttendanceData = useCallback(async (attendanceId: string) => {
+    try {
+      const res = await axiosInstance.get(`attendance/live/${attendanceId}`);
+      const attendingStudents = res.data.attendance?.attendingStudents || [];
 
-    const currentCache = faceImageCacheRef.current;
+      const currentCache = faceImageCacheRef.current;
 
-    const newStudentIds = attendingStudents
-      .map((s: any) => s.studentId)
-      .filter((id: string) => !currentCache.has(id));
+      const newStudentIds = attendingStudents
+        .map((s: any) => s.studentId)
+        .filter((id: string) => !currentCache.has(id));
 
-    if (newStudentIds.length > 0) {
-      const newImages = await Promise.all(
-        newStudentIds.map(async (studentId: string) => {
-          const image = await fetchFaceImage(studentId);
-          return { studentId, image };
-        })
-      );
+      if (newStudentIds.length > 0) {
+        const newImages = await Promise.all(
+          newStudentIds.map(async (studentId: string) => {
+            const image = await fetchFaceImage(studentId);
+            return { studentId, image };
+          })
+        );
 
-      newImages.forEach(({ studentId, image }) => {
-        currentCache.set(studentId, image);
-      });
+        newImages.forEach(({ studentId, image }) => {
+          currentCache.set(studentId, image);
+        });
+      }
+
+      const studentsWithImages = attendingStudents.map((s: any) => ({
+        _id: s._id,
+        studentName: s.studentName,
+        studentId: s.studentId,
+        time: s.time || new Date().toISOString(),
+        faceImage: currentCache.get(s.studentId) ?? null,
+      }));
+
+      setStudents(studentsWithImages);
+    } catch (err) {
+      console.error("Error polling attendance data:", err);
     }
-
-    const studentsWithImages = attendingStudents.map((s: any) => ({
-      _id: s._id,
-      studentName: s.studentName,
-      studentId: s.studentId,
-      time: s.time || new Date().toISOString(),
-      faceImage: currentCache.get(s.studentId) ?? null,
-    }));
-
-    setStudents(studentsWithImages);
-  } catch (err) {
-    console.error("Error polling attendance data:", err);
-  }
-}, []); 
+  }, []);
   // Resume timers if session is being restored
   useEffect(() => {
     if (
@@ -291,31 +288,31 @@ const pollAttendanceData = useCallback(async (attendanceId: string) => {
     router.push("/");
   };
 
-const stopTimer = () => {
-  if (timerRef.current) clearInterval(timerRef.current);
-  if (pollRef.current) clearInterval(pollRef.current);
-  if (updateIntervalRef.current) clearInterval(updateIntervalRef.current);
+  const stopTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (updateIntervalRef.current) clearInterval(updateIntervalRef.current);
 
-  if (pipProviderRef.current?.isActive) {
-    pipProviderRef.current?.closePiP();
-  }
+    if (pipProviderRef.current?.isActive) {
+      pipProviderRef.current?.closePiP();
+    }
 
-  timerRef.current = null;
-  pollRef.current = null;
-  updateIntervalRef.current = null;
+    timerRef.current = null;
+    pollRef.current = null;
+    updateIntervalRef.current = null;
 
-  setRunning(false);
-  setPipActive(false);
-  setCountdown(qrSec);
-  setQrData(null);
-  setAttendanceId(null);
-  setStudents([]);
-  setQrSvg("");
-  setTotalStudents(0); 
-  faceImageCacheRef.current = new Map();
+    setRunning(false);
+    setPipActive(false);
+    setCountdown(qrSec);
+    setQrData(null);
+    setAttendanceId(null);
+    setStudents([]);
+    setQrSvg("");
+    setTotalStudents(0);
+    faceImageCacheRef.current = new Map();
 
-  clearSession();
-};
+    clearSession();
+  };
 
   const onStart = () => {
     setRunning(true);
@@ -334,65 +331,64 @@ const stopTimer = () => {
     updateActivity();
   };
 
-
-const start = async () => {
-  if (running || !selectedClassroomId || !selectedLectureName) {
-    toast.error("Ангийг сонгоно уу!");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const res = await axiosInstance.get(
-      `teacher/classroom-students/${selectedClassroomId}`
-    );
-
-    const { students = [], empty, message } = res.data;
-
-    if (empty || students.length === 0) {
-      toast.error(
-        message ||
-          "Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!"
-      );
-      setLoading(false);
+  const start = async () => {
+    if (running || !selectedClassroomId || !selectedLectureName) {
+      toast.error("Ангийг сонгоно уу!");
       return;
     }
 
-    setTotalStudents(students.length);
-    
-    const { latitude, longitude } = await getLocation();
+    setLoading(true);
 
-    const attendanceRes = await axiosInstance.post(
-      "teacher/create-attendance",
-      {
-        classroomId: selectedClassroomId,
-        latitude,
-        longitude,
+    try {
+      const res = await axiosInstance.get(
+        `teacher/classroom-students/${selectedClassroomId}`
+      );
+
+      const { students = [], empty, message } = res.data;
+
+      if (empty || students.length === 0) {
+        toast.error(
+          message ||
+            "Энэ ангид оюутан байхгүй тул ирц эхлүүлэх боломжгүй байна!"
+        );
+        setLoading(false);
+        return;
       }
-    );
 
-    const { _id } = attendanceRes.data;
+      setTotalStudents(students.length);
 
-    if (!_id) throw new Error("Attendance ID алга");
+      const { latitude, longitude } = await getLocation();
 
-    setAttendanceId(_id);
-    setRunning(true);
-    onStart();
+      const attendanceRes = await axiosInstance.post(
+        "teacher/create-attendance",
+        {
+          classroomId: selectedClassroomId,
+          latitude,
+          longitude,
+        }
+      );
 
-    setStudents([]);
+      const { _id } = attendanceRes.data;
 
-    startQRTimer(_id);
-    pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
+      if (!_id) throw new Error("Attendance ID алга");
 
-    toast.success(`Ирц эхлэлээ! QR ${qrSec} секунд тутамд шинэчлэгдэнэ.`);
-  } catch (err) {
-    console.error("Error starting attendance:", err);
-    toast.error("Ирц эхлүүлэхэд алдаа гарлаа");
-  } finally {
-    setLoading(false);
-  }
-};
+      setAttendanceId(_id);
+      setRunning(true);
+      onStart();
+
+      setStudents([]);
+
+      startQRTimer(_id);
+      pollRef.current = setInterval(() => pollAttendanceData(_id), 2000);
+
+      toast.success(`Ирц эхлэлээ! QR ${qrSec} секунд тутамд шинэчлэгдэнэ.`);
+    } catch (err) {
+      console.error("Error starting attendance:", err);
+      toast.error("Ирц эхлүүлэхэд алдаа гарлаа");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const stop = async () => {
     if (!attendanceId) return;
