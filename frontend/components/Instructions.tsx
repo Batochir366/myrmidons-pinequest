@@ -24,17 +24,20 @@ const teacherSteps = [
   {
     title: "Sign up,Login",
     desc: "Багш бүртгүүлнэ.",
-    video: "/SignupTeacher.MOV",
+    video:
+      "https://res.cloudinary.com/dgwpwmmle/video/upload/v1759197027/SignupTeacher_xaxtia.mov",
   },
   {
     title: "Using QR PIP",
     desc: "PIP горимд ашиглаж, багш өөр таб руу шилжсэн ч QR кодыг харуулна.",
-    video: "/Qrpip.MOV",
+    video:
+      "https://res.cloudinary.com/dgwpwmmle/video/upload/v1759196891/Qrpip_kocgqq.mov",
   },
   {
     title: "See attendance history",
     desc: "Өнгөрсөн ирцийн мэдээллээ харах боломжтой.",
-    video: "/See.MOV",
+    video:
+      "https://res.cloudinary.com/dgwpwmmle/video/upload/v1759196966/See_z2jy4m.mov",
   },
 ];
 
@@ -42,27 +45,32 @@ const studentSteps = [
   {
     title: "Sign up & Join classroom",
     desc: "Оюутан бүртгүүлээд ангидаа нэгдэнэ.",
-    video: "/Joinshuud.MOV",
+    video:
+      "https://res.cloudinary.com/dgwpwmmle/video/upload/v1759197221/Joinshuud_nhqqgy.mov",
   },
   {
     title: "Sign up only",
     desc: "Зөвхөн бүртгүүлээд дараа ангидаа нэгдэх боломжтой.",
-    video: "/join.MOV",
+    video:
+      "https://res.cloudinary.com/dgwpwmmle/video/upload/v1759197132/Join_ram554.mov",
   },
   {
     title: "Trying to spoof",
     desc: "Систем хуурах оролдлого хийвэл блок болно.",
-    video: "/Spoof.MOV",
+    video:
+      "https://res.cloudinary.com/dgwpwmmle/video/upload/v1759197351/Spoof_nncjpz.mov",
   },
   {
     title: "Scan QR",
     desc: "QR код уншуулаад ирцээ бүртгүүлнэ.",
-    video: "/Attend.MOV",
+    video:
+      "https://res.cloudinary.com/dgwpwmmle/video/upload/v1759196674/Attend_usgvck.mov",
   },
   {
     title: "Байршлын шалгалт",
     desc: "Оюутан өөр байршлаас ирц өгөх оролдлого хийвэл систем таныг илрүүлнэ.",
-    video: "/Location.MOV",
+    video:
+      "https://res.cloudinary.com/dgwpwmmle/video/upload/v1759196927/Location_kezcrw.mov",
   },
 ];
 
