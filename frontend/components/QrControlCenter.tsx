@@ -56,6 +56,7 @@ interface QRControlCenterProps {
   pipActive: boolean;
   qrSvg: string;
   setQrSvg: React.Dispatch<React.SetStateAction<string>>;
+  totalStudents: number
 }
 
 export function QRControlCenter({
@@ -77,6 +78,7 @@ export function QRControlCenter({
   pipProviderRef,
   pipActive,
   setQrSvg,
+  totalStudents
 }: QRControlCenterProps) {
   const [teacherId, setTeacherId] = useState("");
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
@@ -175,6 +177,7 @@ export function QRControlCenter({
           countdown={countdown}
           qrSec={qrSec}
           setQrSvg={setQrSvg}
+          totalStudents={totalStudents}
         />
       )}
     </div>

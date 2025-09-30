@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getFaceImageByStudentId, saveFaceImage } from "../controllers/image";
+import { getFaceImageByStudentId, saveFaceImage } from "../controllers/image.js";
 
 
 const Imagerouter = Router();

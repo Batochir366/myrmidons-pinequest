@@ -18,6 +18,7 @@ interface QrAndAttendanceProps {
   qrData: string;
   countdown: number;
   open: boolean;
+  totalStudents: number; 
   setOpen: (v: boolean) => void;
   students: Student[];
   qrSec: number;
@@ -35,6 +36,7 @@ export default function QrAndAttendance({
   setQrSvg,
   pipProviderRef,
   pipActive,
+  totalStudents
 }: QrAndAttendanceProps) {
   return (
     <div className="flex flex-col xl:flex-row gap-6">
@@ -110,8 +112,15 @@ export default function QrAndAttendance({
             <h3 className="text-lg font-semibold">
               Ирцэд бүртгүүлсэн оюутнууд
             </h3>
-            <div className="text-sm text-muted-foreground">
-              Нийт: {students.length} оюутан
+            <div className="flex flex-col items-end gap-1">
+              <div className="text-sm font-semibold text-gray-900">
+                <span className="text-green-600">{students.length}</span>
+                <span className="text-gray-400 mx-1">/</span>
+                <span className="text-gray-600">{totalStudents}</span>
+              </div>
+              <div className="text-xs text-gray-500">
+                {students.length} ирсэн
+              </div>
             </div>
           </div>
           
@@ -136,8 +145,6 @@ export default function QrAndAttendance({
                         {student.studentName.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    {/* Online indicator */}
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                   </div>
                   
                   {/* Student Info */}

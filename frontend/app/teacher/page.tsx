@@ -62,7 +62,8 @@ export default function AttendanceDashboard() {
   const [qrSvg, setQrSvg] = useState<string>("");
   const [pipActive, setPipActive] = useState(false);
   const qrCode = useRef<QRCodeStyling | null>(null);
-const faceImageCacheRef = useRef<Map<string, string | null>>(new Map());
+  const faceImageCacheRef = useRef<Map<string, string | null>>(new Map());
+  const [totalStudents, setTotalStudents] = useState(0);
 
   useEffect(() => {
     // Update qrSvg state when qrSvgRef changes
@@ -183,6 +184,7 @@ const faceImageCacheRef = useRef<Map<string, string | null>>(new Map());
       const secret = "FACE";
       const token = jwtEncode(payload, secret);
       const url = `${axiosInstanceFront}student?token=${token}`;
+console.log(url);
 
       setQrData(url);
     },
@@ -309,7 +311,8 @@ const stopTimer = () => {
   setAttendanceId(null);
   setStudents([]);
   setQrSvg("");
-  faceImageCacheRef.current = new Map();; 
+  setTotalStudents(0); 
+  faceImageCacheRef.current = new Map();
 
   clearSession();
 };
@@ -330,6 +333,7 @@ const stopTimer = () => {
     saveSelectedClassroom(id, lectureName);
     updateActivity();
   };
+
 
 const start = async () => {
   if (running || !selectedClassroomId || !selectedLectureName) {
@@ -353,7 +357,10 @@ const start = async () => {
       );
       setLoading(false);
       return;
-    }    
+    }
+
+    setTotalStudents(students.length);
+    
     const { latitude, longitude } = await getLocation();
 
     const attendanceRes = await axiosInstance.post(
@@ -373,7 +380,6 @@ const start = async () => {
     setRunning(true);
     onStart();
 
-    // Start with empty students list - polling will populate it
     setStudents([]);
 
     startQRTimer(_id);
@@ -477,6 +483,7 @@ const start = async () => {
       case "attendance":
         return (
           <QRControlCenter
+            totalStudents={totalStudents}
             pipProviderRef={pipProviderRef}
             attendanceId={attendanceId}
             setAttendanceId={setAttendanceId}

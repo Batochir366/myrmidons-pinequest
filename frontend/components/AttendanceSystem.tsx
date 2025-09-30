@@ -135,72 +135,81 @@ const AttendanceSystem: React.FC = () => {
     }
   };
 
-  const handleRecognitionComplete = async () => {
-    if (isProcessing) return;
-    setIsProcessing(true);
-    setErr(null);
-    try {
-      // 1️⃣ Capture screenshot
-      if (!webcamRef.current) {
-        toast.error("Камер бэлэн биш байна.");
-        return;
-      }
-      const shot = webcamRef.current.getScreenshot();
-      if (!shot) {
-        toast.error("Царай авахад алдаа гарлаа.");
-        return;
-      }
+const handleRecognitionComplete = async () => {
+  if (isProcessing) return;
+  setIsProcessing(true);
+  setErr(null);
 
-      setSrc(shot);
-      setIsCapturing(true);
-
-      // 2️⃣ Get location
-      const location = await getLocation();
-
-      // 3️⃣ Face recognition
-      const verified = await captureAndVerify(
-        shot,
-        `${PYTHON_BACKEND_URL}student/attend`,
-        {
-          studentId,
-          classroom_students: students,
-          latitude: location.latitude,
-          longitude: location.longitude,
-        }
-      );
-
-      if (verified == false) {
-        return setErr(false);
-      } else {
-        setErr(true);
-      }
-
-      // 4️⃣ Record attendance
-      const attendanceRecorded = await recordAttendance(
-        attendanceId!,
-        studentId,
-        location.latitude,
-        location.longitude
-      );
-
-      if (attendanceRecorded === false) {
-        return;
-      }
-
-      stopCamera(streamRef);
-      setStep(3);
-      setTimeout(() => {
-        router.push("/");
-      }, 5000);
-    } catch (error) {
-      console.error(error);
-      toast.error("Алдаа гарлаа. Дахин оролдоно уу.");
-    } finally {
-      setIsProcessing(false);
-      setIsCapturing(false);
-      setSrc("");
+  try {
+    // 1️⃣ Capture screenshot
+    if (!webcamRef.current) {
+      toast.error("Камер бэлэн биш байна.");
+      return;
     }
-  };
+
+    const shot = webcamRef.current.getScreenshot();
+    if (!shot) {
+      toast.error("Царай авахад алдаа гарлаа.");
+      return;
+    }
+
+    setSrc(shot);
+    setIsCapturing(true);
+
+    // 2️⃣ Get location
+    const location = await getLocation();
+
+    // 3️⃣ Face recognition
+    const verified = await captureAndVerify(
+      shot,
+      `${PYTHON_BACKEND_URL}student/attend`,
+      {
+        studentId,
+        classroom_students: students,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      }
+    );
+
+    if (verified === false) {
+      return setErr(false);
+    } else {
+      setErr(true);
+
+      // 1️⃣ Save face image using axiosInstance
+      await axiosInstance.post("/image/save", {
+        studentId,
+        image: shot, 
+      });
+    }
+
+    // 4️⃣ Record attendance
+    const attendanceRecorded = await recordAttendance(
+      attendanceId!,
+      studentId,
+      location.latitude,
+      location.longitude
+    );
+
+    if (attendanceRecorded === false) {
+      return;
+    }
+
+    stopCamera(streamRef);
+    setStep(3);
+    setTimeout(() => {
+      router.push("/");
+    }, 5000);
+
+  } catch (error) {
+    console.error(error);
+    toast.error("Алдаа гарлаа. Дахин оролдоно уу.");
+  } finally {
+    setIsProcessing(false);
+    setIsCapturing(false);
+    setSrc("");
+  }
+};
 
   if (isInvalid) return <QRError />;
   if (!paramsLoaded)

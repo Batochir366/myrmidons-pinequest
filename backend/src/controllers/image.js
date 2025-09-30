@@ -1,31 +1,28 @@
-import { Facemodel } from "../models/image.model";
+import { Facemodel } from "../models/image.model.js";
 
 // Controller to save the image and student ID
 export const saveFaceImage = async (req, res) => {
   try {
     const { studentId, image } = req.body;
 
-    // Check if studentId and image are provided
     if (!studentId || !image) {
       return res.status(400).json({ message: 'Student ID and image are required' });
     }
 
-    // Create a new document in the database
-    const newFaceImage = new Facemodel({
-      studentId,
-      image,
-    });
+    // Upsert: update if exists, insert if not
+    await Facemodel.findOneAndUpdate(
+      { studentId },
+      { image },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
-    // Save the new face image document to the database
-    await newFaceImage.save();
-
-    // Return a success response
-    return res.status(201).json({ message: 'Face image saved successfully' });
+    return res.status(201).json({ message: 'Face image saved or updated successfully' });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 
 // Controller to get the image by student ID
 export const getFaceImageByStudentId = async (req, res) => {
