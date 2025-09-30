@@ -192,6 +192,7 @@ const AttendanceSystem: React.FC = () => {
           classroom_students: students,
           latitude: location.latitude,
           longitude: location.longitude,
+          attendance_id: attendanceId,
         }
       );
 
@@ -291,37 +292,33 @@ const AttendanceSystem: React.FC = () => {
                       setStep(stepItem.id as 1 | 2 | 3);
                     }
                   }}
-                  className={`flex-1 flex flex-col items-center relative ${
-                    isClickable ? "cursor-pointer" : "cursor-not-allowed"
-                  }`}
+                  className={`flex-1 flex flex-col items-center relative ${isClickable ? "cursor-pointer" : "cursor-not-allowed"
+                    }`}
                 >
                   {/* Connector line */}
                   {!isLast && (
                     <div
-                      className={`absolute top-6 left-1/2 w-full h-0.5 -translate-y-1/2 ${
-                        isCompleted ? "bg-slate-700" : "bg-gray-200"
-                      }`}
+                      className={`absolute top-6 left-1/2 w-full h-0.5 -translate-y-1/2 ${isCompleted ? "bg-slate-700" : "bg-gray-200"
+                        }`}
                     />
                   )}
 
                   {/* Circle icon */}
                   <div
-                    className={`z-10 w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${
-                      isActive || isCompleted
+                    className={`z-10 w-12 h-12 rounded-full flex items-center justify-center mb-2 transition-colors ${isActive || isCompleted
                         ? "bg-slate-700 text-white"
                         : "bg-gray-200 text-gray-400"
-                    }`}
+                      }`}
                   >
                     <Icon size={20} />
                   </div>
 
                   {/* Label */}
                   <span
-                    className={`text-sm font-medium hidden md:flex ${
-                      isActive || isCompleted
+                    className={`text-sm font-medium hidden md:flex ${isActive || isCompleted
                         ? "text-slate-700"
                         : "text-gray-400"
-                    }`}
+                      }`}
                   >
                     {stepItem.label}
                   </span>
@@ -402,13 +399,11 @@ const AttendanceSystem: React.FC = () => {
                     ref={webcamRef}
                     screenshotFormat="image/jpeg"
                     videoConstraints={{ facingMode: "user" }}
-                    className={`w-full h-full rounded-full object-cover border-2 -scale-x-100  ${
-                      err === false && "border-red-500"
-                    } ${err === true && "border-green-400"} 
-                                                          ${
-                                                            err === null &&
-                                                            "border-gray-400"
-                                                          }`}
+                    className={`w-full h-full rounded-full object-cover border-2 -scale-x-100  ${err === false && "border-red-500"
+                      } ${err === true && "border-green-400"} 
+                                                          ${err === null &&
+                      "border-gray-400"
+                      }`}
                   />
 
                   {/* SVG overlay */}

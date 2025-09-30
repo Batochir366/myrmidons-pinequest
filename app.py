@@ -303,27 +303,69 @@ def attend_class():
         studentId = data.get('studentId')
         image_base64 = data.get('image_base64')
         classroom_students = data.get('classroom_students') 
+        attendance_id = data.get('attendance_id')  # NEW: Get attendance session ID
         
         # Student location
         longitude = data.get('longitude')
         latitude = data.get('latitude')
         
-        # Teacher location (passed from frontend)
-        teacher_latitude = data.get('teacher_latitude')
-        teacher_longitude = data.get('teacher_longitude')
-
-        # # Check for required fields
-        # if not all([studentId, image_base64, latitude, longitude, teacher_latitude, teacher_longitude]) or not classroom_students:
-        #     return jsonify({
-        #         "success": False, 
-        #         "message": "Байршлын мэдээллийн зөвшөөрлийг өгнө үү"
-        #     }), 400
+        # Fetch teacher location from attendance record in database
+        teacher_latitude = None
+        teacher_longitude = None
         
-        if not all([studentId, image_base64, latitude, longitude]) or not classroom_students:
-            return jsonify({
-                "success": False, 
-                "message": "Байршлын мэдээллийн зөвшөөрлийг өгнө үү"
-            }), 400
+        if attendance_id and db is not None:
+            try:
+                from bson import ObjectId
+                attendance_record = db["attendances"].find_one({"_id": ObjectId(attendance_id)})
+                if attendance_record:
+                    teacher_latitude = attendance_record.get('latitude')
+                    teacher_longitude = attendance_record.get('longitude')
+                    print(f"✅ Retrieved teacher location from attendance record: lat={teacher_latitude}, lon={teacher_longitude}")
+                else:
+                    print(f"⚠️ Attendance record not found for ID: {attendance_id}")
+            except Exception as e:
+                print(f"❌ Error fetching attendance record: {e}")
+        
+        # Fallback: Try to get from request if not in database
+        if teacher_latitude is None or teacher_longitude is None:
+            teacher_latitude = data.get('teacher_latitude')
+            teacher_longitude = data.get('teacher_longitude')
+            print(f"ℹ️ Using teacher location from request: lat={teacher_latitude}, lon={teacher_longitude}")
+
+        # Check for required fields with detailed error messages
+        missing_fields = []
+        if not studentId:
+            missing_fields.append("studentId")
+        if not image_base64:
+            missing_fields.append("image_base64")
+        if not classroom_students:
+            missing_fields.append("classroom_students")
+        if latitude is None:
+            missing_fields.append("student latitude")
+        if longitude is None:
+            missing_fields.append("student longitude")
+        if teacher_latitude is None:
+            missing_fields.append("teacher latitude")
+        if teacher_longitude is None:
+            missing_fields.append("teacher longitude")
+        
+        if missing_fields:
+            print(f"❌ Missing fields: {missing_fields}")
+            if "teacher latitude" in missing_fields or "teacher longitude" in missing_fields:
+                return jsonify({
+                    "success": False, 
+                    "message": "Багшийн байршил олдсонгүй. Багш анги эхлүүлсэн эсэхээ шалгана уу"
+                }), 400
+            elif "student latitude" in missing_fields or "student longitude" in missing_fields:
+                return jsonify({
+                    "success": False, 
+                    "message": "Байршлын мэдээллийн зөвшөөрлийг өгнө үү"
+                }), 400
+            else:
+                return jsonify({
+                    "success": False, 
+                    "message": f"Дутуу мэдээлэл: {', '.join(missing_fields)}"
+                }), 400
 
         # Extract student IDs for membership check
         student_ids = [student.get('studentId') for student in classroom_students if isinstance(student, dict)]
@@ -415,7 +457,7 @@ def attend_class():
             "message": "Student verified successfully",
             "studentId": studentId,
             "name": matched_user.get('name', name),
-            # "distance_from_teacher": round(distance, 2)  # Optional: include distance in response
+            "distance_from_teacher": round(distance, 2)  # Optional: include distance in response
         }
         
         # Add liveness check results if available
